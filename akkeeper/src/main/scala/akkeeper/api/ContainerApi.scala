@@ -109,7 +109,8 @@ case class ContainersList(requestId: RequestId, containers: Seq[String]) extends
   * @param requestId the ID of the original request.
   * @param container the definition of the requested container.
   */
-case class ContainerGetResult(requestId: RequestId, container: ContainerDefinition) extends ContainerResponse
+case class ContainerGetResult(requestId: RequestId,
+                              container: ContainerDefinition) extends ContainerResponse
 
 /** A response that indicates that the requested container was not found.
   *

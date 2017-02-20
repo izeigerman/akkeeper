@@ -68,8 +68,8 @@ object ContainerDefinition {
       cpus = config.getInt("cpus"),
       memory = config.getInt("memory"),
       actors = actors,
-      jvmArgs = config.getListOfStrings("jvm.args"),
-      jvmProperties = config.getMapOfStrings("jvm.properties"),
+      jvmArgs = config.getListOfStrings("jvm-args"),
+      jvmProperties = config.getMapOfStrings("properties"),
       environment = config.getMapOfStrings("env")
     )
   }

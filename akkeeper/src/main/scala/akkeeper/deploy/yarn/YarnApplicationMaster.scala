@@ -63,7 +63,8 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   private var isRunning: Boolean = false
 
   private def getClusterResponse: RegisterApplicationMasterResponse = {
-    yarnClusterResponse.getOrElse(throw YarnMasterException("Yarn Application Master is not started"))
+    yarnClusterResponse
+      .getOrElse(throw YarnMasterException("Yarn Application Master is not started"))
   }
 
   private def buildContainerRequest(container: ContainerDefinition): ContainerRequest = {

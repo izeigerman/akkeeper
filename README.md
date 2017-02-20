@@ -36,13 +36,13 @@ akkeeper {
       cpus = 1
       # The amount of RAM in MB that has to be allocated.
       memory = 1024
-      jvm {
-        # Additional JVM arguments that will be passed to instances of this container.
-        args = [ "-Xmx1G" ]
-        # Additional JVM properties that will be passed to instances of this container.
-        properties {
-          property = "value"
-        }
+      # Additional JVM arguments that will be passed to instances of this container.
+      jvm-args = [ "-Xmx2G" ]
+      # Custom Java properties. Can be used to override the configuration values.
+      properties {
+        myapp.myservice.property = "value"
+        akka.cluster.roles.0 = "myRole1"
+        akka.cluster.roles.1 = "myRole2"
       }
     }
   ]
