@@ -28,7 +28,7 @@ trait RemoteServiceFactory {
       .getOrElse(throw MasterServiceException("Failed to find a running Akkeeper Master instance"))
     val akkeeperMasterAddr = akkeeperMaster.address
 
-    val basePath = RootActorPath(akkeeperMasterAddr) / MasterService.MasterServiceName
+    val basePath = RootActorPath(akkeeperMasterAddr) / "user" / MasterService.MasterServiceName
     val servicePath =
       if (actorName != MasterService.MasterServiceName) {
         basePath / actorName

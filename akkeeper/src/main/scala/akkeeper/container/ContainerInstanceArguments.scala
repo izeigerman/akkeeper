@@ -17,8 +17,12 @@ package akkeeper.container
 
 import java.io.File
 
+import akka.actor.Address
+import akkeeper.common.InstanceId
+
 
 case class ContainerInstanceArguments(appId: String = "",
-                                      instanceId: String = "",
-                                      masterAddress: String = "",
+                                      instanceId: InstanceId = InstanceId("unknown"),
+                                      masterAddress: Address = Address("none", "none"),
+                                      actors: File = new File("."),
                                       config: File = new File("."))

@@ -50,7 +50,11 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   private val nmClient = NMClientAsync.createNMClientAsync(this)
   private var yarnClusterResponse: Option[RegisterApplicationMasterResponse] = None
 
-  private val instanceLocalResources: util.Map[String, LocalResource] = buildInstanceLocalResources
+  private val stagingDirectory: String = config.config
+    .getYarnStagingDirectory(config.yarnConf, config.appId)
+  private val localResourceManager: YarnLocalResourceManager =
+    new YarnLocalResourceManager(config.yarnConf, stagingDirectory)
+  private val instanceCommonResources: Map[String, LocalResource] = buildInstanceCommonResources
 
   private val mastertLock = new Object()
   private val pendingResults: mutable.Map[InstanceId, Promise[DeployResult]] =
@@ -73,10 +77,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     new ContainerRequest(capability, null, null, priority)
   }
 
-  private def buildInstanceLocalResources: util.HashMap[String, LocalResource] = {
-    val stagingDirectory = config.config.getYarnStagingDirectory(config.yarnConf, config.appId)
-    val localResourceManager = new YarnLocalResourceManager(config.yarnConf, stagingDirectory)
-
+  private def buildInstanceCommonResources: Map[String, LocalResource] = {
     // Include the whole configuration for the instance except the Akka and other system sections.
     val instanceConfig: ConfigObject = BlackListedConfigs
       .foldLeft(config.config.root())((conf, section) => {
@@ -84,7 +85,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
       })
     val instanceConfigString: String = instanceConfig.render(ConfigRenderOptions.concise())
 
-    val localResources = new util.HashMap[String, LocalResource]()
+    val localResources = mutable.Map.empty[String, LocalResource]
 
     val instanceConfigFileName = s"instance_config.conf"
     val instanceConfigResource = localResourceManager.createLocalResource(
@@ -116,12 +117,26 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     addExistingResources(LocalResourceNames.ExtraJarsDirName)
     addExistingResources(LocalResourceNames.ResourcesDirName)
 
-    localResources
+    localResources.toMap
+  }
+
+  private def buildActorLaunchContextResource(containerDefinition: ContainerDefinition,
+                                              instanceId: InstanceId): LocalResource = {
+    import spray.json._
+    import akkeeper.common.ContainerDefinitionJsonProtocol._
+    val jsonStr = containerDefinition.actors.toJson.compactPrint
+    localResourceManager.createLocalResource(new ByteArrayInputStream(jsonStr.getBytes("UTF-8")),
+      s"actors_$instanceId.json")
   }
 
   private def launchInstance(container: Container,
                              containerDefinition: ContainerDefinition,
                              instanceId: InstanceId): Unit = {
+    val actorLaunchResource = buildActorLaunchContextResource(containerDefinition, instanceId)
+    val instanceResources = instanceCommonResources + (
+      LocalResourceNames.ActorLaunchContextsName -> actorLaunchResource
+    )
+
     val env = containerDefinition.environment
     val javaArgs = containerDefinition.jvmArgs ++ containerDefinition.jvmProperties.map {
       case (name, value) => s"-D$name=$value"
@@ -131,7 +146,8 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
       s"--$InstanceIdArg", instanceId.toString,
       s"--$AppIdArg", config.appId,
       s"--$MasterAddressArg", config.selfAddress.toString,
-      s"--$ConfigArg", LocalResourceNames.ConfigName
+      s"--$ConfigArg", LocalResourceNames.ConfigName,
+      s"--$ActorLaunchContextsArg", LocalResourceNames.ActorLaunchContextsName
     )
     val extraClassPath = List(
       LocalResourceNames.UserJarName,
@@ -142,7 +158,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     logger.debug(s"Instance $instanceId command: ${cmd.mkString(" ")}")
 
     val launchContext = ContainerLaunchContext.newInstance(
-      instanceLocalResources, env.asJava, cmd.asJava,
+      instanceResources.asJava, env.asJava, cmd.asJava,
       null, null, null)
 
     nmClient.startContainerAsync(container, launchContext)

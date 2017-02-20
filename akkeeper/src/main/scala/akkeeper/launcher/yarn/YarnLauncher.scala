@@ -124,7 +124,7 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration) extends Launch
     logger.debug(s"Akkeeper Master command: ${cmd.mkString(" ")}")
 
     val amContainer = ContainerLaunchContext.newInstance(
-      localResources, sys.env.asJava, cmd.asJava, null, null, null)
+      localResources, null, cmd.asJava, null, null, null)
     appContext.setAMContainerSpec(amContainer)
 
     yarnClient.submitApplication(appContext)

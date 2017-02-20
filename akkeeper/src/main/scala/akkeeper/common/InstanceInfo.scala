@@ -19,16 +19,16 @@ import akka.actor.Address
 import akkeeper.AkkeeperException
 import spray.json._
 
-/** Represents a status of the instance.
-  *
-  * @param value the string representation of the status.
-  */
-sealed abstract class InstanceStatus(val value: String)
-case object InstanceDeploying extends InstanceStatus("DEPLOYING")
-case object InstanceDeployFailed extends InstanceStatus("DEPLOY_FAILED")
-case object InstanceLaunching extends InstanceStatus("LAUNCHING")
-case object InstanceUp extends InstanceStatus("UP")
-case object InstanceUnreachable extends InstanceStatus("UNREACHABLE")
+/** Represents a status of the instance. */
+sealed trait InstanceStatus {
+  /** String representation of the status. */
+  def value: String
+}
+case object InstanceDeploying extends InstanceStatus { val value = "DEPLOYING" }
+case object InstanceDeployFailed extends InstanceStatus { val value = "DEPLOY_FAILED" }
+case object InstanceLaunching extends InstanceStatus { val value = "LAUNCHING" }
+case object InstanceUp extends InstanceStatus { val value = "UP" }
+case object InstanceUnreachable extends InstanceStatus { val value = "UNREACHABLE" }
 object InstanceStatus {
   def fromString(status: String): InstanceStatus = {
     status match {

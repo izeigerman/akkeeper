@@ -17,10 +17,19 @@ package akkeeper.container
 
 import java.io.File
 
+import akka.actor.{ActorSystem, AddressFromURIString}
+import akkeeper.common._
+import akkeeper.container.service.ContainerInstanceService
+import akkeeper.storage.InstanceStorageFactory
 import akkeeper.utils.CliArguments._
+import akkeeper.utils.ConfigUtils._
+import com.typesafe.config.ConfigFactory
 import scopt.OptionParser
-
+import scala.io.Source
 import scala.util.control.NonFatal
+import spray.json._
+import ContainerDefinitionJsonProtocol._
+import ContainerInstanceService._
 
 object ContainerInstanceMain extends App {
 
@@ -32,20 +41,38 @@ object ContainerInstanceMain extends App {
     }).text("ID of this application")
 
     opt[String](InstanceIdArg).required().action((v, c) => {
-      c.copy(instanceId = v)
+      c.copy(instanceId = InstanceId.fromString(v))
     }).text("ID of this instance")
 
     opt[String](MasterAddressArg).required().action((v, c) => {
-      c.copy(masterAddress = v)
+      c.copy(masterAddress = AddressFromURIString.parse(v))
     }).text("master instance address")
+
+    opt[File](ActorLaunchContextsArg).required().action((v, c) => {
+      c.copy(actors = v)
+    }).text("actor launch context in JSON format")
 
     opt[File](ConfigArg).valueName("<file>").required().action((v, c) => {
       c.copy(config = v)
-    }).text("custom configuration file")
+    }).text("configuration file")
   }
 
   def run(instanceArgs: ContainerInstanceArguments): Unit = {
-    // TODO:
+    val config = ConfigFactory.parseFile(instanceArgs.config).withFallback(ConfigFactory.load())
+    val actorSystem = ActorSystem(config.getActorSystemName, config)
+
+    val zkConfig = actorSystem.settings.config.getZookeeperClientConfig
+    val instanceStorage = InstanceStorageFactory.createAsync(zkConfig.child(instanceArgs.appId))
+
+    val actorsJsonStr = Source.fromFile(instanceArgs.actors).getLines().mkString("\n")
+    val actors = actorsJsonStr.parseJson.convertTo[Seq[ActorLaunchContext]]
+
+    val containerInstanceService = ContainerInstanceService.createLocal(actorSystem,
+      instanceStorage, instanceArgs.instanceId, instanceArgs.masterAddress)
+    containerInstanceService ! LaunchActors(actors)
+
+    actorSystem.awaitTermination()
+    sys.exit(0)
   }
 
   try {

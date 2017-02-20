@@ -13,13 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package akkeeper.utils
+package akkeeper.container.service
 
-private[akkeeper] object CliArguments {
-  val AkkeeperJarArg = "akkeeperJar"
-  val InstanceIdArg = "instanceId"
-  val AppIdArg = "appId"
-  val ConfigArg = "config"
-  val MasterAddressArg = "masterAddress"
-  val ActorLaunchContextsArg = "actorLaunchContexts"
+import akka.actor.Actor
+import TestUserActor._
+
+class TestUserActor extends Actor {
+  override def receive: Receive = {
+    case TestPing => sender() ! TestPong
+  }
+}
+
+object TestUserActor {
+  case object TestPing
+  case object TestPong
 }
