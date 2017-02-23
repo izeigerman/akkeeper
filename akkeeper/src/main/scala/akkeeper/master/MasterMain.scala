@@ -29,6 +29,7 @@ import akkeeper.utils.yarn.YarnUtils
 import com.typesafe.config._
 import scopt.OptionParser
 import scala.util.control.NonFatal
+import scala.collection.JavaConverters._
 
 object MasterMain extends App {
 
@@ -52,7 +53,7 @@ object MasterMain extends App {
 
   def createDeployClient(actorSystem: ActorSystem, appId: String): DeployClient.Async = {
     val yarnConf = YarnUtils.getYarnConfiguration
-    val config = cleanupConfig(actorSystem.settings.config)
+    val config = actorSystem.settings.config
     val selfAddr = Cluster(actorSystem).selfAddress
     val yarnConfig = YarnApplicationMasterConfig(config, yarnConf, appId, selfAddr, "")
     DeployClientFactory.createAsync(yarnConfig)
@@ -63,7 +64,8 @@ object MasterMain extends App {
       .map(c => ConfigFactory.parseFile(c).withFallback(ConfigFactory.load()))
       .getOrElse(ConfigFactory.load())
 
-    val actorSystem = ActorSystem(config.getActorSystemName, config)
+    val masterConfig = config.withMasterPort.withMasterRole
+    val actorSystem = ActorSystem(config.getActorSystemName, masterConfig)
 
     val instanceStorage = createInstanceStorage(actorSystem, masterArgs.appId)
     val deployClient = createDeployClient(actorSystem, masterArgs.appId)

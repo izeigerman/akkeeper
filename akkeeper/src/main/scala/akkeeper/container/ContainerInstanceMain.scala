@@ -52,13 +52,15 @@ object ContainerInstanceMain extends App {
       c.copy(actors = v)
     }).text("actor launch context in JSON format")
 
-    opt[File](ConfigArg).valueName("<file>").required().action((v, c) => {
-      c.copy(config = v)
+    opt[File](ConfigArg).valueName("<file>").optional().action((v, c) => {
+      c.copy(userConfig = Some(ConfigFactory.parseFile(v)))
     }).text("configuration file")
   }
 
   def run(instanceArgs: ContainerInstanceArguments): Unit = {
-    val config = ConfigFactory.parseFile(instanceArgs.config).withFallback(ConfigFactory.load())
+    val config = instanceArgs.userConfig
+      .map(_.withFallback(ConfigFactory.load()))
+      .getOrElse(ConfigFactory.load())
     val actorSystem = ActorSystem(config.getActorSystemName, config)
 
     val zkConfig = actorSystem.settings.config.getZookeeperClientConfig

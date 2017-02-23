@@ -19,10 +19,11 @@ import java.io.File
 
 import akka.actor.Address
 import akkeeper.common.InstanceId
+import com.typesafe.config.Config
 
 
 case class ContainerInstanceArguments(appId: String = "",
                                       instanceId: InstanceId = InstanceId("unknown"),
                                       masterAddress: Address = Address("none", "none"),
                                       actors: File = new File("."),
-                                      config: File = new File("."))
+                                      userConfig: Option[Config] = None)

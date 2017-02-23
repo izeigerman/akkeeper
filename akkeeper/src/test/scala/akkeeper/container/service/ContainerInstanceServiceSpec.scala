@@ -22,6 +22,8 @@ import akkeeper.{AkkeeperException, ActorTestUtils}
 import akkeeper.common._
 import akkeeper.master.service._
 import akkeeper.storage.InstanceStorage
+import akkeeper.utils.ConfigUtils._
+import com.typesafe.config.ConfigFactory
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 import scala.concurrent.Future
@@ -34,7 +36,8 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
   with FlatSpecLike with Matchers with ImplicitSender with MockFactory with ActorTestUtils
   with BeforeAndAfterAll {
 
-  def this() = this(ActorSystem("ContainerInstanceServiceSpec"))
+  def this() = this(ActorSystem("ContainerInstanceServiceSpec",
+    ConfigFactory.load().withMasterPort.withMasterRole))
 
   private def createExpectedInstanceInfo(instanceId: InstanceId,
                                          addr: Address): InstanceInfo = {

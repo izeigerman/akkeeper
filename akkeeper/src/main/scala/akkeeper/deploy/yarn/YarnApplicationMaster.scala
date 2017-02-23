@@ -77,16 +77,17 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   }
 
   private def buildInstanceCommonResources: Map[String, LocalResource] = {
-    val instanceConfig: ConfigObject = config.config.root()
-    val instanceConfigString: String = instanceConfig.render(ConfigRenderOptions.concise())
-
     val localResources = mutable.Map.empty[String, LocalResource]
 
-    // Distribute the configuration payload.
-    val instanceConfigResource = localResourceManager.createLocalResource(
-      new ByteArrayInputStream(instanceConfigString.getBytes("UTF-8")),
-      LocalResourceNames.InstanceConfigName)
-    localResources.put(LocalResourceNames.InstanceConfigName, instanceConfigResource)
+    // Distribute the user configuration.
+    try {
+      val instanceConfigResource = localResourceManager.getExistingLocalResource(
+        LocalResourceNames.UserConfigName)
+      localResources.put(LocalResourceNames.UserConfigName, instanceConfigResource)
+    } catch  {
+      case _: FileNotFoundException =>
+        logger.debug("No user configuration was found")
+    }
 
     // Retrieve the Akkeeper Assembly jar.
     val akkeeperJarResource = localResourceManager
@@ -145,9 +146,11 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
       s"--$InstanceIdArg", instanceId.toString,
       s"--$AppIdArg", config.appId,
       s"--$MasterAddressArg", config.selfAddress.toString,
-      s"--$ConfigArg", LocalResourceNames.InstanceConfigName,
       s"--$ActorLaunchContextsArg", LocalResourceNames.ActorLaunchContextsName
-    )
+    ) ++ instanceResources.get(LocalResourceNames.UserConfigName)
+      .map(_ => List(s"--$ConfigArg", LocalResourceNames.UserConfigName))
+      .getOrElse(List.empty)
+
     val extraClassPath = List(
       LocalResourceNames.UserJarName,
       LocalResourceNames.ExtraJarsDirName + "/*"

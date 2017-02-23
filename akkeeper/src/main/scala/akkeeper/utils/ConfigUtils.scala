@@ -17,14 +17,26 @@ package akkeeper.utils
 
 import akkeeper.api.DeployContainer
 import akkeeper.common.ContainerDefinition
+import akkeeper.master.service.MasterService
 import akkeeper.storage.zookeeper.ZookeeperClientConfig
-import com.typesafe.config.{ConfigObject, Config, ConfigValueFactory}
+import com.typesafe.config.{Config, ConfigValueFactory}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import scala.collection.JavaConverters._
 
 private[akkeeper] object ConfigUtils {
   implicit class ConfigDecorator(config: Config) {
+
+    def withMasterRole: Config = {
+      config.withValue("akka.cluster.roles",
+        ConfigValueFactory.fromIterable(Seq(MasterService.MasterServiceName).asJava))
+    }
+
+    def withMasterPort: Config = {
+      config.withValue("akka.remote.netty.tcp.port",
+        ConfigValueFactory.fromAnyRef(config.getInt("akkeeper.akka.port")))
+    }
+
     def getMapOfStrings(path: String): Map[String, String] = {
       if (config.hasPath(path)) {
         config.getConfig(path).entrySet().asScala.map(entry => {
@@ -44,7 +56,7 @@ private[akkeeper] object ConfigUtils {
     }
 
     def getActorSystemName: String = {
-      config.getString("akkeeper.actor-system-name")
+      config.getString("akkeeper.akka.system-name")
     }
 
     def getYarnConfig: Config = {
@@ -90,27 +102,5 @@ private[akkeeper] object ConfigUtils {
         Seq.empty
       }
     }
-  }
-
-  val BlacklistedConfigs = List(
-    "akka", "awt", "file", "java", "line", "os", "path", "sun", "user"
-  )
-
-  /** Cleans up the configuration instance by removing "akka" and other system
-    * sections from it (see [[BlacklistedConfigs]] for the full list). It also
-    * removes the Master's Akka roles from config so that some other instance
-    * doesn't acquire them accidentally.
-    *
-    * @param config the original config.
-    * @return a cleaned config.
-    */
-  def cleanupConfig(config: Config): Config = {
-    BlacklistedConfigs
-      .foldLeft(config.root())((conf, section) => {
-        conf.withoutKey(section)
-      })
-      .toConfig
-      .withValue("akka.cluster.roles", ConfigValueFactory.fromIterable(Seq.empty[String].asJava))
-      .withValue("akka.remote.netty.tcp.port", ConfigValueFactory.fromAnyRef(new Integer(0)))
   }
 }
