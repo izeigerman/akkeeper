@@ -64,7 +64,9 @@ object AkkeeperBuild extends Build {
       "com.typesafe.akka" %% "akka-testkit" % AkkaVersion % "test->*",
       "org.scalatest" %% "scalatest" % ScalaTestVersion % "test->*",
       "org.scalamock" %% "scalamock-scalatest-support" % ScalamockVersion % "test->*"
-    )
+    ),
+
+    test in assembly := {}
   )
 
   val AkkeeperSettings = CommonSettings ++ Seq(
@@ -87,9 +89,14 @@ object AkkeeperBuild extends Build {
 
   lazy val root = Project(id = "root", base = file("."))
     .settings(NoPublishSettings: _*)
-    .aggregate(akkeeper)
+    .aggregate(akkeeper, akkeeperExamples)
     .disablePlugins(sbtassembly.AssemblyPlugin)
 
   lazy val akkeeper = Project(id = "akkeeper", base = file("akkeeper"))
     .settings(AkkeeperSettings: _*)
+
+  lazy val akkeeperExamples = Project(id = "akkeeper-examples", base = file("akkeeper-examples"))
+    .settings(NoPublishSettings: _*)
+    .dependsOn(akkeeper)
+    .disablePlugins(sbtassembly.AssemblyPlugin)
 }
