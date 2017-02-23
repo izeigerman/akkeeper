@@ -14,6 +14,15 @@ cd akkeeper
 sbt assembly
 ```
 
+## Basic concepts
+To understand how Akkeeper works you have to be aware of only two concepts: containers and instances.
+
+### Container
+Container defines an environment where the instance is running. Container determines how many resources should be allocated for the instance and what actors should be launched as part of this instance. Containers can be added, removed and modified dynamically at runtime.
+
+### Instance
+Intstance is an execution unit in Akkeeper. Instance is just a running process with capabilities and properties of its container. "Deploy container" or "launch instance of container `container_name`" means the same - launching a process on some node in a cluster using the specified container's definition. Instances can be launched, monitored and terminated dynamically at runtime.
+
 ## How to use
 The easiest way to start using Akkeeper is through the configuration file. Here is a quick start configuration file example:
 ```
