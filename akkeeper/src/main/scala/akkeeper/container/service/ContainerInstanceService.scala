@@ -49,6 +49,7 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
 
   private def launchActors(actors: Seq[ActorLaunchContext]): Unit = {
     actors.foreach(actor => {
+      log.debug(s"Deploying actor ${actor.name} (${actor.fqn})")
       val clazz = Class.forName(actor.fqn)
       val actorRef = context.actorOf(Props(clazz), actor.name)
       context.watch(actorRef)

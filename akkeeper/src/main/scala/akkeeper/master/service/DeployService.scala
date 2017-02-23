@@ -67,7 +67,7 @@ private[akkeeper] class DeployService(deployClient: DeployClient.Async,
       // Before launching a new instance we should first
       // retrieve an information about the container.
       setOriginalSenderContext(request.requestId, request.quantity)
-      containerService ! GetContainer(request.name, id = Some(request.requestId))
+      containerService ! GetContainer(request.name, requestId = request.requestId)
     case ContainerGetResult(id, container) =>
       // The information about the container was retrieved.
       // Now we can start the deployment process.

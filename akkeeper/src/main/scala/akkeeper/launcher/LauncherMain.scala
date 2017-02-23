@@ -21,7 +21,9 @@ import akkeeper.launcher.yarn.YarnLauncher
 import akkeeper.utils.yarn.YarnUtils
 import com.typesafe.config.ConfigFactory
 import scopt.OptionParser
+import scala.concurrent.Await
 import scala.util.control.NonFatal
+import scala.concurrent.duration._
 
 object LauncherMain extends App {
 
@@ -30,7 +32,7 @@ object LauncherMain extends App {
 
     opt[File]("akkeeperJar").required().action((v, c) => {
       c.copy(akkeeperJarPath = v)
-    }).text("path to the Akkeeper Jar file")
+    }).text("path to the Akkeeper fat Jar file")
 
     opt[Seq[File]]("jars").valueName("<jar1>,<jar2>...").action((v, c) => {
       c.copy(otherJars = v)
@@ -45,21 +47,24 @@ object LauncherMain extends App {
     }).text("extra JVM arguments for the Akeeper master")
 
     opt[File]("config").valueName("<file>").action((v, c) => {
-      c.copy(config = Some(v))
+      c.copy(userConfig = Some(ConfigFactory.parseFile(v)))
     }).text("custom configuration file")
 
-    arg[File]("<file>").required().action((x, c) => {
+    arg[File]("<jar>").required().action((x, c) => {
       c.copy(userJar = x)
     }).text("a user Jar")
   }
 
+  val LauncherTimeout = 30 seconds
+
   def run(launcherArgs: LaunchArguments): Unit = {
-    val config = launcherArgs.config
-      .map(c => ConfigFactory.parseFile(c).withFallback(ConfigFactory.load()))
+    val config = launcherArgs.userConfig
+      .map(c => c.withFallback(ConfigFactory.load()))
       .getOrElse(ConfigFactory.load())
     val launcher = new YarnLauncher(YarnUtils.getYarnConfiguration)
     launcher.start()
-    launcher.launch(config, launcherArgs)
+    val launchResult = launcher.launch(config, launcherArgs)
+    Await.result(launchResult, LauncherTimeout)
     launcher.stop()
   }
 

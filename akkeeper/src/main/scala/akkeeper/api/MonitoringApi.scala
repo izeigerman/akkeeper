@@ -18,12 +18,8 @@ package akkeeper.api
 import akkeeper.common._
 import spray.json.DefaultJsonProtocol
 
-/** The base class for all requests related to Monitoring API.
-  *
-  * @param id the optional request ID. If not specified a random
-  *           ID will be generated.
-  */
-sealed abstract class InstanceRequest(id: Option[RequestId] = None) extends RequestWithId(id)
+/** The base interface for all requests related to Monitoring API. */
+sealed trait InstanceRequest extends WithRequestId
 
 /** A request to retrieve the information about the instance using its ID.
   * The possible responses are:
@@ -33,11 +29,11 @@ sealed abstract class InstanceRequest(id: Option[RequestId] = None) extends Requ
   *  - [[OperationFailed]] - if other error occurred.
   *
   * @param instanceId the ID of the instance.
-  * @param id the optional request ID. If not specified a random
-  *           ID will be generated.
+  * @param requestId the optional request ID. If not specified a random
+  *                  ID will be generated.
   */
 case class GetInstance(instanceId: InstanceId,
-                       id: Option[RequestId] = None) extends InstanceRequest(id)
+                       requestId: RequestId = RequestId()) extends InstanceRequest
 
 /** A request to retrieve the IDs of all existing instances.
   * The possible responses are:
@@ -45,10 +41,10 @@ case class GetInstance(instanceId: InstanceId,
   *  - [[InstancesList]] - contains the list of existing instances.
   *  - [[OperationFailed]] - if error occurred.
   *
-  * @param id the optional request ID. If not specified a random
-  *           ID will be generated.
+  * @param requestId the optional request ID. If not specified a random
+  *                  ID will be generated.
   */
-case class GetInstances(id: Option[RequestId] = None) extends InstanceRequest(id)
+case class GetInstances(requestId: RequestId = RequestId()) extends InstanceRequest
 
 /** A request to find the instance IDs that match specific requirements.
   * The possible responses are:
@@ -63,12 +59,12 @@ case class GetInstances(id: Option[RequestId] = None) extends InstanceRequest(id
   * @param containerName the name of the container the requested instance
   *                      must belong to. If not specified instance with any
   *                      container will match.
-  * @param id the optional request ID. If not specified a random
-  *           ID will be generated.
+  * @param requestId the optional request ID. If not specified a random
+  *                  ID will be generated.
   */
 case class GetInstancesBy(roles: Option[Set[String]],
                           containerName: Option[String],
-                          id: Option[RequestId] = None) extends InstanceRequest(id)
+                          requestId: RequestId = RequestId()) extends InstanceRequest
 
 /** A request to terminate a running instance.
   * The possible responses are:
@@ -77,11 +73,11 @@ case class GetInstancesBy(roles: Option[Set[String]],
   *  - [[OperationFailed]] - if error occurred.
   *
   * @param instanceId the ID of the instance that has to be terminated.
-  * @param id the optional request ID. If not specified a random
-  *           ID will be generated.
+  * @param requestId the optional request ID. If not specified a random
+  *                  ID will be generated.
   */
 case class TerminateInstance(instanceId: InstanceId,
-                             id: Option[RequestId] = None) extends InstanceRequest(id)
+                             requestId: RequestId = RequestId()) extends InstanceRequest
 
 /** The base interface for all responses related to Monitoring API. */
 sealed trait InstanceResponse extends WithRequestId

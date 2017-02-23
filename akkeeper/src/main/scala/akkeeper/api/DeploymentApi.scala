@@ -26,11 +26,11 @@ import spray.json.DefaultJsonProtocol
   *
   * @param name the name of the container that will be deployed.
   * @param quantity the number of instances that will be deployed.
-  * @param id the optional request ID. If not specified a random
-  *           ID will be generated.
+  * @param requestId the optional request ID. If not specified a random
+  *                  ID will be generated.
   */
 case class DeployContainer(name: String, quantity: Int,
-                           id: Option[RequestId] = None) extends RequestWithId(id)
+                           requestId: RequestId = RequestId()) extends WithRequestId
 
 /** A response that indicates a successful deployment of new instances.
   *

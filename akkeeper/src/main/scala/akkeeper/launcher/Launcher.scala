@@ -15,10 +15,14 @@
  */
 package akkeeper.launcher
 
+import akka.actor.Address
 import com.typesafe.config.Config
+import scala.concurrent.Future
+
+case class LaunchResult(appId: String, masterAddress: Address)
 
 private[akkeeper] trait Launcher {
   def start(): Unit
   def stop(): Unit
-  def launch(config: Config, args: LaunchArguments): String
+  def launch(config: Config, args: LaunchArguments): Future[LaunchResult]
 }

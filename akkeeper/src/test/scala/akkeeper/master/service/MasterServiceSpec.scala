@@ -23,7 +23,7 @@ import akkeeper.api._
 import akkeeper.common.InstanceId
 import akkeeper.deploy.{DeploySuccessful, DeployClient}
 import akkeeper.storage.InstanceStorage
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{ConfigFactory, ConfigValueFactory}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest._
 import scala.concurrent.Future
@@ -35,7 +35,9 @@ class MasterServiceSpec(system: ActorSystem) extends TestKit(system)
   with BeforeAndAfterAll {
 
   def this() = this(ActorSystem("MasterServiceSpec",
-    ConfigFactory.load("application-container-test.conf")))
+    ConfigFactory
+      .load("application-container-test.conf")
+      .withValue("akka.remote.netty.tcp.port", ConfigValueFactory.fromAnyRef(new Integer(0)))))
 
   override def afterAll(): Unit = {
     system.shutdown()
@@ -128,7 +130,7 @@ class MasterServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "shutdown the Actor system if the init process fails" in {
-    val newSystem = ActorSystem("MasterServiceNegativeTest")
+    val newSystem = ActorSystem("MasterServiceNegativeTest", system.settings.config)
 
     val selfAddr = Cluster(newSystem).selfAddress
     val instance = createInstanceInfo("container").copy(address = Some(selfAddr))

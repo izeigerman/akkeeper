@@ -18,9 +18,9 @@ package akkeeper.utils
 import akkeeper.api.DeployContainer
 import akkeeper.common.ContainerDefinition
 import akkeeper.storage.zookeeper.ZookeeperClientConfig
-import com.typesafe.config.Config
+import com.typesafe.config.{ConfigObject, Config, ConfigValueFactory}
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{Path, FileSystem}
+import org.apache.hadoop.fs.{FileSystem, Path}
 import scala.collection.JavaConverters._
 
 private[akkeeper] object ConfigUtils {
@@ -90,5 +90,27 @@ private[akkeeper] object ConfigUtils {
         Seq.empty
       }
     }
+  }
+
+  val BlacklistedConfigs = List(
+    "akka", "awt", "file", "java", "line", "os", "path", "sun", "user"
+  )
+
+  /** Cleans up the configuration instance by removing "akka" and other system
+    * sections from it (see [[BlacklistedConfigs]] for the full list). It also
+    * removes the Master's Akka roles from config so that some other instance
+    * doesn't acquire them accidentally.
+    *
+    * @param config the original config.
+    * @return a cleaned config.
+    */
+  def cleanupConfig(config: Config): Config = {
+    BlacklistedConfigs
+      .foldLeft(config.root())((conf, section) => {
+        conf.withoutKey(section)
+      })
+      .toConfig
+      .withValue("akka.cluster.roles", ConfigValueFactory.fromIterable(Seq.empty[String].asJava))
+      .withValue("akka.remote.netty.tcp.port", ConfigValueFactory.fromAnyRef(new Integer(0)))
   }
 }

@@ -21,13 +21,12 @@ import java.util
 
 import akkeeper.common.{ContainerDefinition, InstanceId}
 import akkeeper.container.ContainerInstanceMain
-import akkeeper.utils.CliArguments
-import akkeeper.utils.ConfigUtils._
-import CliArguments._
 import akkeeper.deploy._
+import akkeeper.utils.CliArguments._
+import akkeeper.utils.ConfigUtils._
 import akkeeper.utils.yarn._
-import com.typesafe.config.{ConfigObject, ConfigRenderOptions}
-import org.apache.hadoop.fs.{Path, FileSystem}
+import com.typesafe.config._
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterResponse
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest
@@ -78,25 +77,23 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   }
 
   private def buildInstanceCommonResources: Map[String, LocalResource] = {
-    // Include the whole configuration for the instance except the Akka and other system sections.
-    val instanceConfig: ConfigObject = BlackListedConfigs
-      .foldLeft(config.config.root())((conf, section) => {
-        conf.withoutKey(section)
-      })
+    val instanceConfig: ConfigObject = config.config.root()
     val instanceConfigString: String = instanceConfig.render(ConfigRenderOptions.concise())
 
     val localResources = mutable.Map.empty[String, LocalResource]
 
-    val instanceConfigFileName = s"instance_config.conf"
+    // Distribute the configuration payload.
     val instanceConfigResource = localResourceManager.createLocalResource(
       new ByteArrayInputStream(instanceConfigString.getBytes("UTF-8")),
-      instanceConfigFileName)
-    localResources.put(LocalResourceNames.ConfigName, instanceConfigResource)
+      LocalResourceNames.InstanceConfigName)
+    localResources.put(LocalResourceNames.InstanceConfigName, instanceConfigResource)
 
+    // Retrieve the Akkeeper Assembly jar.
     val akkeeperJarResource = localResourceManager
       .getExistingLocalResource(LocalResourceNames.AkkeeperJarName)
     localResources.put(LocalResourceNames.AkkeeperJarName, akkeeperJarResource)
 
+    // Retrieve the user jar.
     val userJarResource = localResourceManager
       .getExistingLocalResource(LocalResourceNames.UserJarName)
     localResources.put(LocalResourceNames.UserJarName, userJarResource)
@@ -114,7 +111,9 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
         case _: FileNotFoundException =>
       }
     }
+    // Retrieve a content of the jars/ directory.
     addExistingResources(LocalResourceNames.ExtraJarsDirName)
+    // Retrieve a content of the resources/ directory.
     addExistingResources(LocalResourceNames.ResourcesDirName)
 
     localResources.toMap
@@ -146,7 +145,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
       s"--$InstanceIdArg", instanceId.toString,
       s"--$AppIdArg", config.appId,
       s"--$MasterAddressArg", config.selfAddress.toString,
-      s"--$ConfigArg", LocalResourceNames.ConfigName,
+      s"--$ConfigArg", LocalResourceNames.InstanceConfigName,
       s"--$ActorLaunchContextsArg", LocalResourceNames.ActorLaunchContextsName
     )
     val extraClassPath = List(

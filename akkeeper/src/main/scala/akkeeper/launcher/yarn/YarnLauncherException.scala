@@ -13,15 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package akkeeper.utils.yarn
+package akkeeper.launcher.yarn
 
-private[akkeeper] object LocalResourceNames {
-  val AkkeeperJarName = "akkeeper.jar"
-  val UserJarName = "user.jar"
-  val UserConfigName = "user_config.conf"
-  val InstanceConfigName = "instance_config.conf"
-  val ActorLaunchContextsName = "actors.json"
+import akkeeper.AkkeeperException
 
-  val ExtraJarsDirName = "jars"
-  val ResourcesDirName = "resources"
-}
+case class YarnLauncherException(msg: String) extends AkkeeperException(msg)

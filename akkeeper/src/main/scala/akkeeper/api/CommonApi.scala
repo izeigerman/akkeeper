@@ -23,15 +23,6 @@ trait WithRequestId {
   def requestId: RequestId
 }
 
-/** The base class for all request messages that include unique ID.
-  *
-  * @param id the optional request ID. If not specified a random
-  *           ID will be generated.
-  */
-abstract class RequestWithId(id: Option[RequestId]) extends WithRequestId {
-  override val requestId: RequestId = id.getOrElse(RequestId())
-}
-
 /** A response message that represents an arbitrary general error.
   * It's usually used when some unexpected or unhandled error occurs.
   *

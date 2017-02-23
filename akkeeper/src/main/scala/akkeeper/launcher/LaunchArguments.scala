@@ -17,9 +17,17 @@ package akkeeper.launcher
 
 import java.io.File
 
+import com.typesafe.config.Config
+import LaunchArguments._
+
 private[akkeeper] case class LaunchArguments(akkeeperJarPath: File = new File("."),
                                              userJar: File = new File("."),
                                              otherJars: Seq[File] = Seq.empty,
                                              resources: Seq[File] = Seq.empty,
                                              masterJvmArgs: Seq[String] = Seq.empty,
-                                             config: Option[File] = None)
+                                             userConfig: Option[Config] = None,
+                                             pollInterval: Long = DefaultPollInterval)
+
+object LaunchArguments {
+  val DefaultPollInterval = 1000
+}

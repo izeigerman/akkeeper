@@ -18,12 +18,8 @@ package akkeeper.api
 import akkeeper.common._
 import spray.json._
 
-/** The base class for all requests related to Container API.
-  *
-  * @param id the optional request ID. If not specified a random
-  *           ID will be generated.
-  */
-sealed abstract class ContainerRequest(id: Option[RequestId]) extends RequestWithId(id)
+/** The base interface for all requests related to Container API. */
+sealed trait ContainerRequest extends WithRequestId
 
 /** A container creation request.
   * The possible responses are:
@@ -33,11 +29,11 @@ sealed abstract class ContainerRequest(id: Option[RequestId]) extends RequestWit
   *  - [[OperationFailed]] - if other error occurred.
   *
   * @param container the container definition. See [[ContainerDefinition]].
-  * @param id the optional request ID. If not specified a random
-  *           ID will be generated.
+  * @param requestId the optional request ID. If not specified a random
+  *                  ID will be generated.
   */
 case class CreateContainer(container: ContainerDefinition,
-                           id: Option[RequestId] = None) extends ContainerRequest(id)
+                           requestId: RequestId = RequestId()) extends ContainerRequest
 
 /** A container update request.
   * The possible responses are:
@@ -47,11 +43,11 @@ case class CreateContainer(container: ContainerDefinition,
   *  - [[OperationFailed]] - if other error occurred.
   *
   * @param container the updated definition of the existing container. See [[ContainerDefinition]].
-  * @param id the optional request ID. If not specified a random
-  *           ID will be generated.
+  * @param requestId the optional request ID. If not specified a random
+  *                  ID will be generated.
   */
 case class UpdateContainer(container: ContainerDefinition,
-                           id: Option[RequestId] = None) extends ContainerRequest(id)
+                           requestId: RequestId = RequestId()) extends ContainerRequest
 
 /** A request to retrieve the definition of the container with the given name.
   * The possible responses are:
@@ -61,11 +57,11 @@ case class UpdateContainer(container: ContainerDefinition,
   *  - [[OperationFailed]] - if other error occurred.
   *
   * @param name the container's name
-  * @param id the optional request ID. If not specified a random
-  *           ID will be generated.
+  * @param requestId the optional request ID. If not specified a random
+  *                  ID will be generated.
   */
 case class GetContainer(name: String,
-                        id: Option[RequestId] = None) extends ContainerRequest(id)
+                        requestId: RequestId = RequestId()) extends ContainerRequest
 
 /** A request to retrieve names of all existing containers.
   * The possible responses are:
@@ -73,10 +69,10 @@ case class GetContainer(name: String,
   *  - [[ContainersList]] - contains list of existing container names.
   *  - [[OperationFailed]] - if error occurred.
   *
-  * @param id the optional request ID. If not specified a random
-  *           ID will be generated.
+  * @param requestId the optional request ID. If not specified a random
+  *                  ID will be generated.
   */
-case class GetContainers(id: Option[RequestId] = None) extends ContainerRequest(id)
+case class GetContainers(requestId: RequestId = RequestId()) extends ContainerRequest
 
 /** A container delete request.
   * The possible responses are:
@@ -86,11 +82,11 @@ case class GetContainers(id: Option[RequestId] = None) extends ContainerRequest(
   *  - [[OperationFailed]] - if other error occurred.
   *
   * @param name the name of the container that has to be deleted.
-  * @param id the optional request ID. If not specified a random
-  *           ID will be generated.
+  * @param requestId the optional request ID. If not specified a random
+  *                  ID will be generated.
   */
 case class DeleteContainer(name: String,
-                           id: Option[RequestId] = None) extends ContainerRequest(id)
+                           requestId: RequestId = RequestId()) extends ContainerRequest
 
 /** The base interface for all responses related to Container API. */
 sealed trait ContainerResponse extends WithRequestId

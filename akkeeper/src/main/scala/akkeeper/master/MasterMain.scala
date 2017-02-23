@@ -26,7 +26,7 @@ import akkeeper.storage.{InstanceStorageFactory, InstanceStorage}
 import akkeeper.utils.ConfigUtils._
 import akkeeper.utils.CliArguments._
 import akkeeper.utils.yarn.YarnUtils
-import com.typesafe.config.{ConfigRenderOptions, ConfigFactory}
+import com.typesafe.config._
 import scopt.OptionParser
 import scala.util.control.NonFatal
 
@@ -44,6 +44,7 @@ object MasterMain extends App {
     }).text("custom configuration file")
   }
 
+
   def createInstanceStorage(actorSystem: ActorSystem, appId: String): InstanceStorage.Async = {
     val zkConfig = actorSystem.settings.config.getZookeeperClientConfig
     InstanceStorageFactory.createAsync(zkConfig.child(appId))
@@ -51,7 +52,7 @@ object MasterMain extends App {
 
   def createDeployClient(actorSystem: ActorSystem, appId: String): DeployClient.Async = {
     val yarnConf = YarnUtils.getYarnConfiguration
-    val config = actorSystem.settings.config
+    val config = cleanupConfig(actorSystem.settings.config)
     val selfAddr = Cluster(actorSystem).selfAddress
     val yarnConfig = YarnApplicationMasterConfig(config, yarnConf, appId, selfAddr, "")
     DeployClientFactory.createAsync(yarnConfig)

@@ -15,19 +15,24 @@
  */
 package akkeeper.launcher.yarn
 
+import java.io.ByteArrayInputStream
 import java.util
+import java.util.concurrent.Executors
 
-import akkeeper.launcher.{Launcher, LaunchArguments}
+import akka.actor.Address
+import akkeeper.launcher._
 import akkeeper.master.MasterMain
 import akkeeper.utils.CliArguments._
 import akkeeper.utils.ConfigUtils._
 import akkeeper.utils.yarn._
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigRenderOptions}
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.client.api.YarnClient
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.slf4j.LoggerFactory
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
+import scala.concurrent.{ExecutionContext, Future}
 
 
 private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration) extends Launcher {
@@ -35,6 +40,36 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration) extends Launch
 
   private val yarnClient = YarnClient.createYarnClient()
   yarnClient.init(yarnConf)
+
+  private val pollingStatusExecutor = Executors.newSingleThreadExecutor()
+  private implicit val pollingStatusExecutionContext = ExecutionContext
+    .fromExecutor(pollingStatusExecutor)
+
+  private def retrieveMasterAddress(config: Config,
+                                    appId: ApplicationId,
+                                    pollInterval: Long): Future[Address] = {
+    @tailrec
+    def retry(): Address = {
+      val appReport = yarnClient.getApplicationReport(appId)
+      val state = appReport.getYarnApplicationState
+      state match {
+        case s @ (YarnApplicationState.SUBMITTED | YarnApplicationState.ACCEPTED) =>
+          logger.debug(s"Akkeeper Master is $s")
+          Thread.sleep(pollInterval)
+          retry()
+        case YarnApplicationState.RUNNING =>
+          val addr = Address("akka.tcp", config.getActorSystemName, appReport.getHost,
+            config.getInt("akka.remote.netty.tcp.port"))
+          logger.info(s"Akkeeper Master address is $addr")
+          addr
+        case other =>
+          throw new YarnLauncherException(s"Unexpected Akkeeper Master state: $other")
+      }
+    }
+    Future {
+      retry()
+    }
+  }
 
   private def getResource(config: Config): Resource = {
     val yarnConfig = config.getYarnConfig.getConfig("master")
@@ -72,10 +107,12 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration) extends Launch
       resourceManger.createLocalResource(resource.getAbsolutePath, localPath)
     })
 
-    args.config.foreach(config => {
-      val configResource = resourceManger.createLocalResource(config.getAbsolutePath,
-        LocalResourceNames.ConfigName)
-      localResources.put(LocalResourceNames.ConfigName, configResource)
+    args.userConfig.foreach(config => {
+      val userConfigString = config.root().render(ConfigRenderOptions.concise())
+      val configResource = resourceManger.createLocalResource(
+        new ByteArrayInputStream(userConfigString.getBytes("UTF-8")),
+        LocalResourceNames.UserConfigName)
+      localResources.put(LocalResourceNames.UserConfigName, configResource)
     })
     localResources
   }
@@ -86,22 +123,23 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration) extends Launch
     val jvmArgs = defaulJvmArgs ++ args.masterJvmArgs
     val appArgs = List(
       s"--$AppIdArg", appId.toString
-    ) ++ args.config
-      .map(_ => List(s"--$ConfigArg", LocalResourceNames.ConfigName))
+    ) ++ args.userConfig
+      .map(_ => List(s"--$ConfigArg", LocalResourceNames.UserConfigName))
       .getOrElse(List.empty)
     val mainClass = MasterMain.getClass.getName.replace("$", "")
     YarnUtils.buildCmd(mainClass, jvmArgs = jvmArgs, appArgs = appArgs)
   }
 
-  def start(): Unit = {
+  override def start(): Unit = {
     yarnClient.start()
   }
 
-  def stop(): Unit = {
+  override def stop(): Unit = {
     yarnClient.stop()
+    pollingStatusExecutor.shutdownNow()
   }
 
-  def launch(config: Config, args: LaunchArguments): String = {
+  override def launch(config: Config, args: LaunchArguments): Future[LaunchResult] = {
     val application = yarnClient.createApplication()
 
     val appContext = application.getApplicationSubmissionContext
@@ -129,6 +167,8 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration) extends Launch
 
     yarnClient.submitApplication(appContext)
     logger.info(s"Launched Akkeeper Cluster $appId")
-    appId.toString
+
+    val masterAddressFuture = retrieveMasterAddress(config, appId, args.pollInterval)
+    masterAddressFuture.map(addr => LaunchResult(appId.toString, addr))
   }
 }
