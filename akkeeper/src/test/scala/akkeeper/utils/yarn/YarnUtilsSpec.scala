@@ -29,4 +29,11 @@ class YarnUtilsSpec extends FlatSpec with Matchers {
     val cmd = YarnUtils.buildCmd(mainClass, classPath, jvmArgs, appArgs).mkString(" ")
     cmd shouldBe expectedCmd
   }
+
+  it should "handle empty arguments correctly" in {
+    val expectedCmd = "{{JAVA_HOME}}/bin/java -cp akkeeper.jar " +
+      " 1> <LOG_DIR>/stdout 2> <LOG_DIR>/stderr"
+    val cmd = YarnUtils.buildCmd("", Seq.empty, Seq.empty, Seq.empty).mkString(" ")
+    cmd shouldBe expectedCmd
+  }
 }

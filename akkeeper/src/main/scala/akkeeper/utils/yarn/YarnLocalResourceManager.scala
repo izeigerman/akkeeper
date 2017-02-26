@@ -18,12 +18,12 @@ package akkeeper.utils.yarn
 import java.io.{Closeable, FileInputStream, InputStream}
 
 import org.apache.commons.io.IOUtils
-import org.apache.hadoop.fs.{FileStatus, Path, FileSystem}
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.apache.hadoop.yarn.api.records._
-import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.apache.hadoop.yarn.util.ConverterUtils
 
-private[akkeeper] final class YarnLocalResourceManager(conf: YarnConfiguration,
+private[akkeeper] final class YarnLocalResourceManager(conf: Configuration,
                                                        stagingDir: String) {
 
   private def withStream[S <: Closeable, R](s: => S)(f: S => R): R = {
