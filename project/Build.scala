@@ -15,6 +15,7 @@
  */
 import sbt._
 import Keys._
+import scoverage.ScoverageKeys._
 import sbtassembly._
 import AssemblyKeys._
 
@@ -84,7 +85,8 @@ object AkkeeperBuild extends Build {
 
   val NoPublishSettings = CommonSettings ++ Seq(
     publishArtifact := false,
-    publish := {}
+    publish := {},
+    coverageReport := {}
   )
 
   lazy val root = Project(id = "root", base = file("."))

@@ -1,0 +1,22 @@
+language: scala
+
+script:
+  - sbt scalastyle && sbt test:scalastyle && sbt ++$TRAVIS_SCALA_VERSION clean coverage test coverageReport && sbt coverageAggregate
+
+matrix:
+  include:
+    - jdk: oraclejdk7
+      scala: 2.11.7
+
+before_cache:
+  - find "$HOME/.sbt/" -name '*.lock' -print0 | xargs -0 rm
+  - find "$HOME/.ivy2/" -name 'ivydata-*.properties' -print0 | xargs -0 rm
+
+cache:
+  directories:
+    - $HOME/.ivy2/cache
+    - $HOME/.sbt
+
+after_success:
+  - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then bash <(curl -s https://codecov.io/bash); elif [[ "$TRAVIS_BRANCH" = "master"]]; then bash <(curl -s https://codecov.io/bash); fi
+
