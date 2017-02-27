@@ -6,7 +6,7 @@ script:
 matrix:
   include:
     - jdk: oraclejdk7
-      scala: 2.11.7
+      scala: 2.11.8
 
 before_cache:
   - find "$HOME/.sbt/" -name '*.lock' -print0 | xargs -0 rm

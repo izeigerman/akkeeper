@@ -41,7 +41,7 @@ object AkkeeperBuild extends Build {
 
   val CommonSettings = Seq(
     organization := "akkeeper",
-    scalaVersion := "2.11.7",
+    scalaVersion := "2.11.8",
     version := "0.1-SNAPSHOT",
 
     scalacOptions ++= Seq(
