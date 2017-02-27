@@ -1,7 +1,8 @@
 language: scala
 
 script:
-  - sbt scalastyle && sbt test:scalastyle && sbt ++$TRAVIS_SCALA_VERSION clean coverage test coverageReport && sbt coverageAggregate
+  - sbt scalastyle && sbt test:scalastyle
+  - sbt ++$TRAVIS_SCALA_VERSION clean coverage test coverageReport && sbt coverageAggregate
 
 matrix:
   include:
