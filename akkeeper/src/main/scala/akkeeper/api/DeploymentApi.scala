@@ -26,10 +26,17 @@ import spray.json.DefaultJsonProtocol
   *
   * @param name the name of the container that will be deployed.
   * @param quantity the number of instances that will be deployed.
+  * @param jvmArgs the list of JVM arguments that override/extend JVM arguments
+  *                from the container definition.
+  * @param properties the map of properties, where the key - is a property name,
+  *                   and the value is a property value. Overrides/extends properties
+  *                   from the container definition.
   * @param requestId the optional request ID. If not specified a random
   *                  ID will be generated.
   */
 case class DeployContainer(name: String, quantity: Int,
+                           jvmArgs: Seq[String] = Seq.empty,
+                           properties: Map[String, String] = Map.empty,
                            requestId: RequestId = RequestId()) extends WithRequestId
 
 /** A response that indicates a successful deployment of new instances.
@@ -46,7 +53,7 @@ trait DeployApiJsonProtocol extends DefaultJsonProtocol {
   import RequestIdJsonProtocol._
   import InstanceIdJsonProtocol._
 
-  implicit val deployContainerFormat = jsonFormat3(DeployContainer.apply)
+  implicit val deployContainerFormat = jsonFormat5(DeployContainer.apply)
   implicit val deployedInstancesFormat = jsonFormat3(DeployedInstances.apply)
 }
 

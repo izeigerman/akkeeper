@@ -47,15 +47,21 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
 
   "A Deploy Service" should "deploy container successfully" in {
     val container = createContainer("container")
+    val expectedContainer = container.copy(
+      jvmArgs = Seq("-Xms1G") ++ container.jvmArgs,
+      jvmProperties = Map("property" -> "other_value"))
+
     val ids = (0 until 2).map(_ => InstanceId("container"))
     val deployClient = mock[DeployClient.Async]
     (deployClient.start _).expects()
     (deployClient.stop _).expects()
     val deployResult = ids.map(id => Future successful DeploySuccessful(id))
-    (deployClient.deploy _).expects(container, *).returning(deployResult)
+    (deployClient.deploy _).expects(expectedContainer, *).returning(deployResult)
 
     val service = DeployService.createLocal(system, deployClient, self, self)
-    val deployRequest = DeployContainer("container", 2)
+    val deployRequest = DeployContainer("container", 2,
+      jvmArgs = Seq("-Xms1G"),
+      properties = Map("property" -> "other_value"))
     service ! deployRequest
 
     val containerReq = expectMsgClass(classOf[GetContainer])

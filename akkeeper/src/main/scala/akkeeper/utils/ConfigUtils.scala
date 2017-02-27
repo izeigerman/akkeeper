@@ -96,7 +96,9 @@ private[akkeeper] object ConfigUtils {
         instances.map(conf => {
           val containerName = conf.getString("name")
           val quantity = conf.getInt("quantity")
-          DeployContainer(containerName, quantity)
+          val jvmArgs = config.getListOfStrings("jvm-args")
+          val properties = config.getMapOfStrings("properties")
+          DeployContainer(containerName, quantity, jvmArgs, properties)
         })
       } else {
         Seq.empty
