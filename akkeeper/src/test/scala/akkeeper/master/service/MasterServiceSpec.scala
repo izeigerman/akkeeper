@@ -15,36 +15,35 @@
  */
 package akkeeper.master.service
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import akka.cluster.Cluster
 import akka.testkit.{ImplicitSender, TestKit}
-import akkeeper.{AkkeeperException, ActorTestUtils}
+import akkeeper._
 import akkeeper.api._
 import akkeeper.common.InstanceId
-import akkeeper.deploy.{DeploySuccessful, DeployClient}
+import akkeeper.deploy.{DeployClient, DeploySuccessful}
 import akkeeper.storage.InstanceStorage
-import com.typesafe.config.{ConfigFactory, ConfigValueFactory}
+import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 import org.scalamock.matchers.ArgThat
 import org.scalamock.scalatest.MockFactory
 import org.scalatest._
+import scala.annotation.tailrec
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import MasterServiceSpec._
 import MonitoringServiceSpec._
 
-class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory with ActorTestUtils {
+class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
 
   "A Master Service" should "initialize successfully and create a new cluster" in {
     val storage = mock[InstanceStorage.Async]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq.empty)
+
     val deployClient = mock[DeployClient.Async]
     (deployClient.start _).expects()
     (deployClient.stop _).expects()
-    (deployClient.deploy _)
-      .expects(*, *)
-      .returns(Seq(Future successful DeploySuccessful(InstanceId("container1"))))
 
     new MasterServiceTestRunner() {
       override def test(): Unit = {
@@ -56,6 +55,56 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory with
         response.requestId shouldBe getInstances.requestId
         response.instanceIds shouldBe empty
 
+        gracefulActorStop(service)
+      }
+    }.run()
+  }
+
+  it should "deploy initial instances" in {
+    val storage = mock[InstanceStorage.Async]
+    (storage.start _).expects()
+    (storage.stop _).expects()
+    (storage.getInstances _).expects().returns(Future successful Seq.empty)
+
+    val deployClient = mock[DeployClient.Async]
+    (deployClient.start _).expects()
+    (deployClient.stop _).expects()
+    (deployClient.deploy _)
+      .expects(*, *)
+      .returns(Seq(Future successful DeploySuccessful(InstanceId("container1"))))
+
+    val instancesConfig = ConfigFactory
+      .parseString(
+        """
+          |akkeeper.instances = [
+          |  {
+          |    name = "container1"
+          |    quantity = 1
+          |  }
+          |]
+        """.stripMargin)
+      .withFallback(ConfigFactory.load("application-container-test.conf"))
+
+    new MasterServiceTestRunner(instancesConfig) {
+      private val getInstancesInterval: Long = 3000 // milliseconds
+
+      @tailrec
+      private def validateGetInstances(service: ActorRef,
+                                       numRetries: Int = 3): Unit = {
+        val getInstances = GetInstances()
+        service ! getInstances
+        val response = expectMsgClass(classOf[InstancesList])
+        if (response.instanceIds.isEmpty) {
+          val newRetries = numRetries - 1
+          newRetries should be > 0
+          Thread.sleep(getInstancesInterval)
+          validateGetInstances(service, newRetries)
+        }
+      }
+
+      override def test(): Unit = {
+        val service = MasterService.createLocal(system, deployClient, storage)
+        validateGetInstances(service)
         gracefulActorStop(service)
       }
     }.run()
@@ -75,9 +124,6 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory with
         val deployClient = mock[DeployClient.Async]
         (deployClient.start _).expects()
         (deployClient.stop _).expects()
-        (deployClient.deploy _)
-          .expects(*, *)
-          .returns(Seq(Future successful DeploySuccessful(InstanceId("container1"))))
 
         val service = MasterService.createLocal(system, deployClient, storage)
 
@@ -106,9 +152,6 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory with
     (deployClient.deploy _)
       .expects(*, new ArgThat[Seq[InstanceId]](ids => ids.size == 2))
       .returns(deployFutures)
-    (deployClient.deploy _)
-      .expects(*, new ArgThat[Seq[InstanceId]](ids => ids.size == 1))
-      .returns(Seq(Future successful DeploySuccessful(InstanceId("container1"))))
 
     new MasterServiceTestRunner() {
       override def test(): Unit = {
@@ -161,14 +204,24 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory with
 }
 
 object MasterServiceSpec {
+
+  def testConfig(config: Config): Config = {
+    config
+      .withValue("akka.remote.netty.tcp.port", ConfigValueFactory.fromAnyRef(new Integer(0)))
+      .withValue("akka.test.timefactor", ConfigValueFactory.fromAnyRef(new Integer(3)))
+  }
+
+  /** A custom test runner that produces a new Actor System for each test
+    * in order isolate tests from each other.
+    */
   abstract class MasterServiceTestRunner(system: ActorSystem)
-      extends TestKit(system) with ImplicitSender {
+    extends TestKit(system) with ImplicitSender with ActorTestUtils {
+
+    def this(config: Config) = this(ActorSystem("MasterServiceSpec-" + System.currentTimeMillis(),
+      testConfig(config)))
 
     def this() = this(ActorSystem("MasterServiceSpec-" + System.currentTimeMillis(),
-      ConfigFactory
-        .load("application-container-test.conf")
-        .withValue("akka.remote.netty.tcp.port", ConfigValueFactory.fromAnyRef(new Integer(0)))
-        .withValue("akka.test.timefactor", ConfigValueFactory.fromAnyRef(new Integer(3)))))
+      testConfig(ConfigFactory.load("application-container-test.conf"))))
 
     def test(): Unit
 

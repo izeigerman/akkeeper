@@ -17,10 +17,8 @@ package akkeeper
 
 import akka.actor.ActorRef
 import akka.pattern.gracefulStop
-import org.scalatest.Suite
 
 trait ActorTestUtils extends AwaitMixin {
-  this: Suite =>
 
   protected def gracefulActorStop(actor: ActorRef): Unit = {
     await(gracefulStop(actor, awaitTimeout))

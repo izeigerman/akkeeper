@@ -15,13 +15,10 @@
  */
 package akkeeper
 
-import org.scalatest.Suite
-
 import scala.concurrent.{Await, Awaitable}
 import scala.concurrent.duration._
 
 trait AwaitMixin {
-  this: Suite =>
 
   protected implicit val awaitTimeout = 3 seconds
 
