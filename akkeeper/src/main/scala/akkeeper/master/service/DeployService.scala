@@ -29,14 +29,17 @@ private[akkeeper] class DeployService(deployClient: DeployClient.Async,
   private implicit val dispatcher = context.dispatcher
   override protected val trackedMessages: List[Class[_]] = List(classOf[DeployContainer])
 
-  private def deployInstances(requestId: RequestId,
-                              container: ContainerDefinition,
-                              quantity: Int): DeployedInstances = {
-    val ids = (0 until quantity).map(_ => InstanceId(container.name))
+  private def deployInstances(request: DeployContainer,
+                              container: ContainerDefinition): DeployedInstances = {
+    val ids = (0 until request.quantity).map(_ => InstanceId(container.name))
     val instanceInfos = ids.map(InstanceInfo.deploying(_))
     monitoringService ! InstancesUpdate(instanceInfos)
 
-    val futures = deployClient.deploy(container, ids)
+    val extendedContainer = container.copy(
+      jvmArgs = request.jvmArgs ++ container.jvmArgs,
+      jvmProperties = container.jvmProperties ++ request.properties)
+
+    val futures = deployClient.deploy(extendedContainer, ids)
     val logger = log
     futures.foreach(f => {
       f.map {
@@ -48,7 +51,7 @@ private[akkeeper] class DeployService(deployClient: DeployClient.Async,
           InstanceInfo.deployFailed(id)
       }.pipeTo(monitoringService)
     })
-    DeployedInstances(requestId, container.name, ids)
+    DeployedInstances(request.requestId, container.name, ids)
   }
 
   override def preStart(): Unit = {
@@ -66,13 +69,13 @@ private[akkeeper] class DeployService(deployClient: DeployClient.Async,
     case request: DeployContainer =>
       // Before launching a new instance we should first
       // retrieve an information about the container.
-      setOriginalSenderContext(request.requestId, request.quantity)
+      setOriginalSenderContext(request.requestId, request)
       containerService ! GetContainer(request.name, requestId = request.requestId)
     case ContainerGetResult(id, container) =>
       // The information about the container was retrieved.
       // Now we can start the deployment process.
-      val quantity = originalSenderContextAs[Int](id)
-      val result = deployInstances(id, container, quantity)
+      val originalRequest = originalSenderContextAs[DeployContainer](id)
+      val result = deployInstances(originalRequest, container)
       sendAndRemoveOriginalSender(result)
     case other: WithRequestId =>
       // Some unexpected response from the container service (likely error).
