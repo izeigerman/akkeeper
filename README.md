@@ -1,5 +1,8 @@
 # Akkeeper
 
+[![Build Status](https://travis-ci.org/akkeeper-project/akkeeper.svg?branch=master)](https://travis-ci.org/akkeeper-project/akkeeper)
+[![License](http://img.shields.io/:license-Apache%202-red.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt)
+
 Akkeeper (Akka Keeper or Actor Kernel Keeper) - is an easy way to deploy your Akka application to a distributed environment. [Akka](http://akka.io/) is a widely used Actor framework, but there are still no good practices and approaches of deploying applications that are based on this framework. Akkeeper provides a powerful set of capabilities to maintain your cluster. You can easily deploy, terminate and monitor your services at runtime. Akkeeper was built keeping Hadoop as a primary use case, that's why it currently supports only [YARN](https://hadoop.apache.org/docs/r2.7.1/hadoop-yarn/hadoop-yarn-site/YARN.html) as a resource manager. But this doesn't mean that other environments won't appear in future. Apache Spark and Apache Flink are good examples of Akka applications on Hadoop. Although both of them are data processing frameworks, I realised that YARN can be used to distribute any kind of application. As a result your application acquires elasticity and resilience out of the box. The idea of this project was heavily inspired by a similar solution for Java services called [BeansZoo](https://github.com/pelatimtt/beanszoo). Here are several ways of how Akkeeper can be useful for your project:
 * Distribute your whole application using Akkeeper.
 * Keep your master service(s) separately and use Akkeeper to launch new workers/executors on demand.
