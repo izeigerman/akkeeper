@@ -40,7 +40,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
   private val cluster = Cluster(context.system)
 
   private val seedInstances: mutable.Set[InstanceInfo] = mutable.Set.empty
-  private var instanceInfoRequired: Int = NumOfInstancesToJoin
+  private var numOfRequiredInstances: Int = NumOfInstancesToJoin
 
   override def preStart(): Unit = {
     context.watch(containerService)
@@ -126,15 +126,15 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
         log.info(s"Found ${instances.size} running instances. Joining the existing Akka cluster")
         // Choose N random instances to join.
         val seedNodeIds = scala.util.Random.shuffle(instances).take(NumOfInstancesToJoin)
-        instanceInfoRequired = seedNodeIds.size
+        numOfRequiredInstances = seedNodeIds.size
         seedNodeIds.foreach(id => monitoringService ! GetInstance(id))
       }
 
     case InstanceInfoResponse(_, info) =>
       seedInstances.add(info)
-      log.debug(s"Received instance info. ${instanceInfoRequired - seedInstances.size} " +
+      log.debug(s"Received instance info. ${numOfRequiredInstances - seedInstances.size} " +
         "more needed to proceed")
-      if (seedInstances.size >= instanceInfoRequired) {
+      if (seedInstances.size >= numOfRequiredInstances) {
         val seedAddrs = immutable.Seq(seedInstances.map(_.address.get).toSeq: _*)
         joinCluster(seedAddrs)
       }
