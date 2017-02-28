@@ -55,6 +55,25 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
     context.children.foreach(c => c ! StopWithError(error))
   }
 
+  private def finishInit(): Unit = {
+    log.info("Master service successfully initialized")
+
+    context.become(initializedReceive)
+    // Deploying instances specified in config.
+    val deployRequests = context.system.settings.config.getDeployRequests
+    log.debug(s"Deploying instances from config. " +
+      s"Number of deploy requests: ${deployRequests.size}")
+    deployRequests.foreach(r => deployService ! r)
+
+    unstashAll()
+  }
+
+  private def joinCluster(seedNodes: immutable.Seq[Address]): Unit = {
+    cluster.joinSeedNodes(seedNodes)
+    context.become(joinClusterReceive)
+    cluster.subscribe(self, initialStateMode = InitialStateAsEvents, classOf[MemberUp])
+  }
+
   private def serviceTerminatedReceive: Receive = {
     case Terminated(actor) =>
       if (actor == containerService) {
@@ -83,41 +102,20 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
       log.error(s"Initial deploy failed: $other")
   }
 
-  private def initializedReceive: Receive = {
-    apiReceive orElse serviceTerminatedReceive orElse initialDeployReceive
-  }
-
-  private def finishInit(): Unit = {
-    log.info("Master service successfully initialized")
-
-    context.become(initializedReceive)
-    // Deploying instances specified in config.
-    val deployRequests = context.system.settings.config.getDeployRequests
-    log.debug(s"Deploying instances from config. " +
-      s"Number of deploy requests: ${deployRequests.size}")
-    deployRequests.foreach(r => deployService ! r)
-
-    unstashAll()
-  }
-
-  private def joiningClusterReceive: Receive = {
+  private def clusterEventReceive: Receive = {
     case MemberUp(member) =>
       if (member.address == cluster.selfAddress) {
         log.debug("Master service successfully joined the cluster")
         cluster.unsubscribe(self)
         finishInit()
       }
+  }
 
+  private def apiStashReceive: Receive = {
     case _: WithRequestId => stash()
   }
 
-  private def joinCluster(seedNodes: immutable.Seq[Address]): Unit = {
-    cluster.joinSeedNodes(seedNodes)
-    context.become(joiningClusterReceive orElse serviceTerminatedReceive)
-    cluster.subscribe(self, initialStateMode = InitialStateAsEvents, classOf[MemberUp])
-  }
-
-  private def retrievingInstancesListReceive: Receive = {
+  private def fetchInstancesListReceive: Receive = {
     case InstancesList(_, instances) =>
       if (instances.isEmpty) {
         log.info("No running instances were found. Creating a new Akka cluster")
@@ -142,12 +140,18 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
     case other @ (_: InstanceResponse | _: OperationFailed) =>
       log.error(s"Failed to retrieve information about instances. Initialization failed: $other")
       stopServicesWithError()
+  }
 
-    case _: WithRequestId => stash()
+  private def initializedReceive: Receive = {
+    apiReceive orElse serviceTerminatedReceive orElse initialDeployReceive
+  }
+
+  private def joinClusterReceive: Receive = {
+    clusterEventReceive orElse serviceTerminatedReceive orElse apiStashReceive
   }
 
   private def uninitializedReceive: Receive = {
-    retrievingInstancesListReceive orElse serviceTerminatedReceive
+    fetchInstancesListReceive orElse serviceTerminatedReceive orElse apiStashReceive
   }
 
   override def receive: Receive = uninitializedReceive
