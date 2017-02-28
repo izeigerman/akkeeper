@@ -19,5 +19,5 @@ cache:
     - $HOME/.sbt
 
 after_success:
-  - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then bash <(curl -s https://codecov.io/bash); elif [[ "$TRAVIS_BRANCH" = "master"]]; then bash <(curl -s https://codecov.io/bash); fi
+  - sbt coveralls
 
