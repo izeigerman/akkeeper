@@ -86,7 +86,7 @@ object AkkeeperBuild extends Build {
   val NoPublishSettings = CommonSettings ++ Seq(
     publishArtifact := false,
     publish := {},
-    coverageReport := {}
+    coverageEnabled := false
   )
 
   lazy val root = Project(id = "root", base = file("."))
