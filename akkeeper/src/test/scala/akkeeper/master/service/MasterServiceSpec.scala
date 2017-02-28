@@ -24,6 +24,7 @@ import akkeeper.common.InstanceId
 import akkeeper.deploy.{DeploySuccessful, DeployClient}
 import akkeeper.storage.InstanceStorage
 import com.typesafe.config.{ConfigFactory, ConfigValueFactory}
+import org.scalamock.matchers.ArgThat
 import org.scalamock.scalatest.MockFactory
 import org.scalatest._
 import scala.concurrent.Future
@@ -102,9 +103,11 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory with
     val deployClient = mock[DeployClient.Async]
     (deployClient.start _).expects()
     (deployClient.stop _).expects()
-    (deployClient.deploy _).expects(*, *).returns(deployFutures)
     (deployClient.deploy _)
-      .expects(*, *)
+      .expects(*, new ArgThat[Seq[InstanceId]](ids => ids.size == 2))
+      .returns(deployFutures)
+    (deployClient.deploy _)
+      .expects(*, new ArgThat[Seq[InstanceId]](ids => ids.size == 1))
       .returns(Seq(Future successful DeploySuccessful(InstanceId("container1"))))
 
     new MasterServiceTestRunner() {
@@ -164,7 +167,8 @@ object MasterServiceSpec {
     def this() = this(ActorSystem("MasterServiceSpec-" + System.currentTimeMillis(),
       ConfigFactory
         .load("application-container-test.conf")
-        .withValue("akka.remote.netty.tcp.port", ConfigValueFactory.fromAnyRef(new Integer(0)))))
+        .withValue("akka.remote.netty.tcp.port", ConfigValueFactory.fromAnyRef(new Integer(0)))
+        .withValue("akka.test.timefactor", ConfigValueFactory.fromAnyRef(new Integer(3)))))
 
     def test(): Unit
 

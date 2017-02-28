@@ -17,6 +17,7 @@ package akkeeper.master.service
 
 import akka.actor._
 import akka.cluster.Cluster
+import akka.cluster.ClusterEvent.{InitialStateAsEvents, MemberUp}
 import akkeeper.api._
 import akkeeper.common.InstanceInfo
 import akkeeper.deploy.DeployClient
@@ -100,11 +101,27 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
   }
 
   private def joiningClusterReceive: Receive = {
+    case MemberUp(member) =>
+      if (member.address == cluster.selfAddress) {
+        log.debug("Master service successfully joined the cluster")
+        cluster.unsubscribe(self)
+        finishInit()
+      }
+
+    case _: WithRequestId => stash()
+  }
+
+  private def joinCluster(seedNodes: immutable.Seq[Address]): Unit = {
+    cluster.joinSeedNodes(seedNodes)
+    context.become(joiningClusterReceive orElse serviceTerminatedReceive)
+    cluster.subscribe(self, initialStateMode = InitialStateAsEvents, classOf[MemberUp])
+  }
+
+  private def retrievingInstancesListReceive: Receive = {
     case InstancesList(_, instances) =>
       if (instances.isEmpty) {
         log.info("No running instances were found. Creating a new Akka cluster")
-        cluster.join(cluster.selfAddress)
-        finishInit()
+        joinCluster(immutable.Seq(cluster.selfAddress))
       } else {
         log.info(s"Found ${instances.size} running instances. Joining the existing Akka cluster")
         // Choose N random instances to join.
@@ -119,8 +136,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
         "more needed to proceed")
       if (seedInstances.size >= instanceInfoRequired) {
         val seedAddrs = immutable.Seq(seedInstances.map(_.address.get).toSeq: _*)
-        cluster.joinSeedNodes(seedAddrs)
-        finishInit()
+        joinCluster(seedAddrs)
       }
 
     case other @ (_: InstanceResponse | _: OperationFailed) =>
@@ -131,7 +147,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
   }
 
   private def uninitializedReceive: Receive = {
-    joiningClusterReceive orElse serviceTerminatedReceive
+    retrievingInstancesListReceive orElse serviceTerminatedReceive
   }
 
   override def receive: Receive = uninitializedReceive
