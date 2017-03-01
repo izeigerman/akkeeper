@@ -15,4 +15,4 @@
  */
 package akkeeper.common
 
-case object StopInstance
+private[akkeeper] case object StopInstance
