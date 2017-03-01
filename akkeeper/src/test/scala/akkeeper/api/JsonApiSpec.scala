@@ -15,6 +15,7 @@
  */
 package akkeeper.api
 
+import akkeeper.AkkeeperException
 import akkeeper.common._
 import org.scalatest.{FlatSpec, Matchers}
 import spray.json._
@@ -64,5 +65,15 @@ class JsonApiSpec extends FlatSpec with Matchers {
     testJson(ContainerCreated(RequestId(), "container"))
     testJson(ContainerUpdated(RequestId(), "container"))
     testJson(ContainerDeleted(RequestId(), "container"))
+  }
+
+  it should "(de)serialize Common API" in {
+    val operationFailed = OperationFailed(RequestId(), new AkkeeperException("fail"))
+    val jsonPayload = operationFailed.toJson
+    val actualMessage = jsonPayload.asJsObject.fields("message").convertTo[String]
+    val actualRequestId = jsonPayload.asJsObject.fields("requestId").convertTo[String]
+    actualMessage shouldBe "fail"
+    actualRequestId shouldBe operationFailed.requestId.toString
+
   }
 }
