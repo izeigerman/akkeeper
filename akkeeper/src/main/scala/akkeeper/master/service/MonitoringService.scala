@@ -21,6 +21,7 @@ import akka.cluster.ClusterEvent._
 import akka.pattern.pipe
 import akkeeper.api._
 import akkeeper.common._
+import akkeeper.container.service.ContainerInstanceService
 import akkeeper.storage._
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -33,6 +34,9 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
   private implicit val dispatcher = context.dispatcher
   private val cluster = Cluster(context.system)
   private val instances: mutable.Map[InstanceId, Option[InstanceInfo]] = mutable.Map.empty
+  private val pendingTermination: mutable.Map[InstanceId, RequestId] = mutable.Map.empty
+
+  override protected def trackedMessages: List[Class[_]] = List(classOf[TerminateInstance])
 
   override def preStart(): Unit = {
     log.debug("Initializing Monitoring service")
@@ -47,6 +51,18 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
     super.postStop()
   }
 
+  private def initInstanceList(): Unit = {
+    instanceStorage.getInstances
+      .map(InitSuccessful(_))
+      .recover { case NonFatal(e) => InitFailed(e) }
+      .pipeTo(self)
+  }
+
+  private def onInstanceNotFound(requestId: RequestId, instanceId: InstanceId): Unit = {
+    log.warning(s"Instance $instanceId was not found")
+    sender() ! InstanceNotFound(requestId, instanceId)
+  }
+
   private def findInstanceByAddr(addr: Address): Option[InstanceInfo] = {
     instances.collectFirst {
       case (id, Some(info)) if info.address.exists(_ == addr) => info
@@ -56,6 +72,44 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
   private def updateInstanceStatusByAddr(addr: Address, status: InstanceStatus): Unit = {
     findInstanceByAddr(addr)
       .foreach(i => instances.put(i.instanceId, Some(i.copy(status = status))))
+  }
+
+  private def terminateInstance(instance: InstanceInfo): Unit = {
+    val addr = instance.address.get
+    val path = RootActorPath(addr) / "user" / ContainerInstanceService.ActorName
+    val selection = context.actorSelection(path)
+    selection ! StopInstance
+    cluster.down(addr)
+    log.info(s"Instance ${instance.instanceId} terminated successfully")
+  }
+
+  private def onTerminateInstance(request: TerminateInstance): Unit = {
+    log.info(s"Terminating instance ${request.instanceId}")
+    val instanceId = request.instanceId
+    val requestId = request.requestId
+    if (instances.contains(instanceId)) {
+      val instance = instances(instanceId)
+      if (instance.exists(_.address.isDefined)) {
+        // If the address is present we can use the local storage to retrieve
+        // the information about this instance.
+        instance.foreach(terminateInstance(_))
+        sendAndRemoveOriginalSender(InstanceTerminated(requestId, instanceId))
+      } else {
+        // Redirecting the information about the instance to ourselves
+        // to terminate the instance later.
+        pendingTermination.put(instanceId, requestId)
+        instanceStorage.getInstance(instanceId)
+          .recover {
+            case _: RecordNotFoundException =>
+              InstanceTerminationFailed(instanceId, InstanceNotFound(requestId, instanceId))
+            case NonFatal(e) =>
+              InstanceTerminationFailed(instanceId, OperationFailed(requestId, e))
+          }
+          .pipeTo(self)
+      }
+    } else {
+      onInstanceNotFound(requestId, instanceId)
+    }
   }
 
   private def onInstanceInfoUpdate(info: InstanceInfo): Unit = {
@@ -70,13 +124,14 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
     } else {
       instances.put(info.instanceId, Some(info))
     }
-  }
-
-  private def initInstanceList(): Unit = {
-    instanceStorage.getInstances
-      .map(InitSuccessful(_))
-      .recover { case NonFatal(e) => InitFailed(e) }
-      .pipeTo(self)
+    if (pendingTermination.contains(info.instanceId)) {
+      // This instance is pending termination.
+      log.info(s"Terminating a pending instance ${info.instanceId}")
+      terminateInstance(info)
+      val requestId = pendingTermination(info.instanceId)
+      sendAndRemoveOriginalSender(InstanceTerminated(requestId, info.instanceId))
+      pendingTermination.remove(info.instanceId)
+    }
   }
 
   private def onGetInstance(request: GetInstance): Unit = {
@@ -100,8 +155,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
             .pipeTo(sender())
       }
     } else {
-      log.warning(s"Instance $instanceId was not found")
-      sender() ! InstanceNotFound(requestId, instanceId)
+      onInstanceNotFound(requestId, instanceId)
     }
   }
 
@@ -181,9 +235,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
     case request: GetInstancesBy =>
       onGetInstancesBy(request)
     case request: TerminateInstance =>
-      log.warning("Instance termination is not implemented")
-      sender() ! OperationFailed(request.requestId,
-        MasterServiceException("Instance termination is not implemented"))
+      onTerminateInstance(request)
   }
 
   private def internalEventReceive: Receive = {
@@ -191,6 +243,10 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
       update.foreach(onInstanceInfoUpdate)
     case info: InstanceInfo =>
       onInstanceInfoUpdate(info)
+    case InstanceTerminationFailed(instanceId, original) =>
+      log.warning(s"Instance $instanceId termination failed: $original")
+      pendingTermination.remove(instanceId)
+      sendAndRemoveOriginalSender(original)
     case Status.Failure(e) =>
       log.error(e, "Monitoring service unexpected error")
     case StopWithError(_) =>
@@ -235,6 +291,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
 object MonitoringService extends RemoteServiceFactory {
   private case class InitSuccessful(knownInstances: Seq[InstanceId])
   private case class InitFailed(reason: Throwable)
+  private case class InstanceTerminationFailed(instanceId: InstanceId, originalMsg: WithRequestId)
   private[akkeeper] case class InstancesUpdate(updates: Seq[InstanceInfo])
 
   override val actorName = "monitoringService"

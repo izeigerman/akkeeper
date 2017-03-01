@@ -17,7 +17,7 @@ package akkeeper.master.service
 
 import akka.actor.{ActorRef, ActorSystem, Address}
 import akka.cluster.ClusterEvent._
-import akka.cluster.{UniqueAddress, Member, MemberStatus}
+import akka.cluster.{Cluster, UniqueAddress, Member, MemberStatus}
 import akka.testkit.{ImplicitSender, TestKit}
 import akkeeper._
 import akkeeper.api._
@@ -325,18 +325,73 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     gracefulActorStop(service)
   }
 
-  it should "respond with an error on termination request (termination is not implemented)" in {
+  it should "terminate instance successfully (instance from storage)" in {
+    val selfAddr = Cluster(system).selfAddress
+    val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
     val storage = mock[InstanceStorage.Async]
     (storage.start _).expects()
     (storage.stop _).expects()
-    (storage.getInstances _).expects().returns(Future successful Seq.empty)
+    (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId))
+    (storage.getInstance _)
+      .expects(instance.instanceId)
+      .returns(Future successful instance)
 
     val service = MonitoringService.createLocal(system, storage)
 
-    val terminateRequest = TerminateInstance(InstanceId("container"))
+    val terminateRequest = TerminateInstance(instance.instanceId)
+    service ! terminateRequest
+    val terminateResponse = expectMsgClass(classOf[InstanceTerminated])
+    terminateResponse.requestId shouldBe terminateRequest.requestId
+    terminateResponse.instanceId shouldBe instance.instanceId
+
+    gracefulActorStop(service)
+  }
+
+  it should "fail to terminate the instance (instance from local cache)" in {
+    val selfAddr = Cluster(system).selfAddress
+    val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
+    val storage = mock[InstanceStorage.Async]
+    (storage.start _).expects()
+    (storage.stop _).expects()
+    (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId))
+    (storage.getInstance _)
+      .expects(instance.instanceId)
+      .returns(Future successful instance)
+
+    val service = MonitoringService.createLocal(system, storage)
+
+    service ! GetInstance(instance.instanceId)
+    val instanceResponse = expectMsgClass(classOf[InstanceInfoResponse])
+    instanceResponse.info shouldBe instance
+
+    val terminateRequest = TerminateInstance(instance.instanceId)
+    service ! terminateRequest
+    val terminateResponse = expectMsgClass(classOf[InstanceTerminated])
+    terminateResponse.requestId shouldBe terminateRequest.requestId
+    terminateResponse.instanceId shouldBe instance.instanceId
+
+    gracefulActorStop(service)
+  }
+
+  it should "fail to terminate the instance" in {
+    val selfAddr = Cluster(system).selfAddress
+    val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
+    val storage = mock[InstanceStorage.Async]
+    val exception = new AkkeeperException("fail")
+    (storage.start _).expects()
+    (storage.stop _).expects()
+    (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId))
+    (storage.getInstance _)
+      .expects(instance.instanceId)
+      .returns(Future failed exception)
+
+    val service = MonitoringService.createLocal(system, storage)
+
+    val terminateRequest = TerminateInstance(instance.instanceId)
     service ! terminateRequest
     val terminateResponse = expectMsgClass(classOf[OperationFailed])
     terminateResponse.requestId shouldBe terminateRequest.requestId
+    terminateResponse.cause shouldBe exception
 
     gracefulActorStop(service)
   }
