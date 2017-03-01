@@ -83,6 +83,11 @@ private[zookeeper] class AsyncZookeeperClient(config: ZookeeperClientConfig,
   final def getExecutionContext: ExecutionContext = {
     ExecutionContext.fromExecutor(executor)
   }
+
+  override def stop(): Unit = {
+    executor.shutdown()
+    super.stop()
+  }
 }
 
 object AsyncZookeeperClient {
