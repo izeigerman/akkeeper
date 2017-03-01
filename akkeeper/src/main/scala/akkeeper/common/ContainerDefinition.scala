@@ -70,7 +70,7 @@ object ContainerDefinition {
       actors = actors,
       jvmArgs = config.getListOfStrings("jvm-args"),
       jvmProperties = config.getMapOfStrings("properties"),
-      environment = config.getMapOfStrings("env")
+      environment = config.getMapOfStrings("environment")
     )
   }
 }
