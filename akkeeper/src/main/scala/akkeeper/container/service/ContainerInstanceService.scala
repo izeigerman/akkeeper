@@ -104,6 +104,10 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
     case RetryRegistration =>
       log.info("Retrying instance registration process")
       registerThisInstance
+    case StopInstance =>
+      log.info("Termination command received. Stopping this instance")
+      context.system.shutdown()
+
   }
 
   private def joiningTheClusterReceive: Receive = {
