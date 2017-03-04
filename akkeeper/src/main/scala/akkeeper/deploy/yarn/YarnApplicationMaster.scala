@@ -16,8 +16,8 @@
 package akkeeper.deploy.yarn
 
 import java.io.{FileNotFoundException, ByteArrayInputStream}
-import java.nio.ByteBuffer
 import java.util
+import java.util.concurrent.{TimeUnit, Executors, ScheduledExecutorService}
 
 import akkeeper.common.{ContainerDefinition, InstanceId}
 import akkeeper.container.ContainerInstanceMain
@@ -25,29 +25,27 @@ import akkeeper.deploy._
 import akkeeper.utils.CliArguments._
 import akkeeper.utils.ConfigUtils._
 import akkeeper.utils.yarn._
-import com.typesafe.config._
 import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterResponse
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest
-import org.apache.hadoop.yarn.client.api.async.{AMRMClientAsync, NMClientAsync}
+import org.apache.hadoop.yarn.client.api.{AMRMClient, NMClient}
 import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
+import scala.util._
 import scala.util.control.NonFatal
 import scala.collection.JavaConverters._
 import YarnApplicationMaster._
 
-private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfig)
-  extends AMRMClientAsync.CallbackHandler
-     with NMClientAsync.CallbackHandler
-     with DeployClient.Async {
+private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfig,
+                                              amrmClient: AMRMClient[ContainerRequest],
+                                              nmClient: NMClient)
+  extends DeployClient.Async {
 
   private val logger = LoggerFactory.getLogger(classOf[YarnApplicationMaster])
-  private val amrmClient =
-    AMRMClientAsync.createAMRMClientAsync[ContainerRequest](AMHeartbeatInterval, this)
-  private val nmClient = NMClientAsync.createNMClientAsync(this)
-  private var yarnClusterResponse: Option[RegisterApplicationMasterResponse] = None
+
+  private val executorService: ScheduledExecutorService = Executors.newScheduledThreadPool(
+    config.config.getInt("akkeeper.yarn.client-threads"))
 
   private val stagingDirectory: String = config.config
     .getYarnStagingDirectory(config.yarnConf, config.appId)
@@ -55,7 +53,6 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     new YarnLocalResourceManager(config.yarnConf, stagingDirectory)
   private val instanceCommonResources: Map[String, LocalResource] = buildInstanceCommonResources
 
-  private val applicationMasterLock = new Object()
   private var priorityCounter: Int = 0
   private val pendingResults: mutable.Map[InstanceId, Promise[DeployResult]] =
     mutable.Map.empty
@@ -65,11 +62,6 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     mutable.Map.empty
 
   private var isRunning: Boolean = false
-
-  private def getClusterResponse: RegisterApplicationMasterResponse = {
-    yarnClusterResponse
-      .getOrElse(throw YarnMasterException("Yarn Application Master is not started"))
-  }
 
   private def buildContainerRequest(container: ContainerDefinition): ContainerRequest = {
     val priority = Priority.newInstance(priorityCounter)
@@ -165,7 +157,10 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
       instanceResources.asJava, env.asJava, cmd.asJava,
       null, null, null)
 
-    nmClient.startContainerAsync(container, launchContext)
+    Try(nmClient.startContainer(container, launchContext)) match {
+      case Success(_) => onContainerStarted(container.getId)
+      case Failure(e) => onStartContainerError(container.getId, e)
+    }
   }
 
   private def onContainerLaunchResult(containerId: ContainerId, result: DeployResult): Unit = {
@@ -174,6 +169,80 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
 
     pendingResults.remove(instanceId)
     containerToInstance.remove(containerId)
+  }
+
+  private def onContainerStarted(containerId: ContainerId): Unit = synchronized {
+    val instanceId = containerToInstance(containerId)
+    logger.debug(s"Container $containerId (instance $instanceId) successfully started")
+    onContainerLaunchResult(containerId, DeploySuccessful(instanceId))
+  }
+
+  private def onStartContainerError(containerId: ContainerId, t: Throwable): Unit = synchronized {
+    val instanceId = containerToInstance(containerId)
+    logger.error(s"Failed to launch container $containerId (instance $instanceId)", t)
+    onContainerLaunchResult(containerId, DeployFailed(instanceId, t))
+    amrmClient.releaseAssignedContainer(containerId)
+  }
+
+  private def onContainersAllocated(containers: util.List[Container]): Unit = synchronized {
+    for (container <- containers.asScala) {
+      val priority = container.getPriority.getPriority
+      if (pendingInstances.contains(priority)) {
+        val (containerDef, instanceId) = pendingInstances(priority)
+        logger.debug(s"Launching container ${container.getId} for instance $instanceId")
+        containerToInstance.put(container.getId, instanceId)
+        executorService.submit(new Runnable {
+          override def run(): Unit = launchInstance(container, containerDef, instanceId)
+        })
+      } else {
+        logger.debug(s"Unknown container allocation ${container.getId}. Realesing container")
+        amrmClient.releaseAssignedContainer(container.getId)
+      }
+    }
+  }
+
+  override def deploy(container: ContainerDefinition,
+                      instances: Seq[InstanceId]): Seq[Future[DeployResult]] = synchronized {
+    instances.map(id => {
+      logger.debug(s"Deploying instance $id (container ${container.name})")
+
+      val promise = Promise[DeployResult]()
+      pendingResults.put(id, promise)
+
+      val request = buildContainerRequest(container)
+      pendingInstances.put(request.getPriority.getPriority, container -> id)
+
+      amrmClient.addContainerRequest(request)
+      promise.future
+    })
+  }
+
+  private def allocateResources(): Unit = {
+    val allocateResponse = amrmClient.allocate(0.2f)
+    onContainersAllocated(allocateResponse.getAllocatedContainers)
+  }
+
+  private def scheduleAllocateResources(): Unit = {
+    executorService.scheduleAtFixedRate(new Runnable {
+      override def run(): Unit = allocateResources()
+    }, AMHeartbeatInterval, AMHeartbeatInterval, TimeUnit.MILLISECONDS)
+  }
+
+  override def start(): Unit = {
+    amrmClient.init(config.yarnConf)
+    amrmClient.start()
+
+    nmClient.init(config.yarnConf)
+    nmClient.start()
+
+    val localAddr = config.selfAddress.host
+      .getOrElse(throw YarnMasterException("The self address is not specified"))
+    amrmClient.registerApplicationMaster(localAddr, 0, config.trackingUrl)
+
+    scheduleAllocateResources()
+
+    isRunning = true
+    logger.info("YARN Application Master started")
   }
 
   private def unregisterApplicationMaster(status: FinalApplicationStatus, message: String): Unit = {
@@ -188,100 +257,8 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   private def stopClients(): Unit = {
     nmClient.stop()
     amrmClient.stop()
+    executorService.shutdown()
     isRunning = false
-  }
-
-  override def getProgress: Float = 0.2f
-
-  override def onError(e: Throwable): Unit = {
-    logger.error("Yarn Application Master unexpected error", e)
-  }
-
-  override def onShutdownRequest(): Unit = stop()
-
-  override def onContainersCompleted(statuses: util.List[ContainerStatus]): Unit = {
-    statuses.asScala.filter(s => s.getState == ContainerState.COMPLETE).foreach(s => {
-      logger.debug(s"Container ${s.getContainerId} is completed")
-      amrmClient.releaseAssignedContainer(s.getContainerId)
-    })
-  }
-
-  override def onContainerStopped(containerId: ContainerId): Unit = {
-    logger.debug(s"Container $containerId is stopped")
-    amrmClient.releaseAssignedContainer(containerId)
-  }
-
-  override def onStopContainerError(containerId: ContainerId, t: Throwable): Unit = {
-    logger.error(s"Failed to stop container $containerId", t)
-    amrmClient.releaseAssignedContainer(containerId)
-  }
-
-  override def onContainersAllocated(containers: util.List[Container]): Unit = synchronized {
-    applicationMasterLock.synchronized {
-      for (container <- containers.asScala) {
-        val priority = container.getPriority.getPriority
-        if (pendingInstances.contains(priority)) {
-          val (containerDef, instanceId) = pendingInstances(priority)
-          logger.debug(s"Launching container ${container.getId} for instance $instanceId")
-          containerToInstance.put(container.getId, instanceId)
-          launchInstance(container, containerDef, instanceId)
-        } else {
-          logger.debug(s"Unknown container allocation ${container.getId}. Realesing container")
-          amrmClient.releaseAssignedContainer(container.getId)
-        }
-      }
-    }
-  }
-
-  override def onContainerStarted(containerId: ContainerId,
-                                  allServiceResponse: util.Map[String, ByteBuffer]): Unit = {
-    applicationMasterLock.synchronized {
-      val instanceId = containerToInstance(containerId)
-      logger.debug(s"Container $containerId (instance $instanceId) successfully started")
-      onContainerLaunchResult(containerId, DeploySuccessful(instanceId))
-    }
-  }
-
-  override def onStartContainerError(containerId: ContainerId, t: Throwable): Unit = {
-    applicationMasterLock.synchronized {
-      val instanceId = containerToInstance(containerId)
-      logger.error(s"Failed to launch container $containerId (instance $instanceId)", t)
-      onContainerLaunchResult(containerId, DeployFailed(instanceId, t))
-      amrmClient.releaseAssignedContainer(containerId)
-    }
-  }
-
-  override def deploy(container: ContainerDefinition,
-                      instances: Seq[InstanceId]): Seq[Future[DeployResult]] = {
-    applicationMasterLock.synchronized {
-      instances.map(id => {
-        logger.debug(s"Deploying instance $id (container ${container.name})")
-
-        val promise = Promise[DeployResult]()
-        pendingResults.put(id, promise)
-
-        val request = buildContainerRequest(container)
-        pendingInstances.put(request.getPriority.getPriority, container -> id)
-
-        amrmClient.addContainerRequest(request)
-        promise.future
-      })
-    }
-  }
-
-  override def start(): Unit = {
-    amrmClient.init(config.yarnConf)
-    amrmClient.start()
-
-    nmClient.init(config.yarnConf)
-    nmClient.start()
-
-    val localAddr = config.selfAddress.host
-      .getOrElse(throw YarnMasterException("The self address is not specified"))
-    yarnClusterResponse = Some(amrmClient.registerApplicationMaster(localAddr, 0,
-      config.trackingUrl))
-    isRunning = true
-    logger.info("YARN Application Master started")
   }
 
   override def stop(): Unit = {
@@ -299,12 +276,6 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
       logger.error("YARN Application Master stopped with errors", error)
     }
   }
-
-  // Methods that doesn't require implementation at this point.
-  override def onNodesUpdated(updatedNodes: util.List[NodeReport]): Unit = {}
-  override def onContainerStatusReceived(containerId: ContainerId,
-                                         containerStatus: ContainerStatus): Unit = {}
-  override def onGetContainerStatusError(containerId: ContainerId, t: Throwable): Unit = {}
 }
 
 object YarnApplicationMaster {
