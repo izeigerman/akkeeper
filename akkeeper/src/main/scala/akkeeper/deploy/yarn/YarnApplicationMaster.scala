@@ -55,13 +55,14 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     new YarnLocalResourceManager(config.yarnConf, stagingDirectory)
   private val instanceCommonResources: Map[String, LocalResource] = buildInstanceCommonResources
 
-  private val mastertLock = new Object()
+  private val applicationMasterLock = new Object()
+  private var priorityCounter: Int = 0
   private val pendingResults: mutable.Map[InstanceId, Promise[DeployResult]] =
     mutable.Map.empty
   private val containerToInstance: mutable.Map[ContainerId, InstanceId] =
     mutable.Map.empty
-  private val pendingInstances: mutable.Queue[(ContainerDefinition, InstanceId)] =
-    mutable.Queue.empty
+  private val pendingInstances: mutable.Map[Int, (ContainerDefinition, InstanceId)] =
+    mutable.Map.empty
 
   private var isRunning: Boolean = false
 
@@ -71,7 +72,8 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   }
 
   private def buildContainerRequest(container: ContainerDefinition): ContainerRequest = {
-    val priority = Priority.UNDEFINED
+    val priority = Priority.newInstance(priorityCounter)
+    priorityCounter = (priorityCounter + 1) % MaxPriority
     val capability = Resource.newInstance(container.memory, container.cpus)
     new ContainerRequest(capability, null, null, priority)
   }
@@ -197,20 +199,43 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
 
   override def onShutdownRequest(): Unit = stop()
 
+  override def onContainersCompleted(statuses: util.List[ContainerStatus]): Unit = {
+    statuses.asScala.filter(s => s.getState == ContainerState.COMPLETE).foreach(s => {
+      logger.debug(s"Container ${s.getContainerId} is completed")
+      amrmClient.releaseAssignedContainer(s.getContainerId)
+    })
+  }
+
+  override def onContainerStopped(containerId: ContainerId): Unit = {
+    logger.debug(s"Container $containerId is stopped")
+    amrmClient.releaseAssignedContainer(containerId)
+  }
+
+  override def onStopContainerError(containerId: ContainerId, t: Throwable): Unit = {
+    logger.error(s"Failed to stop container $containerId", t)
+    amrmClient.releaseAssignedContainer(containerId)
+  }
+
   override def onContainersAllocated(containers: util.List[Container]): Unit = synchronized {
-    mastertLock.synchronized {
+    applicationMasterLock.synchronized {
       for (container <- containers.asScala) {
-        val (containerDef, instanceId) = pendingInstances.dequeue()
-        logger.debug(s"Launching container ${container.getId} for instance $instanceId")
-        containerToInstance.put(container.getId, instanceId)
-        launchInstance(container, containerDef, instanceId)
+        val priority = container.getPriority.getPriority
+        if (pendingInstances.contains(priority)) {
+          val (containerDef, instanceId) = pendingInstances(priority)
+          logger.debug(s"Launching container ${container.getId} for instance $instanceId")
+          containerToInstance.put(container.getId, instanceId)
+          launchInstance(container, containerDef, instanceId)
+        } else {
+          logger.debug(s"Unknown container allocation ${container.getId}. Realesing container")
+          amrmClient.releaseAssignedContainer(container.getId)
+        }
       }
     }
   }
 
   override def onContainerStarted(containerId: ContainerId,
                                   allServiceResponse: util.Map[String, ByteBuffer]): Unit = {
-    mastertLock.synchronized {
+    applicationMasterLock.synchronized {
       val instanceId = containerToInstance(containerId)
       logger.debug(s"Container $containerId (instance $instanceId) successfully started")
       onContainerLaunchResult(containerId, DeploySuccessful(instanceId))
@@ -218,26 +243,27 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   }
 
   override def onStartContainerError(containerId: ContainerId, t: Throwable): Unit = {
-    mastertLock.synchronized {
+    applicationMasterLock.synchronized {
       val instanceId = containerToInstance(containerId)
       logger.error(s"Failed to launch container $containerId (instance $instanceId)", t)
       onContainerLaunchResult(containerId, DeployFailed(instanceId, t))
+      amrmClient.releaseAssignedContainer(containerId)
     }
   }
 
   override def deploy(container: ContainerDefinition,
                       instances: Seq[InstanceId]): Seq[Future[DeployResult]] = {
-    mastertLock.synchronized {
+    applicationMasterLock.synchronized {
       instances.map(id => {
         logger.debug(s"Deploying instance $id (container ${container.name})")
-        pendingInstances.enqueue(container -> id)
 
         val promise = Promise[DeployResult]()
         pendingResults.put(id, promise)
 
         val request = buildContainerRequest(container)
-        amrmClient.addContainerRequest(request)
+        pendingInstances.put(request.getPriority.getPriority, container -> id)
 
+        amrmClient.addContainerRequest(request)
         promise.future
       })
     }
@@ -276,18 +302,12 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
 
   // Methods that doesn't require implementation at this point.
   override def onNodesUpdated(updatedNodes: util.List[NodeReport]): Unit = {}
-  override def onContainersCompleted(statuses: util.List[ContainerStatus]): Unit = {}
   override def onContainerStatusReceived(containerId: ContainerId,
                                          containerStatus: ContainerStatus): Unit = {}
-  override def onContainerStopped(containerId: ContainerId): Unit = {}
-  override def onStopContainerError(containerId: ContainerId, t: Throwable): Unit = {}
   override def onGetContainerStatusError(containerId: ContainerId, t: Throwable): Unit = {}
 }
 
 object YarnApplicationMaster {
   private[yarn] val AMHeartbeatInterval = 1000
-
-  private val BlackListedConfigs = List(
-    "akka", "awt", "file", "java", "line", "os", "path", "sun", "user"
-  )
+  private val MaxPriority: Int = 32767
 }
