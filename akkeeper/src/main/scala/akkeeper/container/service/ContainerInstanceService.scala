@@ -106,8 +106,8 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
       registerThisInstance
     case StopInstance =>
       log.info("Termination command received. Stopping this instance")
+      cluster.leave(cluster.selfAddress)
       context.system.shutdown()
-
   }
 
   private def joiningTheClusterReceive: Receive = {

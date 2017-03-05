@@ -59,7 +59,7 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration) extends Launch
           retry()
         case YarnApplicationState.RUNNING =>
           val addr = Address("akka.tcp", config.getActorSystemName, appReport.getHost,
-            config.getInt("akka.remote.netty.tcp.port"))
+            config.getInt("akkeeper.akka.port"))
           logger.info(s"Akkeeper Master address is $addr")
           addr
         case other =>

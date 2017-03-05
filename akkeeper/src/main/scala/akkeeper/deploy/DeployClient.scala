@@ -74,7 +74,7 @@ private[akkeeper] object DeployClientFactory {
     extends AsyncDeployClientFactory[YarnApplicationMasterConfig] {
 
     override def apply(config: YarnApplicationMasterConfig): DeployClient.Async = {
-      new YarnApplicationMaster(config)
+      new YarnApplicationMaster(config, new YarnClient)
     }
   }
 
