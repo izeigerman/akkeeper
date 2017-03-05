@@ -28,7 +28,6 @@ import akkeeper.utils.yarn._
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest
-import org.apache.hadoop.yarn.client.api.{AMRMClient, NMClient}
 import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
@@ -38,8 +37,7 @@ import scala.collection.JavaConverters._
 import YarnApplicationMaster._
 
 private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfig,
-                                              amrmClient: AMRMClient[ContainerRequest],
-                                              nmClient: NMClient)
+                                              yarnClient: YarnClient)
   extends DeployClient.Async {
 
   private val logger = LoggerFactory.getLogger(classOf[YarnApplicationMaster])
@@ -157,7 +155,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
       instanceResources.asJava, env.asJava, cmd.asJava,
       null, null, null)
 
-    Try(nmClient.startContainer(container, launchContext)) match {
+    Try(yarnClient.startContainer(container, launchContext)) match {
       case Success(_) => onContainerStarted(container.getId)
       case Failure(e) => onStartContainerError(container.getId, e)
     }
@@ -181,7 +179,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     val instanceId = containerToInstance(containerId)
     logger.error(s"Failed to launch container $containerId (instance $instanceId)", t)
     onContainerLaunchResult(containerId, DeployFailed(instanceId, t))
-    amrmClient.releaseAssignedContainer(containerId)
+    yarnClient.releaseAssignedContainer(containerId)
   }
 
   private def onContainersAllocated(containers: util.List[Container]): Unit = synchronized {
@@ -196,7 +194,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
         })
       } else {
         logger.debug(s"Unknown container allocation ${container.getId}. Realesing container")
-        amrmClient.releaseAssignedContainer(container.getId)
+        yarnClient.releaseAssignedContainer(container.getId)
       }
     }
   }
@@ -212,13 +210,13 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
       val request = buildContainerRequest(container)
       pendingInstances.put(request.getPriority.getPriority, container -> id)
 
-      amrmClient.addContainerRequest(request)
+      yarnClient.addContainerRequest(request)
       promise.future
     })
   }
 
   private def allocateResources(): Unit = {
-    val allocateResponse = amrmClient.allocate(0.2f)
+    val allocateResponse = yarnClient.allocate(0.2f)
     onContainersAllocated(allocateResponse.getAllocatedContainers)
   }
 
@@ -229,15 +227,12 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   }
 
   override def start(): Unit = {
-    amrmClient.init(config.yarnConf)
-    amrmClient.start()
-
-    nmClient.init(config.yarnConf)
-    nmClient.start()
+    yarnClient.init(config.yarnConf)
+    yarnClient.start()
 
     val localAddr = config.selfAddress.host
       .getOrElse(throw YarnMasterException("The self address is not specified"))
-    amrmClient.registerApplicationMaster(localAddr, 0, config.trackingUrl)
+    yarnClient.registerApplicationMaster(localAddr, 0, config.trackingUrl)
 
     scheduleAllocateResources()
 
@@ -247,7 +242,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
 
   private def unregisterApplicationMaster(status: FinalApplicationStatus, message: String): Unit = {
     try {
-      amrmClient.unregisterApplicationMaster(status, message, "")
+      yarnClient.unregisterApplicationMaster(status, message, "")
     } catch {
       case NonFatal(e) =>
         logger.error("Failed to unregister application", e)
@@ -255,8 +250,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   }
 
   private def stopClients(): Unit = {
-    nmClient.stop()
-    amrmClient.stop()
+    yarnClient.stop()
     executorService.shutdown()
     isRunning = false
   }

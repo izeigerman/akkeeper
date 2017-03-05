@@ -17,8 +17,6 @@ package akkeeper.deploy
 
 import akkeeper.common._
 import akkeeper.deploy.yarn._
-import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest
-import org.apache.hadoop.yarn.client.api.{NMClient, AMRMClient}
 import scala.concurrent.Future
 
 /** A client that is responsible for deploying new container instances. */
@@ -76,9 +74,7 @@ private[akkeeper] object DeployClientFactory {
     extends AsyncDeployClientFactory[YarnApplicationMasterConfig] {
 
     override def apply(config: YarnApplicationMasterConfig): DeployClient.Async = {
-      val amrmClient = AMRMClient.createAMRMClient[ContainerRequest]()
-      val nmClient = NMClient.createNMClient()
-      new YarnApplicationMaster(config, amrmClient, nmClient)
+      new YarnApplicationMaster(config, new YarnClient)
     }
   }
 
