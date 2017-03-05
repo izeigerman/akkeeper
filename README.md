@@ -96,6 +96,7 @@ This approach is applicable only when you're managing an Akkeeper cluster from t
 #### Deploy API
 Use this API to launch new instances on a cluster.
 ```scala
+import akkeeper.api._
 import akkeeper.master.service.DeployService
 ...
 val actorSystem = ActorSystem("AkkeeperSystem")
@@ -111,6 +112,7 @@ val deployService = DeployService.createRemote(actorSystem)
 #### Monitoring API
 Use this API to track instance status or terminate a running instance.
 ```scala
+import akkeeper.api._
 import akkeeper.master.service.MonitoringService
 ...
 val actorSystem = ActorSystem("AkkeeperSystem")
@@ -127,6 +129,7 @@ val monitoringService = MonitoringService.createRemote(actorSystem)
 #### Container API
 Use this API to fetch, create, update or delete container definitions.
 ```scala
+import akkeeper.api._
 import akkeeper.master.service.ContainerService
 ...
 val actorSystem = ActorSystem("AkkeeperSystem")
