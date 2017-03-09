@@ -83,7 +83,7 @@ akkeeper {
   ]
 }
 ```
-Now just pass this file together with your JAR archive which contains actor `com.test.MyActor` to Akkeeper:
+Make sure your `HADOOP_CONF_DIR` and `YARN_CONF_DIR` environment variables point to the directory where the Hadoop configuration files are stored. Now just pass this file together with your JAR archive which contains actor `com.test.MyActor` to Akkeeper:
 ```
 java -cp /path/to/akkeeper.jar akkeeper.launcher.LauncherMain --akkeeperJar /path/to/akkeeper.jar --config ./config.conf /path/to/my.jar
 ```
