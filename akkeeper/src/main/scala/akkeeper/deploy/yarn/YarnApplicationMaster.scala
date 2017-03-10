@@ -37,7 +37,7 @@ import scala.collection.JavaConverters._
 import YarnApplicationMaster._
 
 private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfig,
-                                              yarnClient: YarnClient)
+                                              yarnClient: YarnMasterClient)
   extends DeployClient.Async {
 
   private val logger = LoggerFactory.getLogger(classOf[YarnApplicationMaster])

@@ -73,7 +73,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
   }
 
   "A YARN Application Master" should "start and stop successfully" in {
-    val yarnClient = mock[YarnClient]
+    val yarnClient = mock[YarnMasterClient]
     (yarnClient.init _).expects(*)
     (yarnClient.start _).expects()
     (yarnClient.stop _).expects()
@@ -89,7 +89,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
   it should "start successfully and stop with error" in {
     val expectedException = new AkkeeperException("fail")
 
-    val yarnClient = mock[YarnClient]
+    val yarnClient = mock[YarnMasterClient]
     (yarnClient.init _).expects(*)
     (yarnClient.start _).expects()
     (yarnClient.stop _).expects()
@@ -121,7 +121,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
     val container = config.getContainers(0)
     val instanceId = InstanceId(container.name)
 
-    val yarnClient = mock[YarnClient]
+    val yarnClient = mock[YarnMasterClient]
     (yarnClient.init _).expects(*)
     (yarnClient.start _).expects()
     (yarnClient.stop _).expects()
@@ -152,7 +152,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
     val container = config.getContainers(0)
     val instanceId = InstanceId(container.name)
 
-    val yarnClient = mock[YarnClient]
+    val yarnClient = mock[YarnMasterClient]
     (yarnClient.init _).expects(*)
     (yarnClient.start _).expects()
     (yarnClient.stop _).expects()
@@ -182,7 +182,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
   }
 
   it should "handle the failed unregister process properly" in {
-    val yarnClient = mock[YarnClient]
+    val yarnClient = mock[YarnMasterClient]
     (yarnClient.init _).expects(*)
     (yarnClient.start _).expects()
     (yarnClient.stop _).expects()
