@@ -91,20 +91,27 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration) extends Launch
 
     // Add a user jar to the staging directory. No need to include it
     // into master local resources.
-    resourceManger.createLocalResource(args.userJar.getAbsolutePath,
+    resourceManger.uploadLocalResource(args.userJar.getAbsolutePath,
       LocalResourceNames.UserJarName)
 
     args.otherJars.foreach(jarFile => {
       // Just upload the third-party jars. No need to include them
       // into master local resources.
       val localPath = LocalResourceNames.ExtraJarsDirName + "/" + jarFile.getName
-      resourceManger.createLocalResource(jarFile.getAbsolutePath, localPath)
+      resourceManger.uploadLocalResource(jarFile.getAbsolutePath, localPath)
     })
 
     args.resources.foreach(resource => {
       // Distribute resources.
       val localPath = LocalResourceNames.ResourcesDirName + "/" + resource.getName
-      resourceManger.createLocalResource(resource.getAbsolutePath, localPath)
+      resourceManger.uploadLocalResource(resource.getAbsolutePath, localPath)
+    })
+
+    args.principal.foreach(_ => {
+      // Distribute keytab.
+      val keytabResource = resourceManger.createLocalResource(args.keytab.getAbsolutePath,
+        LocalResourceNames.KeytabName)
+      localResources.put(LocalResourceNames.KeytabName, keytabResource)
     })
 
     args.userConfig.foreach(config => {
