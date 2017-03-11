@@ -27,7 +27,7 @@ private[akkeeper] case class LaunchArguments(akkeeperJarPath: File = new File(".
                                              masterJvmArgs: Seq[String] = Seq.empty,
                                              userConfig: Option[Config] = None,
                                              pollInterval: Long = DefaultPollInterval,
-                                             principal: Option[String],
+                                             principal: Option[String] = None,
                                              keytab: File = new File("."))
 
 object LaunchArguments {

@@ -128,11 +128,17 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration) extends Launch
                        args: LaunchArguments): List[String] = {
     val defaulJvmArgs = config.getYarnConfig.getStringList("master.jvm.args").asScala
     val jvmArgs = defaulJvmArgs ++ args.masterJvmArgs
-    val appArgs = List(
-      s"--$AppIdArg", appId.toString
-    ) ++ args.userConfig
+
+    val userConfigArg = args.userConfig
       .map(_ => List(s"--$ConfigArg", LocalResourceNames.UserConfigName))
       .getOrElse(List.empty)
+    val principalArg = args.principal
+      .map(p => List(s"--$PrincipalArg", p))
+      .getOrElse(List.empty)
+
+    val appArgs = List(
+      s"--$AppIdArg", appId.toString
+    ) ++ userConfigArg ++ principalArg
     val mainClass = MasterMain.getClass.getName.replace("$", "")
     YarnUtils.buildCmd(mainClass, jvmArgs = jvmArgs, appArgs = appArgs)
   }

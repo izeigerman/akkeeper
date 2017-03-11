@@ -18,4 +18,5 @@ package akkeeper.master
 import java.io.File
 
 private[akkeeper] case class MasterArguments(appId: String = "",
-                                             config: Option[File] = None)
+                                             config: Option[File] = None,
+                                             principal: Option[String] = None)

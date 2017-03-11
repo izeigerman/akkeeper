@@ -65,7 +65,11 @@ object LauncherMain extends App {
 
   val LauncherTimeout = 30 seconds
 
-  private def runYarn(config: Config, launcherArgs: LaunchArguments): Unit = {
+  private def runYarn(launcherArgs: LaunchArguments): Unit = {
+    val config = launcherArgs.userConfig
+      .map(c => c.withFallback(ConfigFactory.load()))
+      .getOrElse(ConfigFactory.load())
+
     launcherArgs.principal.foreach(p => {
       YarnUtils.loginFromKeytab(p, launcherArgs.keytab.getAbsolutePath)
     })
@@ -78,11 +82,7 @@ object LauncherMain extends App {
   }
 
   def run(launcherArgs: LaunchArguments): Unit = {
-    val config = launcherArgs.userConfig
-      .map(c => c.withFallback(ConfigFactory.load()))
-      .getOrElse(ConfigFactory.load())
-
-    runYarn(config, launcherArgs)
+    runYarn(launcherArgs)
   }
 
   try {

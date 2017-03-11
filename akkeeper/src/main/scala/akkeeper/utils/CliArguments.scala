@@ -22,4 +22,5 @@ private[akkeeper] object CliArguments {
   val ConfigArg = "config"
   val MasterAddressArg = "masterAddress"
   val ActorLaunchContextsArg = "actorLaunchContexts"
+  val PrincipalArg = "principal"
 }

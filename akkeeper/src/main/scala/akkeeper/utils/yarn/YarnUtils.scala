@@ -59,9 +59,8 @@ private[akkeeper] object YarnUtils {
     conf
   }
 
-  def loginFromKeytab(principal: String, keytab: String): Unit = {
-    if (getHdfsConfiguration.get("hadoop.security.authentication") == "kerberos") {
-      UserGroupInformation.loginUserFromKeytab(principal, keytab)
-    }
+  def loginFromKeytab(principal: String, keytab: String): UserGroupInformation = {
+    UserGroupInformation.loginUserFromKeytab(principal, keytab)
+    UserGroupInformation.getLoginUser
   }
 }
