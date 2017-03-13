@@ -35,15 +35,18 @@ import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 
-private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration) extends Launcher {
-  private val logger = LoggerFactory.getLogger(classOf[YarnLauncher])
+private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration,
+                                     yarnClient: YarnLauncherClient) extends Launcher {
 
-  private val yarnClient = YarnClient.createYarnClient()
-  yarnClient.init(yarnConf)
+  def this(yarnConf: YarnConfiguration) = this(yarnConf, new YarnLauncherClient)
+
+  private val logger = LoggerFactory.getLogger(classOf[YarnLauncher])
 
   private val pollingStatusExecutor = Executors.newSingleThreadExecutor()
   private implicit val pollingStatusExecutionContext = ExecutionContext
     .fromExecutor(pollingStatusExecutor)
+
+  yarnClient.init(yarnConf)
 
   private def retrieveMasterAddress(config: Config,
                                     appId: ApplicationId,
@@ -91,20 +94,27 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration) extends Launch
 
     // Add a user jar to the staging directory. No need to include it
     // into master local resources.
-    resourceManger.createLocalResource(args.userJar.getAbsolutePath,
+    resourceManger.uploadLocalResource(args.userJar.getAbsolutePath,
       LocalResourceNames.UserJarName)
 
     args.otherJars.foreach(jarFile => {
       // Just upload the third-party jars. No need to include them
       // into master local resources.
       val localPath = LocalResourceNames.ExtraJarsDirName + "/" + jarFile.getName
-      resourceManger.createLocalResource(jarFile.getAbsolutePath, localPath)
+      resourceManger.uploadLocalResource(jarFile.getAbsolutePath, localPath)
     })
 
     args.resources.foreach(resource => {
       // Distribute resources.
       val localPath = LocalResourceNames.ResourcesDirName + "/" + resource.getName
-      resourceManger.createLocalResource(resource.getAbsolutePath, localPath)
+      resourceManger.uploadLocalResource(resource.getAbsolutePath, localPath)
+    })
+
+    args.principal.foreach(_ => {
+      // Distribute keytab.
+      val keytabResource = resourceManger.createLocalResource(args.keytab.getAbsolutePath,
+        LocalResourceNames.KeytabName)
+      localResources.put(LocalResourceNames.KeytabName, keytabResource)
     })
 
     args.userConfig.foreach(config => {
@@ -121,11 +131,17 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration) extends Launch
                        args: LaunchArguments): List[String] = {
     val defaulJvmArgs = config.getYarnConfig.getStringList("master.jvm.args").asScala
     val jvmArgs = defaulJvmArgs ++ args.masterJvmArgs
-    val appArgs = List(
-      s"--$AppIdArg", appId.toString
-    ) ++ args.userConfig
+
+    val userConfigArg = args.userConfig
       .map(_ => List(s"--$ConfigArg", LocalResourceNames.UserConfigName))
       .getOrElse(List.empty)
+    val principalArg = args.principal
+      .map(p => List(s"--$PrincipalArg", p))
+      .getOrElse(List.empty)
+
+    val appArgs = List(
+      s"--$AppIdArg", appId.toString
+    ) ++ userConfigArg ++ principalArg
     val mainClass = MasterMain.getClass.getName.replace("$", "")
     YarnUtils.buildCmd(mainClass, jvmArgs = jvmArgs, appArgs = appArgs)
   }

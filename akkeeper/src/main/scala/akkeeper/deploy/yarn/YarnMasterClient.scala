@@ -24,7 +24,7 @@ import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import scala.collection.JavaConverters._
 
-private[deploy] class YarnClient {
+private[deploy] class YarnMasterClient {
   private val amrmClient = AMRMClient.createAMRMClient[ContainerRequest]()
   private val nmClient = NMClient.createNMClient()
 

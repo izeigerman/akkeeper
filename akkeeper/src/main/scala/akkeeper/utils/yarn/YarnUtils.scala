@@ -17,6 +17,7 @@ package akkeeper.utils.yarn
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.security.UserGroupInformation
 import org.apache.hadoop.yarn.api.ApplicationConstants
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment
 import org.apache.hadoop.yarn.conf.YarnConfiguration
@@ -56,5 +57,10 @@ private[akkeeper] object YarnUtils {
       conf.addResource(new Path(dir, "yarn-site.xml"))
     })
     conf
+  }
+
+  def loginFromKeytab(principal: String, keytab: String): UserGroupInformation = {
+    UserGroupInformation.loginUserFromKeytab(principal, keytab)
+    UserGroupInformation.getLoginUser
   }
 }

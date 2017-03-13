@@ -26,7 +26,9 @@ private[akkeeper] case class LaunchArguments(akkeeperJarPath: File = new File(".
                                              resources: Seq[File] = Seq.empty,
                                              masterJvmArgs: Seq[String] = Seq.empty,
                                              userConfig: Option[Config] = None,
-                                             pollInterval: Long = DefaultPollInterval)
+                                             pollInterval: Long = DefaultPollInterval,
+                                             principal: Option[String] = None,
+                                             keytab: File = new File("."))
 
 object LaunchArguments {
   val DefaultPollInterval = 1000

@@ -20,6 +20,7 @@ private[akkeeper] object LocalResourceNames {
   val UserJarName = "user.jar"
   val UserConfigName = "user_config.conf"
   val ActorLaunchContextsName = "actors.json"
+  val KeytabName = "akkeeper.keytab"
 
   val ExtraJarsDirName = "jars"
   val ResourcesDirName = "resources"

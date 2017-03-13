@@ -26,4 +26,5 @@ case class ContainerInstanceArguments(appId: String = "",
                                       instanceId: InstanceId = InstanceId("unknown"),
                                       masterAddress: Address = Address("none", "none"),
                                       actors: File = new File("."),
-                                      userConfig: Option[Config] = None)
+                                      userConfig: Option[Config] = None,
+                                      principal: Option[String] = None)

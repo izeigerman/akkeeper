@@ -24,4 +24,5 @@ private[akkeeper] case class YarnApplicationMasterConfig(config: Config,
                                                          yarnConf: YarnConfiguration,
                                                          appId: String,
                                                          selfAddress: Address,
-                                                         trackingUrl: String)
+                                                         trackingUrl: String,
+                                                         principal: Option[String] = None)

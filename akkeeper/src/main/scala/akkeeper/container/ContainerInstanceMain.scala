@@ -23,7 +23,8 @@ import akkeeper.container.service.ContainerInstanceService
 import akkeeper.storage.InstanceStorageFactory
 import akkeeper.utils.CliArguments._
 import akkeeper.utils.ConfigUtils._
-import com.typesafe.config.ConfigFactory
+import akkeeper.utils.yarn.LocalResourceNames
+import com.typesafe.config.{Config, ConfigFactory}
 import scopt.OptionParser
 import scala.io.Source
 import scala.util.control.NonFatal
@@ -55,13 +56,24 @@ object ContainerInstanceMain extends App {
     opt[File](ConfigArg).valueName("<file>").optional().action((v, c) => {
       c.copy(userConfig = Some(ConfigFactory.parseFile(v)))
     }).text("configuration file")
+
+    opt[String](PrincipalArg).valueName("principal").optional().action((v, c) => {
+      c.copy(principal = Some(v))
+    })
+  }
+
+  def createInstanceConfig(instanceArgs: ContainerInstanceArguments): Config = {
+    val baseConfig = instanceArgs.userConfig
+      .map(_.withFallback(ConfigFactory.load()))
+      .getOrElse(ConfigFactory.load())
+    instanceArgs.principal
+      .map(p => baseConfig.withPrincipalAndKeytab(p, LocalResourceNames.KeytabName))
+      .getOrElse(baseConfig)
   }
 
   def run(instanceArgs: ContainerInstanceArguments): Unit = {
-    val config = instanceArgs.userConfig
-      .map(_.withFallback(ConfigFactory.load()))
-      .getOrElse(ConfigFactory.load())
-    val actorSystem = ActorSystem(config.getActorSystemName, config)
+    val instanceConfig = createInstanceConfig(instanceArgs)
+    val actorSystem = ActorSystem(instanceConfig.getActorSystemName, instanceConfig)
 
     val zkConfig = actorSystem.settings.config.getZookeeperClientConfig
     val instanceStorage = InstanceStorageFactory.createAsync(zkConfig.child(instanceArgs.appId))

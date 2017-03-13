@@ -37,6 +37,12 @@ private[akkeeper] object ConfigUtils {
         ConfigValueFactory.fromAnyRef(config.getInt("akkeeper.akka.port")))
     }
 
+    def withPrincipalAndKeytab(principal: String, keytab: String): Config = {
+      config
+        .withValue("akka.kerberos.principal", ConfigValueFactory.fromAnyRef(principal))
+        .withValue("akka.kerberos.keytab", ConfigValueFactory.fromAnyRef(keytab))
+    }
+
     def getMapOfStrings(path: String): Map[String, String] = {
       if (config.hasPath(path)) {
         config.getConfig(path).entrySet().asScala.map(entry => {

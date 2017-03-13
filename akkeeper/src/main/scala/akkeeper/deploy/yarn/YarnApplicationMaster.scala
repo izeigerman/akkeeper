@@ -37,7 +37,7 @@ import scala.collection.JavaConverters._
 import YarnApplicationMaster._
 
 private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfig,
-                                              yarnClient: YarnClient)
+                                              yarnClient: YarnMasterClient)
   extends DeployClient.Async {
 
   private val logger = LoggerFactory.getLogger(classOf[YarnApplicationMaster])
@@ -91,6 +91,13 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
       .getExistingLocalResource(LocalResourceNames.UserJarName)
     localResources.put(LocalResourceNames.UserJarName, userJarResource)
 
+    // Retrieve the keytab if present.
+    config.principal.foreach(_ => {
+      val keytabResource = localResourceManager
+        .getExistingLocalResource(LocalResourceNames.KeytabName)
+      localResources.put(LocalResourceNames.KeytabName, keytabResource)
+    })
+
     val fs = FileSystem.get(config.yarnConf)
     def addExistingResources(directory: String): Unit = {
       try {
@@ -134,14 +141,20 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
       case (name, value) => s"-D$name=$value"
     }
     val mainClass = ContainerInstanceMain.getClass.getName.replace("$", "")
+
+    val userConfigArg = instanceResources.get(LocalResourceNames.UserConfigName)
+      .map(_ => List(s"--$ConfigArg", LocalResourceNames.UserConfigName))
+      .getOrElse(List.empty)
+    val principalArg = config.principal
+      .map(p => List(s"--$PrincipalArg", p))
+      .getOrElse(List.empty)
+
     val appArgs = List(
       s"--$InstanceIdArg", instanceId.toString,
       s"--$AppIdArg", config.appId,
       s"--$MasterAddressArg", config.selfAddress.toString,
       s"--$ActorLaunchContextsArg", LocalResourceNames.ActorLaunchContextsName
-    ) ++ instanceResources.get(LocalResourceNames.UserConfigName)
-      .map(_ => List(s"--$ConfigArg", LocalResourceNames.UserConfigName))
-      .getOrElse(List.empty)
+    ) ++ userConfigArg ++ principalArg
 
     val extraClassPath = List(
       LocalResourceNames.UserJarName,
@@ -216,8 +229,12 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   }
 
   private def allocateResources(): Unit = {
-    val allocateResponse = yarnClient.allocate(0.2f)
-    onContainersAllocated(allocateResponse.getAllocatedContainers)
+    try {
+      val allocateResponse = yarnClient.allocate(0.2f)
+      onContainersAllocated(allocateResponse.getAllocatedContainers)
+    } catch {
+      case NonFatal(e) => logger.error("YARN allocation failed", e)
+    }
   }
 
   private def scheduleAllocateResources(): Unit = {

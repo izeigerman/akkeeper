@@ -25,11 +25,10 @@ import akkeeper.master.service.MasterService
 import akkeeper.storage.{InstanceStorageFactory, InstanceStorage}
 import akkeeper.utils.ConfigUtils._
 import akkeeper.utils.CliArguments._
-import akkeeper.utils.yarn.YarnUtils
+import akkeeper.utils.yarn.{KerberosTicketRenewer, LocalResourceNames, YarnUtils}
 import com.typesafe.config._
 import scopt.OptionParser
 import scala.util.control.NonFatal
-import scala.collection.JavaConverters._
 
 object MasterMain extends App {
 
@@ -43,35 +42,57 @@ object MasterMain extends App {
     opt[File](ConfigArg).valueName("<file>").optional().action((v, c) => {
       c.copy(config = Some(v))
     }).text("custom configuration file")
-  }
 
+    opt[String](PrincipalArg).valueName("principal").action((v, c) => {
+      c.copy(principal = Some(v))
+    })
+  }
 
   def createInstanceStorage(actorSystem: ActorSystem, appId: String): InstanceStorage.Async = {
     val zkConfig = actorSystem.settings.config.getZookeeperClientConfig
     InstanceStorageFactory.createAsync(zkConfig.child(appId))
   }
 
-  def createDeployClient(actorSystem: ActorSystem, appId: String): DeployClient.Async = {
+  def createDeployClient(actorSystem: ActorSystem,
+                         masterArgs: MasterArguments): DeployClient.Async = {
     val yarnConf = YarnUtils.getYarnConfiguration
     val config = actorSystem.settings.config
     val selfAddr = Cluster(actorSystem).selfAddress
-    val yarnConfig = YarnApplicationMasterConfig(config, yarnConf, appId, selfAddr, "")
+    val principal = masterArgs.principal
+
+    val yarnConfig = YarnApplicationMasterConfig(
+      config = config, yarnConf = yarnConf,
+      appId = masterArgs.appId, selfAddress = selfAddr, trackingUrl = "",
+      principal = principal)
     DeployClientFactory.createAsync(yarnConfig)
   }
 
-  def run(masterArgs: MasterArguments): Unit = {
+  def runYarn(masterArgs: MasterArguments): Unit = {
     val config = masterArgs.config
       .map(c => ConfigFactory.parseFile(c).withFallback(ConfigFactory.load()))
       .getOrElse(ConfigFactory.load())
+
+    // Create and start the Kerberos ticket renewer if necessary.
+    val ticketRenewer = masterArgs.principal.map(principal => {
+      val user = YarnUtils.loginFromKeytab(principal, LocalResourceNames.KeytabName)
+      new KerberosTicketRenewer(user, config.getInt("akkeeper.kerberos.ticket-check-interval"))
+    })
+    ticketRenewer.foreach(_.start())
 
     val masterConfig = config.withMasterPort.withMasterRole
     val actorSystem = ActorSystem(config.getActorSystemName, masterConfig)
 
     val instanceStorage = createInstanceStorage(actorSystem, masterArgs.appId)
-    val deployClient = createDeployClient(actorSystem, masterArgs.appId)
+    val deployClient = createDeployClient(actorSystem, masterArgs)
 
     MasterService.createLocal(actorSystem, deployClient, instanceStorage)
+
     actorSystem.awaitTermination()
+    ticketRenewer.foreach(_.stop())
+  }
+
+  def run(masterArgs: MasterArguments): Unit = {
+    runYarn(masterArgs)
     sys.exit()
   }
 

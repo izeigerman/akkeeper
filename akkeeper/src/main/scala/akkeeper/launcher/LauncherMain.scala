@@ -19,7 +19,7 @@ import java.io.File
 
 import akkeeper.launcher.yarn.YarnLauncher
 import akkeeper.utils.yarn.YarnUtils
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 import scopt.OptionParser
 import scala.concurrent.Await
 import scala.util.control.NonFatal
@@ -46,6 +46,14 @@ object LauncherMain extends App {
       c.copy(masterJvmArgs = v)
     }).text("extra JVM arguments for the Akeeper master")
 
+    opt[String]("principal").valueName("principal").action((v, c) => {
+      c.copy(principal = Some(v))
+    })
+
+    opt[File]("keytab").valueName("<keytab_file>").action((v, c) => {
+      c.copy(keytab = v)
+    })
+
     opt[File]("config").valueName("<file>").action((v, c) => {
       c.copy(userConfig = Some(ConfigFactory.parseFile(v)))
     }).text("custom configuration file")
@@ -57,15 +65,24 @@ object LauncherMain extends App {
 
   val LauncherTimeout = 30 seconds
 
-  def run(launcherArgs: LaunchArguments): Unit = {
+  private def runYarn(launcherArgs: LaunchArguments): Unit = {
     val config = launcherArgs.userConfig
       .map(c => c.withFallback(ConfigFactory.load()))
       .getOrElse(ConfigFactory.load())
+
+    launcherArgs.principal.foreach(p => {
+      YarnUtils.loginFromKeytab(p, launcherArgs.keytab.getAbsolutePath)
+    })
+
     val launcher = new YarnLauncher(YarnUtils.getYarnConfiguration)
     launcher.start()
     val launchResult = launcher.launch(config, launcherArgs)
     Await.result(launchResult, LauncherTimeout)
     launcher.stop()
+  }
+
+  def run(launcherArgs: LaunchArguments): Unit = {
+    runYarn(launcherArgs)
   }
 
   try {
