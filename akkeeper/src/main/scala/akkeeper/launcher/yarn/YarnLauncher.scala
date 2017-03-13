@@ -36,9 +36,9 @@ import scala.concurrent.{ExecutionContext, Future}
 
 
 private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration,
-                                     yarnClient: YarnClient) extends Launcher {
+                                     yarnClient: YarnLauncherClient) extends Launcher {
 
-  def this(yarnConf: YarnConfiguration) = this(yarnConf, new YarnClient)
+  def this(yarnConf: YarnConfiguration) = this(yarnConf, new YarnLauncherClient)
 
   private val logger = LoggerFactory.getLogger(classOf[YarnLauncher])
 

@@ -19,7 +19,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.client.api.{YarnClient, YarnClientApplication}
 
-private[launcher] class YarnClient {
+private[launcher] class YarnLauncherClient {
   private val yarnClient = YarnClient.createYarnClient()
 
   def init(configuration: Configuration): Unit = {
