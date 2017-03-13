@@ -39,8 +39,8 @@ private[akkeeper] object ConfigUtils {
 
     def withPrincipalAndKeytab(principal: String, keytab: String): Config = {
       config
-        .withValue("akka.yarn.principal", ConfigValueFactory.fromAnyRef(principal))
-        .withValue("akka.yarn.keytab", ConfigValueFactory.fromAnyRef(keytab))
+        .withValue("akka.kerberos.principal", ConfigValueFactory.fromAnyRef(principal))
+        .withValue("akka.kerberos.keytab", ConfigValueFactory.fromAnyRef(keytab))
     }
 
     def getMapOfStrings(path: String): Map[String, String] = {

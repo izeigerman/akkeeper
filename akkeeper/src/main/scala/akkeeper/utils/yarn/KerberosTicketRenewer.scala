@@ -18,6 +18,7 @@ package akkeeper.utils.yarn
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 
 import org.apache.hadoop.security.UserGroupInformation
+import org.slf4j.LoggerFactory
 
 /** Periodically checks whether the kerberos ticket has been expired, and renews
   * it if necessary.
@@ -29,16 +30,19 @@ class KerberosTicketRenewer(user: UserGroupInformation, checkInterval: Long) {
 
   def this(user: UserGroupInformation) = this(user, KerberosTicketRenewer.DefaultInterval)
 
+  private val logger = LoggerFactory.getLogger(classOf[KerberosTicketRenewer])
   private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
 
   def start(): Unit = {
     scheduler.scheduleAtFixedRate(new Runnable {
       override def run(): Unit = user.checkTGTAndReloginFromKeytab()
     }, checkInterval, checkInterval, TimeUnit.MILLISECONDS)
+    logger.info("Kerberos Ticket Renewer started successfully")
   }
 
   def stop(): Unit = {
     scheduler.shutdown()
+    logger.info("Kerberos Ticket Renewer stopped")
   }
 }
 

@@ -35,15 +35,18 @@ import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 
-private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration) extends Launcher {
-  private val logger = LoggerFactory.getLogger(classOf[YarnLauncher])
+private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration,
+                                     yarnClient: YarnClient) extends Launcher {
 
-  private val yarnClient = YarnClient.createYarnClient()
-  yarnClient.init(yarnConf)
+  def this(yarnConf: YarnConfiguration) = this(yarnConf, new YarnClient)
+
+  private val logger = LoggerFactory.getLogger(classOf[YarnLauncher])
 
   private val pollingStatusExecutor = Executors.newSingleThreadExecutor()
   private implicit val pollingStatusExecutionContext = ExecutionContext
     .fromExecutor(pollingStatusExecutor)
+
+  yarnClient.init(yarnConf)
 
   private def retrieveMasterAddress(config: Config,
                                     appId: ApplicationId,

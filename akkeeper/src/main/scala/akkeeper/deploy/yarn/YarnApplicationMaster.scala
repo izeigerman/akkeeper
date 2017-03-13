@@ -229,8 +229,12 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   }
 
   private def allocateResources(): Unit = {
-    val allocateResponse = yarnClient.allocate(0.2f)
-    onContainersAllocated(allocateResponse.getAllocatedContainers)
+    try {
+      val allocateResponse = yarnClient.allocate(0.2f)
+      onContainersAllocated(allocateResponse.getAllocatedContainers)
+    } catch {
+      case NonFatal(e) => logger.error("YARN allocation failed", e)
+    }
   }
 
   private def scheduleAllocateResources(): Unit = {

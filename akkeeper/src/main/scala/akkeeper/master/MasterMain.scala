@@ -68,16 +68,16 @@ object MasterMain extends App {
   }
 
   def runYarn(masterArgs: MasterArguments): Unit = {
-    // Create and start the Kerberos ticket renewer if necessary.
-    val ticketRenewer = masterArgs.principal.map(principal => {
-      val user = YarnUtils.loginFromKeytab(principal, LocalResourceNames.KeytabName)
-      new KerberosTicketRenewer(user)
-    })
-    ticketRenewer.foreach(_.start())
-
     val config = masterArgs.config
       .map(c => ConfigFactory.parseFile(c).withFallback(ConfigFactory.load()))
       .getOrElse(ConfigFactory.load())
+
+    // Create and start the Kerberos ticket renewer if necessary.
+    val ticketRenewer = masterArgs.principal.map(principal => {
+      val user = YarnUtils.loginFromKeytab(principal, LocalResourceNames.KeytabName)
+      new KerberosTicketRenewer(user, config.getInt("akkeeper.kerberos.ticket-check-interval"))
+    })
+    ticketRenewer.foreach(_.start())
 
     val masterConfig = config.withMasterPort.withMasterRole
     val actorSystem = ActorSystem(config.getActorSystemName, masterConfig)
