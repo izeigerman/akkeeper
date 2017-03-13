@@ -44,7 +44,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
 
   private def createAppMasterConfig(config: Config): YarnApplicationMasterConfig = {
     YarnApplicationMasterConfig(config, new YarnConfiguration(),
-      "appId", selfAddress, "")
+      "appId", selfAddress, "", principal = Some("username"))
   }
 
   private def createDummyResource(stagingDir: Path, resourceName: String): Unit = {
@@ -63,6 +63,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
 
     createDummyResource(stagingDirectory, LocalResourceNames.AkkeeperJarName)
     createDummyResource(stagingDirectory, LocalResourceNames.UserJarName)
+    createDummyResource(stagingDirectory, LocalResourceNames.KeytabName)
 
     createAppMasterConfig(configWithStaging)
   }
@@ -77,7 +78,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
     (yarnClient.init _).expects(*)
     (yarnClient.start _).expects()
     (yarnClient.stop _).expects()
-    (yarnClient.registerApplicationMaster _).expects(*, *, *)
+    (yarnClient.registerApplicationMaster _).expects("localhost", 0, "")
     (yarnClient.unregisterApplicationMaster _).expects(FinalApplicationStatus.SUCCEEDED, *, *)
 
     val masterConfig = createStagingAppMasterConfig
@@ -93,7 +94,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
     (yarnClient.init _).expects(*)
     (yarnClient.start _).expects()
     (yarnClient.stop _).expects()
-    (yarnClient.registerApplicationMaster _).expects(*, *, *)
+    (yarnClient.registerApplicationMaster _).expects("localhost", 0, "")
     (yarnClient.unregisterApplicationMaster _)
       .expects(FinalApplicationStatus.FAILED, expectedException.getMessage, *)
 
@@ -125,7 +126,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
     (yarnClient.init _).expects(*)
     (yarnClient.start _).expects()
     (yarnClient.stop _).expects()
-    (yarnClient.registerApplicationMaster _).expects(*, *, *)
+    (yarnClient.registerApplicationMaster _).expects("localhost", 0, "")
     (yarnClient.unregisterApplicationMaster _).expects(FinalApplicationStatus.SUCCEEDED, *, *)
 
     (yarnClient.addContainerRequest _).expects(*)
@@ -156,7 +157,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
     (yarnClient.init _).expects(*)
     (yarnClient.start _).expects()
     (yarnClient.stop _).expects()
-    (yarnClient.registerApplicationMaster _).expects(*, *, *)
+    (yarnClient.registerApplicationMaster _).expects("localhost", 0, "")
     (yarnClient.unregisterApplicationMaster _).expects(FinalApplicationStatus.SUCCEEDED, *, *)
 
     (yarnClient.addContainerRequest _).expects(*)
@@ -186,7 +187,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
     (yarnClient.init _).expects(*)
     (yarnClient.start _).expects()
     (yarnClient.stop _).expects()
-    (yarnClient.registerApplicationMaster _).expects(*, *, *)
+    (yarnClient.registerApplicationMaster _).expects("localhost", 0, "")
     (yarnClient.unregisterApplicationMaster _)
       .expects(FinalApplicationStatus.SUCCEEDED, *, *)
       .onCall(_ => new AkkeeperException("fail"))
