@@ -97,7 +97,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
 
   private def initialDeployReceive: Receive = {
     case DeployedInstances(_, container, instances) =>
-      log.debug(s"Deployed ${instances.size} instances of container '$container'")
+      log.debug(s"Submitted ${instances.size} instances of container '$container'")
     case other: WithRequestId =>
       log.error(s"Initial deploy failed: $other")
   }
