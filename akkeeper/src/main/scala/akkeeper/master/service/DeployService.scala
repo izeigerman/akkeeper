@@ -30,7 +30,7 @@ private[akkeeper] class DeployService(deployClient: DeployClient.Async,
   override protected val trackedMessages: List[Class[_]] = List(classOf[DeployContainer])
 
   private def deployInstances(request: DeployContainer,
-                              container: ContainerDefinition): DeployedInstances = {
+                              container: ContainerDefinition): SubmittedInstances = {
     val ids = (0 until request.quantity).map(_ => InstanceId(container.name))
     val instanceInfos = ids.map(InstanceInfo.deploying(_))
     monitoringService ! InstancesUpdate(instanceInfos)
@@ -51,7 +51,7 @@ private[akkeeper] class DeployService(deployClient: DeployClient.Async,
           InstanceInfo.deployFailed(id)
       }.pipeTo(monitoringService)
     })
-    DeployedInstances(request.requestId, container.name, ids)
+    SubmittedInstances(request.requestId, container.name, ids)
   }
 
   override def preStart(): Unit = {

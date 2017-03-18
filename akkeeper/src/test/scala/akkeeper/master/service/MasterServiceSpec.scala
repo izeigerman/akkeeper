@@ -166,7 +166,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
 
         val deployContainer = DeployContainer("container1", 2)
         service ! deployContainer
-        val deployResult = expectMsgClass(classOf[DeployedInstances])
+        val deployResult = expectMsgClass(classOf[SubmittedInstances])
         deployResult.requestId shouldBe deployContainer.requestId
         deployResult.containerName shouldBe "container1"
         deployResult.instanceIds.size shouldBe 2

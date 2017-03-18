@@ -104,7 +104,7 @@ val actorSystem = ActorSystem("AkkeeperSystem")
 val deployService = DeployService.createRemote(actorSystem)
 // Launch 1 instance of container "myContainer".
 (deployService ? DeployContainer("myContainer", 1)).onSuccess {
-  case DeployedInstances(requestId, containerName, instanceIds) => // deployed successfully.
+  case SubmittedInstances(requestId, containerName, instanceIds) => // submitted successfully.
   case OperationFailed(requestId, reason) => // deploy failed.
 }
 ```
