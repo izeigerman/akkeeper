@@ -21,7 +21,7 @@ import spray.json.DefaultJsonProtocol
 /** A request to deploy (launch) new instance(s) of the given container.
   * The possible responses are:
   *
-  *  - [[DeployedInstances]] - if the deployment attempt was successful.
+  *  - [[SubmittedInstances]] - if the deployment attempt was successful.
   *  - [[OperationFailed]] - if error occurred.
   *
   * @param name the name of the container that will be deployed.
@@ -40,13 +40,15 @@ case class DeployContainer(name: String, quantity: Int,
                            requestId: RequestId = RequestId()) extends WithRequestId
 
 /** A response that indicates a successful deployment of new instances.
+  * Note: this response only indicates the successful allocation of containers and doesn't
+  * imply that actors are launched successfully too.
   *
   * @param requestId the ID of the original request.
   * @param containerName the name of the container that has been deployed.
   * @param instanceIds the list of IDs of newly launched instances.
   */
-case class DeployedInstances(requestId: RequestId, containerName: String,
-                             instanceIds: Seq[InstanceId]) extends WithRequestId
+case class SubmittedInstances(requestId: RequestId, containerName: String,
+                              instanceIds: Seq[InstanceId]) extends WithRequestId
 
 /** JSON (de)serialization for the Deploy API requests and responses. */
 trait DeployApiJsonProtocol extends DefaultJsonProtocol {
@@ -54,7 +56,7 @@ trait DeployApiJsonProtocol extends DefaultJsonProtocol {
   import InstanceIdJsonProtocol._
 
   implicit val deployContainerFormat = jsonFormat5(DeployContainer.apply)
-  implicit val deployedInstancesFormat = jsonFormat3(DeployedInstances.apply)
+  implicit val deployedInstancesFormat = jsonFormat3(SubmittedInstances.apply)
 }
 
 object DeployApiJsonProtocol extends DeployApiJsonProtocol

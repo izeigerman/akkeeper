@@ -86,7 +86,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
         ids should contain (instanceInfo.instanceId)
         instanceInfos += 1
 
-      case deployResponse: DeployedInstances =>
+      case deployResponse: SubmittedInstances =>
         deployResponse.requestId shouldBe deployRequest.requestId
         deployResponse.containerName shouldBe "container"
         deployResponse.instanceIds.size shouldBe 2
@@ -160,7 +160,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
         instanceInfo.instanceId shouldBe id
         instanceInfos += 1
 
-      case deployResponse: DeployedInstances =>
+      case deployResponse: SubmittedInstances =>
         deployResponse.requestId shouldBe deployRequest.requestId
         deployResponse.containerName shouldBe "container"
         deployResponse.instanceIds.size shouldBe 1
