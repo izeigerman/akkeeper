@@ -71,6 +71,4 @@ private[deploy] class YarnMasterClient {
                                   appTrackingUrl: String): Unit = {
     amrmClient.unregisterApplicationMaster(appStatus, appMessage, appTrackingUrl)
   }
-
-
 }

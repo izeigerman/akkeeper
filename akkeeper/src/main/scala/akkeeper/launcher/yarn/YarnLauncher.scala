@@ -27,7 +27,6 @@ import akkeeper.utils.ConfigUtils._
 import akkeeper.utils.yarn._
 import com.typesafe.config.{Config, ConfigRenderOptions}
 import org.apache.hadoop.yarn.api.records._
-import org.apache.hadoop.yarn.client.api.YarnClient
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.slf4j.LoggerFactory
 import scala.annotation.tailrec
@@ -66,7 +65,8 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration,
           logger.info(s"Akkeeper Master address is $addr")
           addr
         case other =>
-          throw new YarnLauncherException(s"Unexpected Akkeeper Master state: $other")
+          throw new YarnLauncherException(s"Unexpected Akkeeper Master state: $other\n" +
+            appReport.getDiagnostics)
       }
     }
     Future {
@@ -81,10 +81,8 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration,
     Resource.newInstance(memory, cpus)
   }
 
-  private def buildLocalResources(appId: String,
-                                  config: Config,
+  private def buildLocalResources(stagingDir: String,
                                   args: LaunchArguments): util.HashMap[String, LocalResource] = {
-    val stagingDir = config.getYarnStagingDirectory(yarnConf, appId)
     val resourceManger = new YarnLocalResourceManager(yarnConf, stagingDir)
     val localResources = new util.HashMap[String, LocalResource]()
 
@@ -173,12 +171,17 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration,
 
     appContext.setResource(getResource(config))
 
-    val localResources = buildLocalResources(appId.toString, config, args)
+    val stagingDir = config.getYarnStagingDirectory(yarnConf, appId.toString)
+    val localResources = buildLocalResources(stagingDir, args)
     val cmd = buildCmd(appId, config, args)
     logger.debug(s"Akkeeper Master command: ${cmd.mkString(" ")}")
 
+    val tokens = args.principal
+      .map(_ => YarnUtils.obtainContainerTokens(stagingDir, yarnConf))
+      .orNull
+
     val amContainer = ContainerLaunchContext.newInstance(
-      localResources, null, cmd.asJava, null, null, null)
+      localResources, null, cmd.asJava, null, tokens, null)
     appContext.setAMContainerSpec(amContainer)
 
     yarnClient.submitApplication(appContext)

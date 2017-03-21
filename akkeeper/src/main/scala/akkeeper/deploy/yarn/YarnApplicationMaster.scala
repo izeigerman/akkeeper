@@ -164,9 +164,13 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     val cmd = YarnUtils.buildCmd(mainClass, extraClassPath, javaArgs, appArgs)
     logger.debug(s"Instance $instanceId command: ${cmd.mkString(" ")}")
 
+    val tokens = config.principal
+      .map(_ => YarnUtils.obtainContainerTokens(stagingDirectory, config.yarnConf))
+      .orNull
+
     val launchContext = ContainerLaunchContext.newInstance(
       instanceResources.asJava, env.asJava, cmd.asJava,
-      null, null, null)
+      null, tokens, null)
 
     Try(yarnClient.startContainer(container, launchContext)) match {
       case Success(_) => onContainerStarted(container.getId)

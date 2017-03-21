@@ -16,17 +16,7 @@
 package akkeeper.master
 
 import java.io.File
-
-import akka.actor.ActorSystem
-import akka.cluster.Cluster
-import akkeeper.deploy.{DeployClientFactory, DeployClient}
-import akkeeper.deploy.yarn.YarnApplicationMasterConfig
-import akkeeper.master.service.MasterService
-import akkeeper.storage.{InstanceStorageFactory, InstanceStorage}
-import akkeeper.utils.ConfigUtils._
 import akkeeper.utils.CliArguments._
-import akkeeper.utils.yarn.{KerberosTicketRenewer, LocalResourceNames, YarnUtils}
-import com.typesafe.config._
 import scopt.OptionParser
 import scala.util.control.NonFatal
 
@@ -48,56 +38,11 @@ object MasterMain extends App {
     })
   }
 
-  def createInstanceStorage(actorSystem: ActorSystem, appId: String): InstanceStorage.Async = {
-    val zkConfig = actorSystem.settings.config.getZookeeperClientConfig
-    InstanceStorageFactory.createAsync(zkConfig.child(appId))
-  }
-
-  def createDeployClient(actorSystem: ActorSystem,
-                         masterArgs: MasterArguments): DeployClient.Async = {
-    val yarnConf = YarnUtils.getYarnConfiguration
-    val config = actorSystem.settings.config
-    val selfAddr = Cluster(actorSystem).selfAddress
-    val principal = masterArgs.principal
-
-    val yarnConfig = YarnApplicationMasterConfig(
-      config = config, yarnConf = yarnConf,
-      appId = masterArgs.appId, selfAddress = selfAddr, trackingUrl = "",
-      principal = principal)
-    DeployClientFactory.createAsync(yarnConfig)
-  }
-
-  def runYarn(masterArgs: MasterArguments): Unit = {
-    val config = masterArgs.config
-      .map(c => ConfigFactory.parseFile(c).withFallback(ConfigFactory.load()))
-      .getOrElse(ConfigFactory.load())
-
-    // Create and start the Kerberos ticket renewer if necessary.
-    val ticketRenewer = masterArgs.principal.map(principal => {
-      val user = YarnUtils.loginFromKeytab(principal, LocalResourceNames.KeytabName)
-      new KerberosTicketRenewer(user, config.getInt("akkeeper.kerberos.ticket-check-interval"))
-    })
-    ticketRenewer.foreach(_.start())
-
-    val masterConfig = config.withMasterPort.withMasterRole
-    val actorSystem = ActorSystem(config.getActorSystemName, masterConfig)
-
-    val instanceStorage = createInstanceStorage(actorSystem, masterArgs.appId)
-    val deployClient = createDeployClient(actorSystem, masterArgs)
-
-    MasterService.createLocal(actorSystem, deployClient, instanceStorage)
-
-    actorSystem.awaitTermination()
-    ticketRenewer.foreach(_.stop())
-  }
-
-  def run(masterArgs: MasterArguments): Unit = {
-    runYarn(masterArgs)
-    sys.exit()
-  }
-
   try {
-    optParser.parse(args, MasterArguments()).foreach(run)
+    optParser.parse(args, MasterArguments()).foreach(args => {
+      new YarnMasterRunner().run(args)
+      sys.exit()
+    })
   } catch {
     case NonFatal(e) =>
       e.printStackTrace()
