@@ -35,6 +35,7 @@ object AkkeeperBuild extends Build {
     "org.apache.hadoop" % "hadoop-hdfs" % HadoopVersion,
     "org.apache.hadoop" % "hadoop-yarn-common" % HadoopVersion,
     "org.apache.hadoop" % "hadoop-yarn-client" % HadoopVersion,
+    "org.apache.hadoop" % "hadoop-mapreduce-client-core" % HadoopVersion,
     ("org.apache.curator" % "curator-framework" % CuratorVersion).exclude("org.jboss.netty", "netty"),
     "org.apache.curator" % "curator-test" % CuratorVersion % "test->*"
   ).map(_.exclude("log4j", "log4j"))

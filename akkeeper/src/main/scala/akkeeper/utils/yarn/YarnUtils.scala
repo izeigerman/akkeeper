@@ -15,12 +15,19 @@
  */
 package akkeeper.utils.yarn
 
+import java.nio.ByteBuffer
+import java.security.PrivilegedAction
+
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
-import org.apache.hadoop.security.UserGroupInformation
+import org.apache.hadoop.io.DataOutputBuffer
+import org.apache.hadoop.mapred.Master
+import org.apache.hadoop.security.{Credentials, UserGroupInformation}
 import org.apache.hadoop.yarn.api.ApplicationConstants
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment
 import org.apache.hadoop.yarn.conf.YarnConfiguration
+import org.apache.hadoop.yarn.security.AMRMTokenIdentifier
+import scala.collection.JavaConverters._
 
 
 private[akkeeper] object YarnUtils {
@@ -60,7 +67,30 @@ private[akkeeper] object YarnUtils {
   }
 
   def loginFromKeytab(principal: String, keytab: String): UserGroupInformation = {
+    UserGroupInformation.setConfiguration(YarnUtils.getYarnConfiguration)
+
+    val initialUser = UserGroupInformation.getLoginUser
+    val yarnTokens = initialUser.getTokens.asScala
+      .filter(_.getKind == AMRMTokenIdentifier.KIND_NAME)
+
     UserGroupInformation.loginUserFromKeytab(principal, keytab)
-    UserGroupInformation.getLoginUser
+
+    val loginUser = UserGroupInformation.getLoginUser
+    yarnTokens.foreach(loginUser.addToken(_))
+    loginUser
+  }
+
+  def obtainContainerTokens(stagingDir: String,
+                            hadoopConfig: Configuration): ByteBuffer = {
+    val renewer = Master.getMasterPrincipal(hadoopConfig)
+
+    val creds = new Credentials(UserGroupInformation.getCurrentUser.getCredentials)
+    val hadoopFs = new Path(stagingDir)
+      .getFileSystem(hadoopConfig)
+    hadoopFs.addDelegationTokens(renewer, creds)
+
+    val outstream = new DataOutputBuffer()
+    creds.writeTokenStorageToStream(outstream)
+    ByteBuffer.wrap(outstream.getData)
   }
 }
