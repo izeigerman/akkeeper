@@ -22,6 +22,7 @@ import AssemblyKeys._
 object AkkeeperBuild extends Build {
 
   val AkkaVersion = "2.3.16"
+  val AkkaHttpVersion = "2.0.4"
   val CuratorVersion = "2.4.0"
   val SprayJsonVersion = "1.3.3"
   val HadoopVersion = "2.6.2"
@@ -59,6 +60,9 @@ object AkkeeperBuild extends Build {
       "com.typesafe.akka" %% "akka-actor" % AkkaVersion,
       "com.typesafe.akka" %% "akka-cluster" % AkkaVersion,
       "com.typesafe.akka" %% "akka-slf4j" % AkkaVersion,
+      "com.typesafe.akka" %% "akka-http-core-experimental" % AkkaHttpVersion,
+      "com.typesafe.akka" %% "akka-http-experimental" % AkkaHttpVersion,
+      "com.typesafe.akka" %% "akka-http-spray-json-experimental" % AkkaHttpVersion,
       "io.spray" %% "spray-json" % SprayJsonVersion,
       "org.slf4j" % "slf4j-api" % Slf4jVersion,
       "org.slf4j" % "slf4j-log4j12" % Slf4jVersion,

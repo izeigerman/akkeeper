@@ -51,9 +51,8 @@ case class SubmittedInstances(requestId: RequestId, containerName: String,
                               instanceIds: Seq[InstanceId]) extends WithRequestId
 
 /** JSON (de)serialization for the Deploy API requests and responses. */
-trait DeployApiJsonProtocol extends DefaultJsonProtocol {
-  import RequestIdJsonProtocol._
-  import InstanceIdJsonProtocol._
+trait DeployApiJsonProtocol extends DefaultJsonProtocol
+  with RequestIdJsonProtocol with InstanceIdJsonProtocol {
 
   implicit val deployContainerFormat = jsonFormat5(DeployContainer.apply)
   implicit val deployedInstancesFormat = jsonFormat3(SubmittedInstances.apply)

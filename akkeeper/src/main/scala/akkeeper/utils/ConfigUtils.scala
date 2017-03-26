@@ -110,5 +110,9 @@ private[akkeeper] object ConfigUtils {
         Seq.empty
       }
     }
+
+    def getRestConfig: Config = {
+      config.getConfig("akkeeper.api.rest")
+    }
   }
 }

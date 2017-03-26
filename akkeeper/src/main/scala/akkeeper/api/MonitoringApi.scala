@@ -118,10 +118,9 @@ case class InstanceTerminated(requestId: RequestId,
                               instanceId: InstanceId) extends InstanceResponse
 
 /** JSON (de)serialization for the Monitoring API requests and responses. */
-trait MonitoringApiJsonProtocol extends DefaultJsonProtocol {
-  import InstanceIdJsonProtocol._
-  import RequestIdJsonProtocol._
-  import InstanceStatusJsonProtocol._
+trait MonitoringApiJsonProtocol extends DefaultJsonProtocol
+  with InstanceIdJsonProtocol with RequestIdJsonProtocol
+  with InstanceStatusJsonProtocol {
 
   implicit val getInstanceFormat = jsonFormat2(GetInstance.apply)
   implicit val getInstancesFormat = jsonFormat1(GetInstances.apply)

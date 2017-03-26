@@ -30,7 +30,7 @@ object RequestId {
   def apply(): RequestId = RequestId(UUID.randomUUID())
 }
 
-object RequestIdJsonProtocol extends DefaultJsonProtocol {
+trait RequestIdJsonProtocol extends DefaultJsonProtocol {
   implicit val requestIdFormat = new JsonFormat[RequestId] {
     override def write(obj: RequestId): JsValue = {
       JsString(obj.toString)
@@ -40,3 +40,5 @@ object RequestIdJsonProtocol extends DefaultJsonProtocol {
     }
   }
 }
+
+object RequestIdJsonProtocol extends RequestIdJsonProtocol

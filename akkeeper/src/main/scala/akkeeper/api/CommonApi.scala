@@ -33,8 +33,7 @@ trait WithRequestId {
 case class OperationFailed(requestId: RequestId, cause: Throwable) extends WithRequestId
 
 /** JSON (de)serialization for the Common API requests and responses. */
-trait CommonApiJsonProtocol extends DefaultJsonProtocol {
-  import RequestIdJsonProtocol._
+trait CommonApiJsonProtocol extends DefaultJsonProtocol with RequestIdJsonProtocol {
 
   implicit val operationFailedWriter = new JsonWriter[OperationFailed] {
     override def write(obj: OperationFailed): JsValue = {
