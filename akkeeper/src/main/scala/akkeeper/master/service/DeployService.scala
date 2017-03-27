@@ -36,8 +36,8 @@ private[akkeeper] class DeployService(deployClient: DeployClient.Async,
     monitoringService ! InstancesUpdate(instanceInfos)
 
     val extendedContainer = container.copy(
-      jvmArgs = request.jvmArgs ++ container.jvmArgs,
-      jvmProperties = container.jvmProperties ++ request.properties)
+      jvmArgs = request.jvmArgs.getOrElse(Seq.empty) ++ container.jvmArgs,
+      jvmProperties = container.jvmProperties ++ request.properties.getOrElse(Map.empty))
 
     val futures = deployClient.deploy(extendedContainer, ids)
     val logger = log

@@ -42,7 +42,7 @@ class JsonApiSpec extends FlatSpec with Matchers {
   }
 
   it should "(de)serialize Deploy API" in {
-    testJson(DeployContainer("container", 1, Seq("arg"), Map("prop" -> "value")))
+    testJson(DeployContainer("container", 1, Some(Seq("arg")), Some(Map("prop" -> "value"))))
     testJson(SubmittedInstances(RequestId(), "container", Seq(InstanceId("container"))))
   }
 

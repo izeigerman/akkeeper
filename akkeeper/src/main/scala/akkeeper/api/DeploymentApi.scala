@@ -35,8 +35,8 @@ import spray.json.DefaultJsonProtocol
   *                  ID will be generated.
   */
 case class DeployContainer(name: String, quantity: Int,
-                           jvmArgs: Seq[String] = Seq.empty,
-                           properties: Map[String, String] = Map.empty,
+                           jvmArgs: Option[Seq[String]] = None,
+                           properties: Option[Map[String, String]] = None,
                            requestId: RequestId = RequestId()) extends WithRequestId
 
 /** A response that indicates a successful deployment of new instances.
