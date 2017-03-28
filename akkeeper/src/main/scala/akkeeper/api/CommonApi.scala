@@ -35,7 +35,7 @@ case class OperationFailed(requestId: RequestId, cause: Throwable) extends WithR
 /** JSON (de)serialization for the Common API requests and responses. */
 trait CommonApiJsonProtocol extends DefaultJsonProtocol with RequestIdJsonProtocol {
 
-  implicit val operationFailedWriter = new JsonWriter[OperationFailed] {
+  implicit val operationFailedWriter = new RootJsonWriter[OperationFailed] {
     override def write(obj: OperationFailed): JsValue = {
       val requestIdField = obj.requestId.toJson
       val messageField = JsString(obj.cause.getMessage)
@@ -48,5 +48,33 @@ trait CommonApiJsonProtocol extends DefaultJsonProtocol with RequestIdJsonProtoc
         "stackTrace" -> stackTraceField
       )
     }
+  }
+}
+
+object CommonApiJsonProtocol extends CommonApiJsonProtocol
+
+class AutoRequestIdFormat[T <: WithRequestId](original: JsonFormat[T])
+  extends RootJsonFormat[T] {
+
+  import RequestIdJsonProtocol._
+
+  override def read(json: JsValue): T = {
+    val jsObject = json.asJsObject
+    val fields = jsObject.fields
+    val updatedJsObject =
+      if (!fields.contains("requestId")) {
+        jsObject.copy(fields + ("requestId" -> RequestId().toJson))
+      } else {
+        jsObject
+      }
+    original.read(updatedJsObject)
+  }
+
+  override def write(obj: T): JsValue = original.write(obj)
+}
+
+object AutoRequestIdFormat {
+  def apply[T <: WithRequestId](original: JsonFormat[T]): RootJsonFormat[T] = {
+    new AutoRequestIdFormat(original)
   }
 }

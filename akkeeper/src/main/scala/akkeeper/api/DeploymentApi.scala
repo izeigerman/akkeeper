@@ -22,6 +22,7 @@ import spray.json.DefaultJsonProtocol
   * The possible responses are:
   *
   *  - [[SubmittedInstances]] - if the deployment attempt was successful.
+  *  - [[ContainerNotFound]] - if the container with requested name was not found.
   *  - [[OperationFailed]] - if error occurred.
   *
   * @param name the name of the container that will be deployed.
@@ -54,7 +55,7 @@ case class SubmittedInstances(requestId: RequestId, containerName: String,
 trait DeployApiJsonProtocol extends DefaultJsonProtocol
   with RequestIdJsonProtocol with InstanceIdJsonProtocol {
 
-  implicit val deployContainerFormat = jsonFormat5(DeployContainer.apply)
+  implicit val deployContainerFormat = AutoRequestIdFormat(jsonFormat5(DeployContainer.apply))
   implicit val deployedInstancesFormat = jsonFormat3(SubmittedInstances.apply)
 }
 

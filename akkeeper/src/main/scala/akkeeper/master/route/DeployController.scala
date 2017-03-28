@@ -26,7 +26,8 @@ import scala.util.{Failure, Success}
 
 class DeployController(service: ActorRef)(implicit dispatcher: ExecutionContext,
                                           timeout: Timeout)
-  extends BaseController with DeployApiJsonProtocol with CommonApiJsonProtocol {
+  extends BaseController with DeployApiJsonProtocol with CommonApiJsonProtocol
+  with ContainerApiJsonProtocol {
 
   override val route: Route =
     path("deploy") {
@@ -36,12 +37,12 @@ class DeployController(service: ActorRef)(implicit dispatcher: ExecutionContext,
           onComplete(result) {
             case Success(submitted: SubmittedInstances) =>
               complete(StatusCodes.Accepted -> submitted)
+            case Success(notFound: ContainerNotFound) =>
+              complete(StatusCodes.NotFound -> notFound)
             case Success(failed: OperationFailed) =>
-              failWith(failed.cause)
+              complete(StatusCodes.InternalServerError -> failed)
             case Failure(reason) =>
               failWith(reason)
-            case _ =>
-              reject
           }
         }
       }

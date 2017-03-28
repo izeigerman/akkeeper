@@ -122,10 +122,10 @@ trait MonitoringApiJsonProtocol extends DefaultJsonProtocol
   with InstanceIdJsonProtocol with RequestIdJsonProtocol
   with InstanceStatusJsonProtocol {
 
-  implicit val getInstanceFormat = jsonFormat2(GetInstance.apply)
-  implicit val getInstancesFormat = jsonFormat1(GetInstances.apply)
-  implicit val getInstancesByFormat = jsonFormat3(GetInstancesBy.apply)
-  implicit val terminateInstancesFormat = jsonFormat2(TerminateInstance.apply)
+  implicit val getInstanceFormat = AutoRequestIdFormat(jsonFormat2(GetInstance.apply))
+  implicit val getInstancesFormat = AutoRequestIdFormat(jsonFormat1(GetInstances.apply))
+  implicit val getInstancesByFormat = AutoRequestIdFormat(jsonFormat3(GetInstancesBy.apply))
+  implicit val terminateInstancesFormat = AutoRequestIdFormat(jsonFormat2(TerminateInstance.apply))
 
   implicit val instanceInfoResponseFormat = jsonFormat2(InstanceInfoResponse.apply)
   implicit val instanceListFormat = jsonFormat2(InstancesList.apply)
