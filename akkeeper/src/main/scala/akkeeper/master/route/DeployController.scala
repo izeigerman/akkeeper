@@ -17,33 +17,24 @@ package akkeeper.master.route
 
 import akka.actor.ActorRef
 import akka.http.scaladsl.model.StatusCodes
-import akka.pattern.ask
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import akkeeper.api._
 import scala.concurrent.ExecutionContext
-import scala.util.{Failure, Success}
 
 class DeployController(service: ActorRef)(implicit dispatcher: ExecutionContext,
                                           timeout: Timeout)
-  extends BaseController with DeployApiJsonProtocol with CommonApiJsonProtocol
-  with ContainerApiJsonProtocol {
+  extends BaseController with DeployApiJsonProtocol with ContainerApiJsonProtocol {
+
+  registerHandler[SubmittedInstances](StatusCodes.Accepted)
+  registerHandler[ContainerNotFound](StatusCodes.NotFound)
+  registerHandler[OperationFailed](StatusCodes.InternalServerError)
 
   override val route: Route =
     path("deploy") {
       post {
         entity(as[DeployContainer]) { deploy =>
-          val result = service ? deploy
-          onComplete(result) {
-            case Success(submitted: SubmittedInstances) =>
-              complete(StatusCodes.Accepted -> submitted)
-            case Success(notFound: ContainerNotFound) =>
-              complete(StatusCodes.NotFound -> notFound)
-            case Success(failed: OperationFailed) =>
-              complete(StatusCodes.InternalServerError -> failed)
-            case Failure(reason) =>
-              failWith(reason)
-          }
+          handleRequest(service, deploy)
         }
       }
     }

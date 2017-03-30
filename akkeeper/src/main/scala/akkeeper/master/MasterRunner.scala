@@ -79,7 +79,8 @@ private[master] class YarnMasterRunner extends MasterRunner {
       TimeUnit.MILLISECONDS)
 
     ControllerComposite("api/v1", Seq(
-      DeployController(masterService)
+      DeployController(masterService),
+      ContainerController(masterService)
     )).route
   }
 
