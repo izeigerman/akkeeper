@@ -24,13 +24,18 @@ import akka.util.Timeout
 import akkeeper.AkkeeperException
 import akkeeper.api._
 import akkeeper.common.InstanceId
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 class DeployControllerSpec(testSystem: ActorSystem) extends TestKit(testSystem)
   with FlatSpecLike with Matchers with ImplicitSender with RestTestUtils
-  with DeployApiJsonProtocol with ContainerApiJsonProtocol {
+  with DeployApiJsonProtocol with ContainerApiJsonProtocol with BeforeAndAfterAll {
 
   def this() = this(ActorSystem("DeployControllerSpec"))
+
+  override protected def afterAll(): Unit = {
+    system.shutdown()
+    super.afterAll()
+  }
 
   "Deploy Controller" should "handle deploy request properly" in {
     val controller = DeployController(self)
