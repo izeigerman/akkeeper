@@ -17,14 +17,11 @@ package akkeeper.master.route
 
 import akka.actor.ActorRef
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.server.{PathMatcher1, Route}
-import akka.http.scaladsl.server.PathMatcher.{Matched, Matching}
+import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import akkeeper.api._
 import akkeeper.common.{ContainerDefinition, ContainerDefinitionJsonProtocol}
 import scala.concurrent.ExecutionContext
-import ContainerController._
 
 class ContainerController(service: ActorRef)(implicit dispatcher: ExecutionContext,
                                              timeout: Timeout)
@@ -41,7 +38,7 @@ class ContainerController(service: ActorRef)(implicit dispatcher: ExecutionConte
 
   override val route: Route =
     pathPrefix("containers") {
-      path(ContainerName) { containerName =>
+      path(Segment) { containerName =>
         get {
           handleRequest(service, GetContainer(containerName))
         } ~
@@ -54,7 +51,7 @@ class ContainerController(service: ActorRef)(implicit dispatcher: ExecutionConte
           handleRequest(service, DeleteContainer(containerName))
         }
       } ~
-      pathEnd {
+      (pathEnd | pathSingleSlash) {
         get {
           handleRequest(service, GetContainers())
         } ~
@@ -71,11 +68,5 @@ object ContainerController {
   def apply(service: ActorRef)(implicit dispatcher: ExecutionContext,
                                timeout: Timeout): BaseController = {
     new ContainerController(service)
-  }
-
-  private object ContainerName extends PathMatcher1[String] {
-    override def apply(v: Path): Matching[Tuple1[String]] = {
-      Matched(Path.Empty, Tuple1(v.head.toString))
-    }
   }
 }

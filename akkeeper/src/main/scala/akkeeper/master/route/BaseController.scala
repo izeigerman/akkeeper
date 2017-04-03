@@ -21,6 +21,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCode
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.util.Timeout
+import akkeeper.AkkeeperException
 import akkeeper.api.CommonApiJsonProtocol
 import spray.json.RootJsonWriter
 import scala.collection.mutable
@@ -41,7 +42,11 @@ trait BaseController extends Directives with SprayJsonSupport with CommonApiJson
   }
 
   final protected def applyHandlers: PartialFunction[Any, Route] = {
-    handlers.reduce(_ orElse _)
+    handlers.reduce(_ orElse _) orElse {
+      case other =>
+        val exception = new AkkeeperException(s"Unexpected response $other")
+        failWith(exception)
+    }
   }
 
   final protected def handleRequest(service: ActorRef, msg: Any)

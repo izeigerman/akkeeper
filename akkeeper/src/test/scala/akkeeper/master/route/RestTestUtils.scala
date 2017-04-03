@@ -89,6 +89,19 @@ trait RestTestUtils extends AwaitMixin {
     deserialize(postRaw(req, uri, port))
   }
 
+  def patchRaw[Req: JsonWriter](req: Req, uri: String, port: Int): Future[(Int, String)] = {
+    val jsonBody = req.toJson.prettyPrint
+    val request = HttpRequest(uri = uri)
+      .withMethod(HttpMethods.PATCH)
+      .withEntity(HttpEntity(ContentTypes.`application/json`, jsonBody))
+    sendRequest(request, port)
+  }
+
+  def patch[Req: JsonWriter, Resp: JsonReader](req: Req, uri: String,
+                                               port: Int): Future[(Int, Resp)] = {
+    deserialize(patchRaw(req, uri, port))
+  }
+
   def getRaw(uri: String, port: Int): Future[(Int, String)] = {
     val request = HttpRequest(uri = uri)
       .withMethod(HttpMethods.GET)
@@ -97,5 +110,15 @@ trait RestTestUtils extends AwaitMixin {
 
   def get[Resp: JsonReader](uri: String, port: Int): Future[(Int, Resp)] = {
     deserialize(getRaw(uri, port))
+  }
+
+  def deleteRaw(uri: String, port: Int): Future[(Int, String)] = {
+    val request = HttpRequest(uri = uri)
+      .withMethod(HttpMethods.DELETE)
+    sendRequest(request, port)
+  }
+
+  def delete[Resp: JsonReader](uri: String, port: Int): Future[(Int, Resp)] = {
+    deserialize(deleteRaw(uri, port))
   }
 }
