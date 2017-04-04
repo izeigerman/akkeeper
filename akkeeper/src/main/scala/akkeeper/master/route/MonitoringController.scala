@@ -46,6 +46,9 @@ class MonitoringController(service: ActorRef)(implicit dispatcher: ExecutionCont
           handleRequest(service, TerminateInstance(instanceId))
         }
       } ~
+      path(Segment) { segment =>
+        complete(StatusCodes.BadRequest -> "Invalid instance ID")
+      } ~
       (pathEnd | pathSingleSlash) {
         parameters('role.*, 'containerName.?) { (role, containerName) =>
           if (role.isEmpty && containerName.isEmpty) {

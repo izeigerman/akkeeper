@@ -174,4 +174,17 @@ class ContainerControllerSpec(testSystem: ActorSystem) extends TestKit(testSyste
       code shouldBe StatusCodes.InternalServerError.intValue
     }
   }
+
+  it should "fail if the unexpected response arrives from the service" in {
+    val controller = ContainerController(self)
+    withHttpServer(controller.route) { restPort =>
+      val response = getRaw("/containers/", restPort)
+
+      val request = expectMsgClass(classOf[GetContainers])
+      lastSender ! InstancesList(request.requestId, Seq.empty)
+
+      val (code, _) = await(response)
+      code shouldBe StatusCodes.InternalServerError.intValue
+    }
+  }
 }

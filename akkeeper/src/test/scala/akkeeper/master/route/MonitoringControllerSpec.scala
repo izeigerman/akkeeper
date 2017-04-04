@@ -24,6 +24,7 @@ import akka.util.Timeout
 import akkeeper.api._
 import akkeeper.common.{InstanceId, InstanceInfo}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import scala.concurrent.duration._
 
 class MonitoringControllerSpec(testSystem: ActorSystem) extends TestKit(testSystem)
   with FlatSpecLike with Matchers with ImplicitSender with RestTestUtils
@@ -50,6 +51,18 @@ class MonitoringControllerSpec(testSystem: ActorSystem) extends TestKit(testSyst
       val (code, actualResult) = await(response)
       code shouldBe StatusCodes.OK.intValue
       actualResult shouldBe instanceInfo
+    }
+  }
+
+  it should "return an error if the specified instance ID has invalid format" in {
+    val controller = MonitoringController(self)
+    withHttpServer(controller.route) { restPort =>
+      val response = getRaw("/instances/invalid", restPort)
+
+      expectNoMsg(1 second)
+
+      val (code, _) = await(response)
+      code shouldBe StatusCodes.BadRequest.intValue
     }
   }
 
@@ -131,6 +144,19 @@ class MonitoringControllerSpec(testSystem: ActorSystem) extends TestKit(testSyst
       val response = getRaw("/instances/", restPort)
 
       expectMsgClass(classOf[GetInstances])
+      val (code, _) = await(response)
+      code shouldBe StatusCodes.InternalServerError.intValue
+    }
+  }
+
+  it should "fail if the unexpected response arrives from the service" in {
+    val controller = MonitoringController(self)
+    withHttpServer(controller.route) { restPort =>
+      val response = getRaw("/instances/", restPort)
+
+      val request = expectMsgClass(classOf[GetInstances])
+      lastSender ! SubmittedInstances(request.requestId, "container", Seq.empty)
+
       val (code, _) = await(response)
       code shouldBe StatusCodes.InternalServerError.intValue
     }

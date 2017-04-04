@@ -102,4 +102,18 @@ class DeployControllerSpec(testSystem: ActorSystem) extends TestKit(testSystem)
       code shouldBe StatusCodes.InternalServerError.intValue
     }
   }
+
+  it should "fail if the unexpected response arrives from the service" in {
+    val controller = DeployController(self)
+    withHttpServer(controller.route) { restPort =>
+      val request = DeployContainer("container", 1)
+      val response = postRaw(request, "/deploy", restPort)
+
+      expectMsg(request)
+      lastSender ! InstancesList(request.requestId, Seq.empty)
+
+      val (code, _) = await(response)
+      code shouldBe StatusCodes.InternalServerError.intValue
+    }
+  }
 }
