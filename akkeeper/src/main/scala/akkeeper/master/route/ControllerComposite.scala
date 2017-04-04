@@ -15,12 +15,12 @@
  */
 package akkeeper.master.route
 
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{PathMatchers, Route}
 import ControllerComposite._
 
 case class ControllerComposite(basePath: String,
                                controllers: Seq[BaseController]) extends BaseController {
-  override val route: Route = path(basePath) {
+  override val route: Route = pathPrefix(PathMatchers.separateOnSlashes(basePath)) {
     controllers.reduceLeft((a, b) => UnitController(a.route ~ b.route)).route
   }
 }
