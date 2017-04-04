@@ -62,7 +62,7 @@ case class GetInstances(requestId: RequestId = RequestId()) extends InstanceRequ
   * @param requestId the optional request ID. If not specified a random
   *                  ID will be generated.
   */
-case class GetInstancesBy(roles: Option[Set[String]],
+case class GetInstancesBy(roles: Set[String],
                           containerName: Option[String],
                           requestId: RequestId = RequestId()) extends InstanceRequest
 

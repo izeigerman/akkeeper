@@ -164,7 +164,8 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   def testByContainerAndRoles(service: ActorRef, container: Option[String],
                               roles: Option[Set[String]],
                               expected: Set[InstanceInfo]): Unit = {
-    val getInstancesBy = GetInstancesBy(roles = roles, containerName = container)
+    val getInstancesBy = GetInstancesBy(roles = roles.getOrElse(Set.empty),
+      containerName = container)
     service ! getInstancesBy
 
     val instancesResponse = expectMsgClass(classOf[InstancesList])
@@ -316,7 +317,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     val response = expectMsgClass(classOf[InstancesList])
     response.instanceIds.size shouldBe 2
 
-    val getInstancesBy = GetInstancesBy(roles = Some(Set("role")),
+    val getInstancesBy = GetInstancesBy(roles = Set("role"),
       containerName = Some("container1"))
     service ! getInstancesBy
 

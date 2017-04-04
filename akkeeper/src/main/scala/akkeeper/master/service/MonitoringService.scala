@@ -215,7 +215,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
 
   private def onGetInstancesBy(request: GetInstancesBy): Unit = {
     val requestId = request.requestId
-    val roles = request.roles.getOrElse(Set.empty)
+    val roles = request.roles
     val containerName = request.containerName.getOrElse("")
 
     if (instances.exists(i => i._2 eq None)) {

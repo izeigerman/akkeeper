@@ -37,7 +37,9 @@ class ContainerControllerSpec(testSystem: ActorSystem) extends TestKit(testSyste
   }
 
   def createContainerDefinition(name: String): ContainerDefinition = {
-    ContainerDefinition(name, cpus = 1, memory = 1024, actors = Seq.empty)
+    val memory = 1024
+    val cpus = 1
+    ContainerDefinition(name, cpus = cpus, memory = memory, actors = Seq.empty)
   }
 
   "Container Controller" should "return container by its ID" in {

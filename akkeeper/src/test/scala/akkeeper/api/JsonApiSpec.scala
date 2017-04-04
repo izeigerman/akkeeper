@@ -31,8 +31,8 @@ class JsonApiSpec extends FlatSpec with Matchers with ApiJsonProtocol {
   "JSON API" should "(de)serialize Monitoring API" in {
     testJson(GetInstance(InstanceId("container")))
     testJson(GetInstances())
-    testJson(GetInstancesBy(roles = Some(Set("role")), containerName = Some("container")))
-    testJson(GetInstancesBy(roles = None, containerName = None))
+    testJson(GetInstancesBy(roles = Set("role"), containerName = Some("container")))
+    testJson(GetInstancesBy(roles = Set.empty, containerName = None))
     testJson(TerminateInstance(InstanceId("container")))
     testJson(InstanceInfoResponse(RequestId(), InstanceInfo.deploying(InstanceId("container"))))
     testJson(InstancesList(RequestId(), Seq(InstanceId("container"))))
