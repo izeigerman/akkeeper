@@ -73,8 +73,8 @@ object InstanceInfo {
   }
 }
 
-object InstanceStatusJsonProtocol extends DefaultJsonProtocol {
-  import InstanceIdJsonProtocol._
+trait InstanceStatusJsonProtocol extends DefaultJsonProtocol with InstanceIdJsonProtocol {
+
   implicit val addressFormat = new JsonFormat[Address] {
     override def write(obj: Address): JsValue = {
       val protocolField = JsString(obj.protocol)
@@ -115,3 +115,5 @@ object InstanceStatusJsonProtocol extends DefaultJsonProtocol {
 
   implicit val instanceInfoFormat = jsonFormat6(InstanceInfo.apply)
 }
+
+object InstanceStatusJsonProtocol extends InstanceStatusJsonProtocol

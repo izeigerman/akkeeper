@@ -104,11 +104,15 @@ private[akkeeper] object ConfigUtils {
           val quantity = conf.getInt("quantity")
           val jvmArgs = config.getListOfStrings("jvm-args")
           val properties = config.getMapOfStrings("properties")
-          DeployContainer(containerName, quantity, jvmArgs, properties)
+          DeployContainer(containerName, quantity, Some(jvmArgs), Some(properties))
         })
       } else {
         Seq.empty
       }
+    }
+
+    def getRestConfig: Config = {
+      config.getConfig("akkeeper.api.rest")
     }
   }
 }

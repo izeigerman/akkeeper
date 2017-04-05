@@ -22,6 +22,7 @@ import spray.json.DefaultJsonProtocol
   * The possible responses are:
   *
   *  - [[SubmittedInstances]] - if the deployment attempt was successful.
+  *  - [[ContainerNotFound]] - if the container with requested name was not found.
   *  - [[OperationFailed]] - if error occurred.
   *
   * @param name the name of the container that will be deployed.
@@ -35,8 +36,8 @@ import spray.json.DefaultJsonProtocol
   *                  ID will be generated.
   */
 case class DeployContainer(name: String, quantity: Int,
-                           jvmArgs: Seq[String] = Seq.empty,
-                           properties: Map[String, String] = Map.empty,
+                           jvmArgs: Option[Seq[String]] = None,
+                           properties: Option[Map[String, String]] = None,
                            requestId: RequestId = RequestId()) extends WithRequestId
 
 /** A response that indicates a successful deployment of new instances.
@@ -51,11 +52,10 @@ case class SubmittedInstances(requestId: RequestId, containerName: String,
                               instanceIds: Seq[InstanceId]) extends WithRequestId
 
 /** JSON (de)serialization for the Deploy API requests and responses. */
-trait DeployApiJsonProtocol extends DefaultJsonProtocol {
-  import RequestIdJsonProtocol._
-  import InstanceIdJsonProtocol._
+trait DeployApiJsonProtocol extends DefaultJsonProtocol
+  with RequestIdJsonProtocol with InstanceIdJsonProtocol {
 
-  implicit val deployContainerFormat = jsonFormat5(DeployContainer.apply)
+  implicit val deployContainerFormat = AutoRequestIdFormat(jsonFormat5(DeployContainer.apply))
   implicit val deployedInstancesFormat = jsonFormat3(SubmittedInstances.apply)
 }
 

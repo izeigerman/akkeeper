@@ -17,21 +17,32 @@ package akkeeper.master
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import akka.cluster.Cluster
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.server.Route
+import akka.stream.ActorMaterializer
+import akka.util.Timeout
 import akkeeper.deploy.{DeployClient, DeployClientFactory}
 import akkeeper.deploy.yarn.YarnApplicationMasterConfig
+import akkeeper.master.route._
 import akkeeper.master.service.MasterService
 import akkeeper.utils.ConfigUtils._
 import akkeeper.storage.{InstanceStorage, InstanceStorageFactory}
 import akkeeper.utils.yarn._
 import com.typesafe.config.{Config, ConfigFactory}
+import org.slf4j.LoggerFactory
+
+import scala.concurrent.ExecutionContext
 
 private[master] trait MasterRunner {
   def run(masterArgs: MasterArguments): Unit
 }
 
 private[master] class YarnMasterRunner extends MasterRunner {
+
+  private val logger = LoggerFactory.getLogger(classOf[YarnMasterRunner])
+
   private def createInstanceStorage(actorSystem: ActorSystem,
                                     appId: String): InstanceStorage.Async = {
     val zkConfig = actorSystem.settings.config.getZookeeperClientConfig
@@ -39,15 +50,17 @@ private[master] class YarnMasterRunner extends MasterRunner {
   }
 
   private def createDeployClient(actorSystem: ActorSystem,
-                                 masterArgs: MasterArguments): DeployClient.Async = {
+                                 masterArgs: MasterArguments,
+                                 restApiPort: Int): DeployClient.Async = {
     val yarnConf = YarnUtils.getYarnConfiguration
     val config = actorSystem.settings.config
     val selfAddr = Cluster(actorSystem).selfAddress
     val principal = masterArgs.principal
 
+    val trackingUrl = s"http://${selfAddr.host.get}:${restApiPort}/api/v1"
     val yarnConfig = YarnApplicationMasterConfig(
       config = config, yarnConf = yarnConf,
-      appId = masterArgs.appId, selfAddress = selfAddr, trackingUrl = "",
+      appId = masterArgs.appId, selfAddress = selfAddr, trackingUrl = trackingUrl,
       principal = principal)
     DeployClientFactory.createAsync(yarnConfig)
   }
@@ -57,6 +70,19 @@ private[master] class YarnMasterRunner extends MasterRunner {
     new KerberosTicketRenewer(
       loginUser,
       config.getDuration("akkeeper.kerberos.ticket-check-interval", TimeUnit.MILLISECONDS))
+  }
+
+  private def createRestHandler(restConfig: Config, masterService: ActorRef)
+                               (implicit dispatcher: ExecutionContext): Route = {
+    implicit val timeout = Timeout(
+      restConfig.getDuration("request-timeout", TimeUnit.MILLISECONDS),
+      TimeUnit.MILLISECONDS)
+
+    ControllerComposite("api/v1", Seq(
+      DeployController(masterService),
+      ContainerController(masterService),
+      MonitoringController(masterService)
+    )).route
   }
 
   def run(masterArgs: MasterArguments): Unit = {
@@ -70,13 +96,23 @@ private[master] class YarnMasterRunner extends MasterRunner {
     })
     ticketRenewer.foreach(_.start())
 
+    val restConfig = config.getRestConfig
+    val restPort = restConfig.getInt("port")
+
     val masterConfig = config.withMasterPort.withMasterRole
-    val actorSystem = ActorSystem(config.getActorSystemName, masterConfig)
+    implicit val actorSystem = ActorSystem(config.getActorSystemName, masterConfig)
+    implicit val materializer = ActorMaterializer()
+    implicit val dispatcher = actorSystem.dispatcher
 
     val instanceStorage = createInstanceStorage(actorSystem, masterArgs.appId)
-    val deployClient = createDeployClient(actorSystem, masterArgs)
+    val deployClient = createDeployClient(actorSystem, masterArgs, restPort)
+    val masterService = MasterService.createLocal(actorSystem, deployClient, instanceStorage)
 
-    MasterService.createLocal(actorSystem, deployClient, instanceStorage)
+    val restHandler = createRestHandler(restConfig, masterService)
+    Http().bindAndHandle(restHandler, "0.0.0.0", restPort).onFailure {
+      case ex: Exception =>
+        logger.error(s"Failed to bind to port $restPort", ex)
+    }
 
     actorSystem.awaitTermination()
     ticketRenewer.foreach(_.stop())

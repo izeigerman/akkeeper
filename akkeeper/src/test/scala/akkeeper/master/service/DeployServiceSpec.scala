@@ -60,8 +60,8 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
 
     val service = DeployService.createLocal(system, deployClient, self, self)
     val deployRequest = DeployContainer("container", 2,
-      jvmArgs = Seq("-Xms1G"),
-      properties = Map("property" -> "other_value"))
+      jvmArgs = Some(Seq("-Xms1G")),
+      properties = Some(Map("property" -> "other_value")))
     service ! deployRequest
 
     val containerReq = expectMsgClass(classOf[GetContainer])

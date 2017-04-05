@@ -38,9 +38,11 @@ object InstanceId {
   }
 }
 
-object InstanceIdJsonProtocol extends DefaultJsonProtocol {
+trait InstanceIdJsonProtocol extends DefaultJsonProtocol {
   implicit val instanceIdFormat = new JsonFormat[InstanceId] {
     override def write(obj: InstanceId): JsValue = JsString(obj.toString)
     override def read(json: JsValue): InstanceId = InstanceId.fromString(json.convertTo[String])
   }
 }
+
+object InstanceIdJsonProtocol extends InstanceIdJsonProtocol

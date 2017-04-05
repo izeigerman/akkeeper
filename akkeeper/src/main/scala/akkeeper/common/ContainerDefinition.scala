@@ -75,7 +75,9 @@ object ContainerDefinition {
   }
 }
 
-object ContainerDefinitionJsonProtocol extends DefaultJsonProtocol {
+trait ContainerDefinitionJsonProtocol extends DefaultJsonProtocol {
   implicit val actorLaunchContextFormat = jsonFormat2(ActorLaunchContext.apply)
   implicit val containerDefinitionFormat = jsonFormat7(ContainerDefinition.apply)
 }
+
+object ContainerDefinitionJsonProtocol extends ContainerDefinitionJsonProtocol

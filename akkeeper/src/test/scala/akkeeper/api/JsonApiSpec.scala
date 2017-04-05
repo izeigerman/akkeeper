@@ -19,9 +19,8 @@ import akkeeper.AkkeeperException
 import akkeeper.common._
 import org.scalatest.{FlatSpec, Matchers}
 import spray.json._
-import ApiJsonProtocol._
 
-class JsonApiSpec extends FlatSpec with Matchers {
+class JsonApiSpec extends FlatSpec with Matchers with ApiJsonProtocol {
 
   def testJson[T: JsonFormat](expected: T): Unit = {
     val jsonString = expected.toJson.compactPrint
@@ -32,8 +31,8 @@ class JsonApiSpec extends FlatSpec with Matchers {
   "JSON API" should "(de)serialize Monitoring API" in {
     testJson(GetInstance(InstanceId("container")))
     testJson(GetInstances())
-    testJson(GetInstancesBy(roles = Some(Set("role")), containerName = Some("container")))
-    testJson(GetInstancesBy(roles = None, containerName = None))
+    testJson(GetInstancesBy(roles = Set("role"), containerName = Some("container")))
+    testJson(GetInstancesBy(roles = Set.empty, containerName = None))
     testJson(TerminateInstance(InstanceId("container")))
     testJson(InstanceInfoResponse(RequestId(), InstanceInfo.deploying(InstanceId("container"))))
     testJson(InstancesList(RequestId(), Seq(InstanceId("container"))))
@@ -42,8 +41,18 @@ class JsonApiSpec extends FlatSpec with Matchers {
   }
 
   it should "(de)serialize Deploy API" in {
-    testJson(DeployContainer("container", 1, Seq("arg"), Map("prop" -> "value")))
+    testJson(DeployContainer("container", 1, Some(Seq("arg")), Some(Map("prop" -> "value"))))
     testJson(SubmittedInstances(RequestId(), "container", Seq(InstanceId("container"))))
+  }
+
+  it should "deserialize Deploy Container and generate request ID" in {
+    val deployJson =
+      """
+        |{ "name": "container", "quantity": 1 }
+      """.stripMargin
+    val deployContainer = deployJson.parseJson.convertTo[DeployContainer]
+    deployContainer.name shouldBe "container"
+    deployContainer.quantity shouldBe 1
   }
 
   it should "(de)serialize Container API" in {

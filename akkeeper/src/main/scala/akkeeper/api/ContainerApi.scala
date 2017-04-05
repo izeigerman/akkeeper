@@ -148,15 +148,14 @@ case class ContainerUpdated(requestId: RequestId, name: String) extends Containe
 case class ContainerDeleted(requestId: RequestId, name: String) extends ContainerResponse
 
 /** JSON (de)serialization for the Container API requests and responses. */
-trait ContainerApiJsonProtocol extends DefaultJsonProtocol {
-  import RequestIdJsonProtocol._
-  import ContainerDefinitionJsonProtocol._
+trait ContainerApiJsonProtocol extends DefaultJsonProtocol
+  with RequestIdJsonProtocol with ContainerDefinitionJsonProtocol {
 
-  implicit val createContainerFormat = jsonFormat2(CreateContainer.apply)
-  implicit val updateContainerFormat = jsonFormat2(UpdateContainer.apply)
-  implicit val getContainerFormat = jsonFormat2(GetContainer.apply)
-  implicit val getContainersFormat = jsonFormat1(GetContainers.apply)
-  implicit val deleteContainersFormat = jsonFormat2(DeleteContainer.apply)
+  implicit val createContainerFormat = AutoRequestIdFormat(jsonFormat2(CreateContainer.apply))
+  implicit val updateContainerFormat = AutoRequestIdFormat(jsonFormat2(UpdateContainer.apply))
+  implicit val getContainerFormat = AutoRequestIdFormat(jsonFormat2(GetContainer.apply))
+  implicit val getContainersFormat = AutoRequestIdFormat(jsonFormat1(GetContainers.apply))
+  implicit val deleteContainersFormat = AutoRequestIdFormat(jsonFormat2(DeleteContainer.apply))
 
   implicit val containersListFormat = jsonFormat2(ContainersList.apply)
   implicit val containersGetResultFormat = jsonFormat2(ContainerGetResult.apply)
