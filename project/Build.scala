@@ -42,7 +42,7 @@ object AkkeeperBuild extends Build {
   ).map(_.exclude("log4j", "log4j"))
 
   val CommonSettings = Seq(
-    organization := "akkeeper",
+    organization := "com.github.akkeeper-project",
     scalaVersion := "2.11.8",
     version := "0.1-SNAPSHOT",
 
