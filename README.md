@@ -83,14 +83,18 @@ akkeeper {
   ]
 }
 ```
-Make sure your `HADOOP_CONF_DIR` and `YARN_CONF_DIR` environment variables point to the directory where the Hadoop configuration files are stored. Now just pass this file together with your JAR archive which contains actor `com.test.MyActor` to Akkeeper:
+Make sure your `HADOOP_CONF_DIR`, `YARN_CONF_DIR` and `ZK_QUORUM` environment variables point to the directory where the Hadoop configuration files are stored. Now just pass this file together with your JAR archive which contains actor `com.test.MyActor` to Akkeeper:
 ```
 java -cp /path/to/akkeeper.jar akkeeper.launcher.LauncherMain --akkeeperJar /path/to/akkeeper.jar --config ./config.conf /path/to/my.jar
 ```
 This is it, observe your running actor.
 
 ## How to deploy and monitor instances at runtime
-### Using the Akkeeper Actor services
+
+### REST API
+[REST API documentation](https://github.com/akkeeper-project/akkeeper/blob/master/docs/rest.md)
+
+### Akkeeper Actor services
 This approach is applicable only when you're managing an Akkeeper cluster from the application or service which is part of the same Akka cluster.
 
 #### Deploy API
@@ -142,7 +146,4 @@ val containerService = ContainerService.createRemote(actorSystem)
 }
 ```
 [Here](https://github.com/akkeeper-project/akkeeper/blob/master/akkeeper/src/main/scala/akkeeper/api/ContainerApi.scala) is the list of all messages supported by the Container Service.
-
-### Using REST
-REST support is in progress.
 

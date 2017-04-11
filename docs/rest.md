@@ -3,19 +3,19 @@
 * [Deploy API](#deploy-api)
   * [Deploy instances](#deploy-instances)
 * [Monitoring API](#monitoring-api)
-  * [Retrieve list of all instances in a cluster](#retrieve-list-of-all-instances-in-a-cluster)
-  * [Get all instances with specific role and/or container](#get-all-instances-with-specific-role-and-or-container)
+  * [Retrieve a list of all instances in a cluster](#retrieve-a-list-of-all-instances-in-a-cluster)
+  * [Get all instances by specific role or container name](#get-all-instances-by-specific-role-or-container-name)
   * [Get a detailed info about the instance](#get-a-detailed-info-about-the-instance)
   * [Instance termination](#instance-termination)
 * [Container API](#container-api)
-  * [Get list of available containers](#get-list-of-available-containers)
+  * [Get a list of available containers](#get-a-list-of-available-containers)
   * [Get a detailed info about container](#get-a-detailed-info-about-container)
   * [Create a new container](#create-a-new-container)
   * [Update the existing container](#update-the-existing-container)
   * [Delete container](#delete-container)
 
 ## Deploy API
-#### Deploy instances
+### Deploy instances
 
 **Command**
 ````bash
@@ -42,7 +42,7 @@ curl -X POST -H "Content-Type: application/json" -d "@body.json" http://<master_
 ```
 
 ## Monitoring API
-#### Retrieve list of all instances in a cluster
+### Retrieve a list of all instances in a cluster
 
 **Command**
 ```bash
@@ -62,7 +62,7 @@ curl -X GET -H "Content-Type: application/json" http://<master_host>:5050/api/v1
 }
 ```
 
-#### Get all instances with specific role and/or container
+### Get all instances by specific role or container name
 
 **Command**
 ```bash
@@ -82,7 +82,7 @@ curl -X GET -H "Content-Type: application/json" http://<master_host>:5050/api/v1
 }
 ```
 
-#### Get a detailed info about the instance
+### Get a detailed info about the instance
 
 **Command**
 ```bash
@@ -114,7 +114,7 @@ curl -X GET -H "Content-Type: application/json" http://<master_host>:5050/api/v1
 }
 ```
 
-#### Instance termination
+### Instance termination
 
 **Command**
 ```bash
@@ -135,7 +135,7 @@ curl -X DELETE -H "Content-Type: application/json" http://<master_host>:5050/api
 ```
 
 ## Container API
-#### Get list of available containers
+### Get a list of available containers
 
 **Command**
 ```bash
@@ -155,7 +155,7 @@ curl -X GET -H "Content-Type: application/json" http://<master_host>:5050/api/v1
 }
 ```
 
-#### Get a detailed info about container
+### Get a detailed info about container
 
 **Command**
 ```bash
@@ -191,7 +191,7 @@ curl -X GET -H "Content-Type: application/json" http://<master_host>:5050/api/v1
 }
 ```
 
-#### Create a new container
+### Create a new container
 
 **Command**
 ```bash
@@ -226,7 +226,7 @@ curl -X POST -H "Content-Type: application/json" -d "@body.json" http://<master_
 }
 ```
 
-#### Update the existing container
+### Update the existing container
 
 **Command**
 ```bash
@@ -248,7 +248,7 @@ See the container creation request body.
 }
 ```
 
-#### Delete container
+### Delete container
 
 **Command**
 ```bash
