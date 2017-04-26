@@ -44,7 +44,7 @@ object AkkeeperBuild extends Build {
   val CommonSettings = Seq(
     organization := "com.github.akkeeper-project",
     scalaVersion := "2.11.8",
-    version := "0.1-SNAPSHOT",
+    version := "0.1",
 
     scalacOptions ++= Seq(
       "-unchecked",
