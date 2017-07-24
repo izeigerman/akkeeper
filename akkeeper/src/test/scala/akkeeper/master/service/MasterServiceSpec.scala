@@ -111,7 +111,19 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
   }
 
   it should "initialize successfully and join the existing cluster" in {
-    new MasterServiceTestRunner() {
+    val instancesConfig = ConfigFactory
+      .parseString(
+        """
+          |akkeeper.instances = [
+          |  {
+          |    name = "container1"
+          |    quantity = 1
+          |  }
+          |]
+        """.stripMargin)
+      .withFallback(ConfigFactory.load("application-container-test.conf"))
+
+    new MasterServiceTestRunner(instancesConfig) {
       override def test(): Unit = {
         val selfAddr = Cluster(system).selfAddress
         val instance = createInstanceInfo("container").copy(address = Some(selfAddr))

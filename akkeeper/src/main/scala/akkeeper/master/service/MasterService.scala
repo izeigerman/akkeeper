@@ -19,10 +19,11 @@ import akka.actor._
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent.{InitialStateAsEvents, MemberUp}
 import akkeeper.api._
-import akkeeper.common.InstanceInfo
+import akkeeper.common.{InstanceId, InstanceInfo}
 import akkeeper.deploy.DeployClient
 import akkeeper.storage.InstanceStorage
 import akkeeper.utils.ConfigUtils._
+
 import scala.collection.mutable
 import scala.collection.immutable
 import MasterService._
@@ -41,6 +42,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
 
   private val seedInstances: mutable.Set[InstanceInfo] = mutable.Set.empty
   private var numOfRequiredInstances: Int = NumOfInstancesToJoin
+  private var initInstances: Seq[InstanceId] = Seq.empty
 
   override def preStart(): Unit = {
     context.watch(containerService)
@@ -60,9 +62,18 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
 
     context.become(initializedReceive)
     // Deploying instances specified in config.
-    val deployRequests = context.system.settings.config.getDeployRequests
-    log.debug(s"Deploying instances from config. " +
-      s"Number of deploy requests: ${deployRequests.size}")
+    var deployRequests = context.system.settings.config.getDeployRequests
+    val configuredInstanceCount  = deployRequests.map(_.quantity).sum
+    //remove current running instances from request
+    deployRequests = deployRequests.map{ container =>
+      val runningCount = initInstances.count(_.containerName == container.name)
+      container.copy(quantity = container.quantity - runningCount)
+    }.filter(_.quantity > 0)
+
+    log.debug(s"Deploying ${deployRequests.size} instances." +
+      s" Number of instances from config is $configuredInstanceCount," +
+      s" current running instance number is ${initInstances.size}")
+
     deployRequests.foreach(r => deployService ! r)
 
     unstashAll()
@@ -117,6 +128,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
 
   private def fetchInstancesListReceive: Receive = {
     case InstancesList(_, instances) =>
+      initInstances = instances
       if (instances.isEmpty) {
         log.info("No running instances were found. Creating a new Akka cluster")
         joinCluster(immutable.Seq(cluster.selfAddress))
