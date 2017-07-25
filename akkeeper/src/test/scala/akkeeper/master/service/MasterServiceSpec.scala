@@ -20,7 +20,7 @@ import akka.cluster.Cluster
 import akka.testkit.{ImplicitSender, TestKit}
 import akkeeper._
 import akkeeper.api._
-import akkeeper.common.InstanceId
+import akkeeper.common.{ContainerDefinition, InstanceId, InstanceUp}
 import akkeeper.deploy.{DeployClient, DeploySuccessful}
 import akkeeper.storage.InstanceStorage
 import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
@@ -138,6 +138,54 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
     }.run()
   }
 
+  it should "rejoin existing cluster without deploying running instances" in {
+    val instancesConfig = ConfigFactory
+      .parseString(
+        """
+          |akkeeper.instances = [
+          |  {
+          |    name = "container1"
+          |    quantity = 2
+          |  }
+          |]
+        """.stripMargin)
+      .withFallback(ConfigFactory.load("application-container-test.conf"))
+    new MasterServiceTestRunner(instancesConfig) {
+      override def test(): Unit = {
+        val selfAddr = Cluster(system).selfAddress
+        val instance = createInstanceInfo("container1")
+          .copy(address = Some(selfAddr), status = InstanceUp)
+        val storage = mock[InstanceStorage.Async]
+        (storage.start _).expects()
+        (storage.stop _).expects()
+        (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId))
+        (storage.getInstance _).expects(instance.instanceId).returns(Future successful instance)
+
+        val deployClient = mock[DeployClient.Async]
+
+        (deployClient.start _).expects()
+        (deployClient.deploy _)
+          .expects(new ArgThat[ContainerDefinition](container => container.name == "container1"),
+            new ArgThat[Seq[InstanceId]](ids => ids.size == 1))
+          .onCall { (_, instances) =>
+            Seq(Future.successful(DeploySuccessful(instances.head)))
+          }
+        (deployClient.stop _).expects()
+
+        val service = MasterService.createLocal(system, deployClient, storage)
+        awaitCond({
+          val getInstances = GetInstances()
+          service ! getInstances
+          val response = expectMsgClass(classOf[InstancesList])
+          response.requestId shouldBe getInstances.requestId
+          response.instanceIds.size ==  2
+        }, 10 seconds, 1 seconds, "failed to deploy new instance.")
+
+        gracefulActorStop(service)
+      }
+    }.run()
+  }
+
   it should "proxy deploy and container requests" in {
     val storage = mock[InstanceStorage.Async]
     (storage.start _).expects()
@@ -230,4 +278,5 @@ object MasterServiceSpec {
       system.shutdown()
     }
   }
+
 }
