@@ -60,7 +60,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
     }.run()
   }
 
-  it should "deploy initial instances" in {
+  ignore should "deploy initial instances" in {
     val storage = mock[InstanceStorage.Async]
     (storage.start _).expects()
     (storage.stop _).expects()
