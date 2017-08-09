@@ -72,15 +72,6 @@ akkeeper {
       }
     }
   ]
-  # The list of instances that will be launched initially.
-  instances = [
-    {
-      # The name of the container that should be launched.
-      name = "myContainer"
-      # The number of instances.
-      quantity = 1
-    }
-  ]
 }
 ```
 Make sure your `HADOOP_CONF_DIR` and `YARN_CONF_DIR` environment variables point to the directory where the Hadoop configuration files are stored. Also `ZK_QUORUM` variable should contain a comma-separated list of ZooKeeper servers.
@@ -88,7 +79,6 @@ Now just pass this file together with your JAR archive which contains actor `com
 ```
 java -cp /path/to/akkeeper.jar akkeeper.launcher.LauncherMain --akkeeperJar /path/to/akkeeper.jar --config ./config.conf /path/to/my.jar
 ```
-This is it, observe your running actor.
 
 ## How to deploy and monitor instances at runtime
 
