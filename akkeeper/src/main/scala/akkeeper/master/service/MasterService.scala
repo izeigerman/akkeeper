@@ -21,11 +21,10 @@ import akka.cluster.ClusterEvent.{InitialStateAsEvents, MemberUp}
 import akkeeper.api._
 import akkeeper.common.InstanceInfo
 import akkeeper.deploy.DeployClient
+import akkeeper.master.service.MasterService._
 import akkeeper.storage.InstanceStorage
-import akkeeper.utils.ConfigUtils._
-import scala.collection.mutable
-import scala.collection.immutable
-import MasterService._
+
+import scala.collection.{immutable, mutable}
 
 
 private[akkeeper] class MasterService(deployClient: DeployClient.Async,
@@ -59,12 +58,6 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
     log.info("Master service successfully initialized")
 
     context.become(initializedReceive)
-    // Deploying instances specified in config.
-    val deployRequests = context.system.settings.config.getDeployRequests
-    log.debug(s"Deploying instances from config. " +
-      s"Number of deploy requests: ${deployRequests.size}")
-    deployRequests.foreach(r => deployService ! r)
-
     unstashAll()
   }
 
@@ -93,13 +86,6 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
     case r: DeployContainer => deployService.forward(r)
     case r: InstanceRequest => monitoringService.forward(r)
     case r: ContainerRequest => containerService.forward(r)
-  }
-
-  private def initialDeployReceive: Receive = {
-    case SubmittedInstances(_, container, instances) =>
-      log.debug(s"Submitted ${instances.size} instances of container '$container'")
-    case other: WithRequestId =>
-      log.error(s"Initial deploy failed: $other")
   }
 
   private def clusterEventReceive: Receive = {
@@ -143,7 +129,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
   }
 
   private def initializedReceive: Receive = {
-    apiReceive orElse serviceTerminatedReceive orElse initialDeployReceive
+    apiReceive orElse serviceTerminatedReceive
   }
 
   private def joinClusterReceive: Receive = {
