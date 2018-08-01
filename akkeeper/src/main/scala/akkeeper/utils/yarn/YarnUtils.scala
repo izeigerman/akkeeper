@@ -33,7 +33,8 @@ import scala.collection.JavaConverters._
 private[akkeeper] object YarnUtils {
 
   private def buildClassPath(extraClassPath: Seq[String]): String = {
-    (LocalResourceNames.AkkeeperJarName +: extraClassPath).mkString(":")
+    (LocalResourceNames.AkkeeperJarName +:
+      Environment.CLASSPATH.$$() +: extraClassPath).mkString(":")
   }
 
   def buildCmd(mainClass: String,
