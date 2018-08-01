@@ -45,7 +45,7 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
       instanceId = instanceId,
       status = InstanceUp,
       containerName = instanceId.containerName,
-      roles = Set("akkeeperMaster"),
+      roles = Set("akkeeperMaster", "dc-default"),
       address = Some(addr),
       actors = Set("/user/akkeeperInstance/testActor")
     )
@@ -102,7 +102,7 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
 
     // No notification should arrive from the Monitoring service mock.
     val maxWaitForNoMsg = numberOfAttempts.seconds
-    expectNoMsg(maxWaitForNoMsg)
+    expectNoMessage(maxWaitForNoMsg)
 
     gracefulActorStop(masterServiceMock)
     gracefulActorStop(service)

@@ -33,7 +33,7 @@ class MonitoringControllerSpec(testSystem: ActorSystem) extends TestKit(testSyst
   def this() = this(ActorSystem("MonitoringControllerSpec"))
 
   override protected def afterAll(): Unit = {
-    system.shutdown()
+    system.terminate()
     super.afterAll()
   }
 
@@ -59,7 +59,7 @@ class MonitoringControllerSpec(testSystem: ActorSystem) extends TestKit(testSyst
     withHttpServer(controller.route) { restPort =>
       val response = getRaw("/instances/invalid", restPort)
 
-      expectNoMsg(1 second)
+      expectNoMessage(1 second)
 
       val (code, _) = await(response)
       code shouldBe StatusCodes.BadRequest.intValue

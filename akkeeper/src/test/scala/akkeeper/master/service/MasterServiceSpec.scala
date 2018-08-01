@@ -27,8 +27,9 @@ import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 import org.scalamock.matchers.ArgThat
 import org.scalamock.scalatest.MockFactory
 import org.scalatest._
+
 import scala.annotation.tailrec
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import MasterServiceSpec._
 import MonitoringServiceSpec._
@@ -196,8 +197,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
 
         MasterService.createLocal(system, deployClient, storage)
 
-        system.awaitTermination(3 seconds)
-        system.isTerminated shouldBe true
+        Await.result(system.whenTerminated, 3 seconds)
       }
     }.run()
   }
@@ -227,7 +227,7 @@ object MasterServiceSpec {
 
     def run(): Unit = {
       test()
-      system.shutdown()
+      system.terminate()
     }
   }
 }

@@ -33,7 +33,7 @@ class DeployControllerSpec(testSystem: ActorSystem) extends TestKit(testSystem)
   def this() = this(ActorSystem("DeployControllerSpec"))
 
   override protected def afterAll(): Unit = {
-    system.shutdown()
+    system.terminate()
     super.afterAll()
   }
 

@@ -30,7 +30,7 @@ class ContainerServiceSpec(system: ActorSystem) extends TestKit(system)
     ConfigFactory.load("application-container-test.conf")))
 
   override def afterAll(): Unit = {
-    system.shutdown()
+    system.terminate()
     super.afterAll()
   }
 
@@ -200,7 +200,7 @@ class ContainerServiceSpec(system: ActorSystem) extends TestKit(system)
 
     service ! StopWithError(new AkkeeperException("fail"))
     service ! GetContainer("container1")
-    expectNoMsg()
+    expectNoMessage()
 
     gracefulActorStop(service)
   }
