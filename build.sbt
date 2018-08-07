@@ -89,6 +89,16 @@ val AkkeeperSettings = CommonSettings ++ Seq(
     case x =>
       val oldStrategy = (assemblyMergeStrategy in assembly).value
       oldStrategy(x)
+  },
+
+  mappings in Universal := {
+    val fatJar = (assembly in Compile).value
+    Seq(
+      new File(baseDirectory.value.getAbsolutePath, "../README.md") -> "README.md",
+      new File(baseDirectory.value.getAbsolutePath, "../LICENSE") -> "LICENSE",
+      new File(baseDirectory.value.getAbsolutePath, "../bin/akkeeper-submit") -> "bin/akkeeper-submit",
+      fatJar -> ("lib/" + fatJar.getName)
+    )
   }
 )
 
@@ -101,12 +111,13 @@ val NoPublishSettings = CommonSettings ++ Seq(
 lazy val root = Project(id = "root", base = file("."))
   .settings(NoPublishSettings: _*)
   .aggregate(akkeeper, akkeeperExamples)
-  .disablePlugins(sbtassembly.AssemblyPlugin)
+  .disablePlugins(sbtassembly.AssemblyPlugin, JavaAppPackaging)
 
 lazy val akkeeper = Project(id = "akkeeper", base = file("akkeeper"))
   .settings(AkkeeperSettings: _*)
+  .enablePlugins(JavaAppPackaging)
 
 lazy val akkeeperExamples = Project(id = "akkeeper-examples", base = file("akkeeper-examples"))
   .settings(NoPublishSettings: _*)
   .dependsOn(akkeeper)
-  .disablePlugins(sbtassembly.AssemblyPlugin)
+  .disablePlugins(sbtassembly.AssemblyPlugin, JavaAppPackaging)
