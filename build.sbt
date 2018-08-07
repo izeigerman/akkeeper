@@ -16,7 +16,7 @@
 
 val AkkaVersion = "2.5.14"
 val AkkaHttpVersion = "10.1.3"
-val CuratorVersion = "2.4.0"
+val CuratorVersion = "2.7.1"
 val SprayJsonVersion = "1.3.4"
 val HadoopVersion = "2.8.4"
 val ScalaTestVersion = "2.2.6"
@@ -35,9 +35,19 @@ val HadoopDependencies = Seq(
 ).map(_.exclude("log4j", "log4j"))
 
 val CommonSettings = Seq(
-  organization := "com.github.akkeeper-project",
+  organization := "com.github.izeigerman",
   scalaVersion := "2.11.8",
-  version := "0.1",
+  version := "0.2.0-SNAPSHOT",
+
+  organizationHomepage := Some(url("https://github.com/izeigerman")),
+  homepage := Some(url("https://github.com/izeigerman/akkeeper")),
+  licenses in ThisBuild += ("MIT License", url("http://opensource.org/licenses/MIT")),
+  developers := Developer("izeigerman", "Iaroslav Zeigerman", "",
+    url("https://github.com/izeigerman")) :: Nil,
+  scmInfo := Some(ScmInfo(
+    browseUrl = url("https://github.com/izeigerman/akkeeper.git"),
+    connection = "scm:git:git@github.com:izeigerman/akkeeper.git"
+  )),
 
   scalacOptions ++= Seq(
     "-unchecked",
