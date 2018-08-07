@@ -27,6 +27,8 @@ export YARN_CONF_DIR="${YARN_CONF_DIR:-$HADOOP_HOME/etc/hadoop}"
 YARN_BIN="yarn"
 if [[ "$HADOOP_HOME" != "" ]]; then
     YARN_BIN="$HADOOP_HOME/bin/yarn"
+elif [[ "$HADOOP_PREFIX" != "" ]]; then
+    YARN_BIN="$HADOOP_PREFIX/bin/yarn"
 fi
 
 AKKEEPER_HOME="${AKKEEPER_HOME:-$(dirname $(dirname $(realpath $0)))}"

@@ -96,7 +96,7 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
 
     val masterServiceMock = createMasterServiceMock(system, self)
     val service = ContainerInstanceService.createLocal(system, storage,
-      instanceId, selfAddr, retryInterval = 1 second)
+      instanceId, selfAddr, registrationRetryInterval = 1 second)
 
     service ! LaunchActors(Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName)))
 
@@ -106,6 +106,24 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
 
     gracefulActorStop(masterServiceMock)
     gracefulActorStop(service)
+  }
+
+  it should "terminate if the join timeout occurred" in {
+    val newSystem = ActorSystem("ContainerInstanceServiceSpecTemp")
+    val instanceId = InstanceId("container")
+
+    val storage = mock[InstanceStorage.Async]
+    (storage.start _).expects()
+    (storage.stop _).expects()
+
+    val seedPort = 12345
+    val service = ContainerInstanceService.createLocal(newSystem, storage, instanceId,
+      Address("akka.tcp", "ContainerInstanceServiceSpecTemp", "127.0.0.1", seedPort),
+      joinClusterTimeout = 1 second)
+
+    service ! LaunchActors(Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName)))
+
+    await(newSystem.whenTerminated)
   }
 }
 

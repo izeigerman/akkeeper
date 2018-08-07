@@ -15,6 +15,7 @@
  */
 package akkeeper.master
 
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, ActorSystem}
@@ -23,6 +24,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
+import akkeeper.common.{InstanceId, InstanceInfo, InstanceUp}
 import akkeeper.deploy.{DeployClient, DeployClientFactory}
 import akkeeper.deploy.yarn.YarnApplicationMasterConfig
 import akkeeper.master.route._
@@ -86,6 +88,17 @@ private[master] class YarnMasterRunner extends MasterRunner {
     )).route
   }
 
+  private def registerMasterInstance[F[_]](storage: InstanceStorage[F],
+                                           actorSystem: ActorSystem,
+                                           restPort: Int): F[InstanceId] = {
+    val cluster = Cluster(actorSystem)
+    val instanceId = InstanceId(MasterService.MasterServiceName, UUID.randomUUID())
+    val extra = Map("apiPort" -> restPort.toString)
+    val info = InstanceInfo(instanceId, InstanceUp, MasterService.MasterServiceName,
+      cluster.selfRoles, Some(cluster.selfAddress), Set.empty, extra)
+    storage.registerInstance(info)
+  }
+
   def run(masterArgs: MasterArguments): Unit = {
     val config = masterArgs.config
       .map(c => ConfigFactory.parseFile(c).withFallback(ConfigFactory.load()))
@@ -114,6 +127,8 @@ private[master] class YarnMasterRunner extends MasterRunner {
       case ex: Exception =>
         logger.error(s"Failed to bind to port $restPort", ex)
     }
+
+    registerMasterInstance(instanceStorage, actorSystem, restPort)
 
     Await.result(actorSystem.whenTerminated, Duration.Inf)
     materializer.shutdown()

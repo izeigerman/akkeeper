@@ -50,10 +50,12 @@ object InstanceStatus {
   * @param roles the list of the instance's Akka roles.
   * @param address the address of the instance.
   * @param actors the list of user actors that are available on this instance.
+  * @param extra the key value properties with additional instance specific data.
   */
 case class InstanceInfo private[akkeeper] (instanceId: InstanceId, status: InstanceStatus,
                                            containerName: String, roles: Set[String],
-                                           address: Option[Address], actors: Set[String])
+                                           address: Option[Address], actors: Set[String],
+                                           extra: Map[String, String] = Map.empty)
 
 object InstanceInfo {
   private def createWithStatus(instanceId: InstanceId, status: InstanceStatus): InstanceInfo = {
@@ -113,7 +115,7 @@ trait InstanceStatusJsonProtocol extends DefaultJsonProtocol with InstanceIdJson
     }
   }
 
-  implicit val instanceInfoFormat = jsonFormat6(InstanceInfo.apply)
+  implicit val instanceInfoFormat = jsonFormat7(InstanceInfo.apply)
 }
 
 object InstanceStatusJsonProtocol extends InstanceStatusJsonProtocol
