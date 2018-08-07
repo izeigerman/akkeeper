@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Iaroslav Zeigerman
+ * Copyright 2017-2018 Iaroslav Zeigerman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,8 @@ import akkeeper.utils.yarn._
 import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.duration.Duration
 
 private[master] trait MasterRunner {
   def run(masterArgs: MasterArguments): Unit
@@ -114,7 +115,8 @@ private[master] class YarnMasterRunner extends MasterRunner {
         logger.error(s"Failed to bind to port $restPort", ex)
     }
 
-    actorSystem.awaitTermination()
+    Await.result(actorSystem.whenTerminated, Duration.Inf)
+    materializer.shutdown()
     ticketRenewer.foreach(_.stop())
   }
 }

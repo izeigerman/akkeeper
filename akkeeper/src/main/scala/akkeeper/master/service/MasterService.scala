@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Iaroslav Zeigerman
+ * Copyright 2017-2018 Iaroslav Zeigerman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,7 +78,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
       }
       if (context.children.isEmpty) {
         log.error("Can't proceed further. Shutting down the master")
-        context.system.shutdown()
+        context.system.terminate()
       }
   }
 

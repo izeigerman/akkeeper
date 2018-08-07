@@ -28,7 +28,7 @@ class ControllerCompositeSpec(testSystem: ActorSystem) extends TestKit(testSyste
   def this() = this(ActorSystem("ControllerCompositeSpec"))
 
   override protected def afterAll(): Unit = {
-    system.shutdown()
+    system.terminate()
     super.afterAll()
   }
 

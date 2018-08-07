@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Iaroslav Zeigerman
+ * Copyright 2017-2018 Iaroslav Zeigerman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,11 +26,15 @@ import akkeeper.utils.ConfigUtils._
 import akkeeper.utils.yarn.LocalResourceNames
 import com.typesafe.config.{Config, ConfigFactory}
 import scopt.OptionParser
+
 import scala.io.Source
 import scala.util.control.NonFatal
 import spray.json._
 import ContainerDefinitionJsonProtocol._
 import ContainerInstanceService._
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 object ContainerInstanceMain extends App {
 
@@ -85,7 +89,7 @@ object ContainerInstanceMain extends App {
       instanceStorage, instanceArgs.instanceId, instanceArgs.masterAddress)
     containerInstanceService ! LaunchActors(actors)
 
-    actorSystem.awaitTermination()
+    Await.result(actorSystem.whenTerminated, Duration.Inf)
     sys.exit(0)
   }
 

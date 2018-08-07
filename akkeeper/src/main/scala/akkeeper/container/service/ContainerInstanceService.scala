@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Iaroslav Zeigerman
+ * Copyright 2017-2018 Iaroslav Zeigerman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
   }
 
   private def initializedReceive: Receive = {
-    case id: InstanceId =>
+    case _: InstanceId =>
       // The record was successfully saved to a storage.
       log.debug("Successfully registered this instance")
       notifyMonitoringService
@@ -107,7 +107,7 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
     case StopInstance =>
       log.info("Termination command received. Stopping this instance")
       cluster.leave(cluster.selfAddress)
-      context.system.shutdown()
+      context.system.terminate()
   }
 
   private def joiningTheClusterReceive: Receive = {

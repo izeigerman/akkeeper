@@ -20,7 +20,8 @@ import org.scalatest.{FlatSpec, Matchers}
 class YarnUtilsSpec extends FlatSpec with Matchers {
 
   "YARN Utils" should "build a correct command" in {
-    val expectedCmd = "{{JAVA_HOME}}/bin/java -Xmx1g -cp akkeeper.jar:test1.jar:test2.jar " +
+    val expectedCmd = "exec {{JAVA_HOME}}/bin/java -Xmx1g " +
+      "-cp akkeeper.jar:`{{HADOOP_YARN_HOME}}/bin/yarn classpath`:test1.jar:test2.jar " +
       "com.test.Main arg1 arg2 arg3 1> <LOG_DIR>/stdout 2> <LOG_DIR>/stderr"
     val mainClass = "com.test.Main"
     val classPath = Seq("test1.jar", "test2.jar")
@@ -31,7 +32,8 @@ class YarnUtilsSpec extends FlatSpec with Matchers {
   }
 
   it should "handle empty arguments correctly" in {
-    val expectedCmd = "{{JAVA_HOME}}/bin/java -cp akkeeper.jar " +
+    val expectedCmd = "exec {{JAVA_HOME}}/bin/java " +
+      "-cp akkeeper.jar:`{{HADOOP_YARN_HOME}}/bin/yarn classpath` " +
       " 1> <LOG_DIR>/stdout 2> <LOG_DIR>/stderr"
     val cmd = YarnUtils.buildCmd("", Seq.empty, Seq.empty, Seq.empty).mkString(" ")
     cmd shouldBe expectedCmd

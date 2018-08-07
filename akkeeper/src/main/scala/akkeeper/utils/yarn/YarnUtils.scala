@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Iaroslav Zeigerman
+ * Copyright 2017-2018 Iaroslav Zeigerman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,9 @@ import scala.collection.JavaConverters._
 private[akkeeper] object YarnUtils {
 
   private def buildClassPath(extraClassPath: Seq[String]): String = {
-    (LocalResourceNames.AkkeeperJarName +: extraClassPath).mkString(":")
+    val yarnBin = Environment.HADOOP_YARN_HOME.$$() + "/bin/yarn"
+    val yarnClasspath = s"`$yarnBin classpath`"
+    (LocalResourceNames.AkkeeperJarName +: yarnClasspath +: extraClassPath).mkString(":")
   }
 
   def buildCmd(mainClass: String,
@@ -44,7 +46,7 @@ private[akkeeper] object YarnUtils {
     val allJvmArgs = jvmArgs ++ List(
       "-cp", buildClassPath(extraClassPath)
     )
-    javaBin ++ allJvmArgs ++ List(mainClass) ++ appArgs ++ List(
+    List("exec") ++ javaBin ++ allJvmArgs ++ List(mainClass) ++ appArgs ++ List(
       "1>", ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout",
       "2>", ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr")
   }

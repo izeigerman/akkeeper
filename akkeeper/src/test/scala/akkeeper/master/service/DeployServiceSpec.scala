@@ -34,7 +34,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
   def this() = this(ActorSystem("DeployServiceSpec"))
 
   override def afterAll(): Unit = {
-    system.shutdown()
+    system.terminate()
     super.afterAll()
   }
 
@@ -189,7 +189,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
     service ! StopWithError(exception)
 
     service ! DeployContainer("container", 2)
-    expectNoMsg()
+    expectNoMessage()
 
     gracefulActorStop(service)
   }

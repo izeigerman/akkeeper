@@ -32,7 +32,7 @@ class ContainerControllerSpec(testSystem: ActorSystem) extends TestKit(testSyste
   def this() = this(ActorSystem("ContainerControllerSpec"))
 
   override protected def afterAll(): Unit = {
-    system.shutdown()
+    system.terminate()
     super.afterAll()
   }
 

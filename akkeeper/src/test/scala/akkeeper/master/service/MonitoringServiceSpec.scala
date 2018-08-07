@@ -36,7 +36,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   def this() = this(ActorSystem("MonitoringServiceSpec"))
 
   override def afterAll(): Unit = {
-    system.shutdown()
+    system.terminate()
     super.afterAll()
   }
 
@@ -61,7 +61,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     val service = MonitoringService.createLocal(system, storage)
 
     service ! GetInstances()
-    expectNoMsg()
+    expectNoMessage()
 
     gracefulActorStop(service)
   }
@@ -477,7 +477,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     service ! StopWithError(new AkkeeperException(""))
 
     service ! GetInstances()
-    expectNoMsg()
+    expectNoMessage()
 
     gracefulActorStop(service)
   }
