@@ -125,6 +125,6 @@ object AsyncZookeeperClient {
   }
 
   private def normalizePath(path: String): String = {
-    if (path.startsWith("/")) path else s"/$path"
+    if (path.startsWith("/")) path.trim else s"/$path".trim
   }
 }
