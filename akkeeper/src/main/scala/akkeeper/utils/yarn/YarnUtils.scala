@@ -33,8 +33,9 @@ import scala.collection.JavaConverters._
 private[akkeeper] object YarnUtils {
 
   private def buildClassPath(extraClassPath: Seq[String]): String = {
-    (LocalResourceNames.AkkeeperJarName +:
-      Environment.CLASSPATH.$$() +: extraClassPath).mkString(":")
+    val yarnBin = Environment.HADOOP_YARN_HOME.$$() + "/bin/yarn"
+    val yarnClasspath = s"`$yarnBin classpath`"
+    (LocalResourceNames.AkkeeperJarName +: yarnClasspath +: extraClassPath).mkString(":")
   }
 
   def buildCmd(mainClass: String,
