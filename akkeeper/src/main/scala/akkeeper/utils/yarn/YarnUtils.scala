@@ -46,7 +46,7 @@ private[akkeeper] object YarnUtils {
     val allJvmArgs = jvmArgs ++ List(
       "-cp", buildClassPath(extraClassPath)
     )
-    javaBin ++ allJvmArgs ++ List(mainClass) ++ appArgs ++ List(
+    List("exec") ++ javaBin ++ allJvmArgs ++ List(mainClass) ++ appArgs ++ List(
       "1>", ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout",
       "2>", ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr")
   }

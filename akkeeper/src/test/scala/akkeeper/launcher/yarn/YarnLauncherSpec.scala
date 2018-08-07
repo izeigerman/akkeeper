@@ -144,7 +144,7 @@ class YarnLauncherSpec extends FlatSpec with Matchers with MockFactory
     val containerSpec = appContext.getAMContainerSpec
     val cmd = containerSpec.getCommands.asScala.mkString(" ")
     val expectedCmd =
-      "{{JAVA_HOME}}/bin/java -Xmx1g -test-prop " +
+      "exec {{JAVA_HOME}}/bin/java -Xmx1g -test-prop " +
       "-cp akkeeper.jar:`{{HADOOP_YARN_HOME}}/bin/yarn classpath` akkeeper.master.MasterMain " +
       s"--appId ${appId.toString} --config user_config.conf --principal " +
       "username 1> <LOG_DIR>/stdout 2> <LOG_DIR>/stderr"

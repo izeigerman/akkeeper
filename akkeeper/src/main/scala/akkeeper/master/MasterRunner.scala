@@ -116,6 +116,7 @@ private[master] class YarnMasterRunner extends MasterRunner {
     }
 
     Await.result(actorSystem.whenTerminated, Duration.Inf)
+    materializer.shutdown()
     ticketRenewer.foreach(_.stop())
   }
 }
