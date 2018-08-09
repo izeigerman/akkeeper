@@ -99,12 +99,24 @@ val AkkeeperSettings = CommonSettings ++ Seq(
       new File(baseDirectory.value.getAbsolutePath, "../bin/akkeeper-submit") -> "bin/akkeeper-submit",
       fatJar -> ("lib/" + fatJar.getName)
     )
-  }
+  },
+
+  publishMavenStyle := true,
+  publishArtifact in Test := false,
+  pomIncludeRepository := (_ => false),
+  publishTo := Some(
+    if (version.value.trim.endsWith("SNAPSHOT")) {
+      "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+    } else {
+      "releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+    }
+  )
 )
 
 val NoPublishSettings = CommonSettings ++ Seq(
   publishArtifact := false,
   publish := {},
+  skip in publish := true,
   coverageEnabled := false
 )
 
