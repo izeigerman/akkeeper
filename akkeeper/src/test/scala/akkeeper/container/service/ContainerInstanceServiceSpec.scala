@@ -16,9 +16,9 @@
 package akkeeper.container.service
 
 import akka.actor._
-import akka.cluster.Cluster
+import akka.cluster.{Cluster, UniqueAddress}
 import akka.testkit.{ImplicitSender, TestKit}
-import akkeeper.{AkkeeperException, ActorTestUtils}
+import akkeeper.{ActorTestUtils, AkkeeperException}
 import akkeeper.common._
 import akkeeper.master.service._
 import akkeeper.storage.InstanceStorage
@@ -26,6 +26,7 @@ import akkeeper.utils.ConfigUtils._
 import com.typesafe.config.ConfigFactory
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import ContainerInstanceService._
@@ -40,7 +41,7 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
     ConfigFactory.load().withMasterPort.withMasterRole))
 
   private def createExpectedInstanceInfo(instanceId: InstanceId,
-                                         addr: Address): InstanceInfo = {
+                                         addr: UniqueAddress): InstanceInfo = {
     InstanceInfo(
       instanceId = instanceId,
       status = InstanceUp,
@@ -52,7 +53,7 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   "A Container Instance service" should "register itself successfully" in {
-    val selfAddr = Cluster(system).selfAddress
+    val selfAddr = Cluster(system).selfUniqueAddress
     val instanceId = InstanceId("container")
     val expectedInstanceInfo = createExpectedInstanceInfo(instanceId, selfAddr)
 
@@ -64,7 +65,8 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
       .returns(Future successful instanceId)
 
     val masterServiceMock = createMasterServiceMock(system, self)
-    val service = ContainerInstanceService.createLocal(system, storage, instanceId, selfAddr)
+    val service = ContainerInstanceService
+      .createLocal(system, storage, instanceId, selfAddr.address)
 
     service ! LaunchActors(Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName)))
 
@@ -81,7 +83,7 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "retry if the registration failed" in {
-    val selfAddr = Cluster(system).selfAddress
+    val selfAddr = Cluster(system).selfUniqueAddress
     val instanceId = InstanceId("container")
     val expectedInstanceInfo = createExpectedInstanceInfo(instanceId, selfAddr)
 
@@ -96,7 +98,7 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
 
     val masterServiceMock = createMasterServiceMock(system, self)
     val service = ContainerInstanceService.createLocal(system, storage,
-      instanceId, selfAddr, retryInterval = 1 second)
+      instanceId, selfAddr.address, registrationRetryInterval = 1 second)
 
     service ! LaunchActors(Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName)))
 
@@ -106,6 +108,24 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
 
     gracefulActorStop(masterServiceMock)
     gracefulActorStop(service)
+  }
+
+  it should "terminate if the join timeout occurred" in {
+    val newSystem = ActorSystem("ContainerInstanceServiceSpecTemp")
+    val instanceId = InstanceId("container")
+
+    val storage = mock[InstanceStorage.Async]
+    (storage.start _).expects()
+    (storage.stop _).expects()
+
+    val seedPort = 12345
+    val service = ContainerInstanceService.createLocal(newSystem, storage, instanceId,
+      Address("akka.tcp", "ContainerInstanceServiceSpecTemp", "127.0.0.1", seedPort),
+      joinClusterTimeout = 1 second)
+
+    service ! LaunchActors(Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName)))
+
+    await(newSystem.whenTerminated)
   }
 }
 

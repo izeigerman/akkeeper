@@ -17,10 +17,13 @@ package akkeeper
 
 import akka.actor.ActorRef
 import akka.pattern.gracefulStop
+import scala.concurrent.duration._
 
 trait ActorTestUtils extends AwaitMixin {
 
+  protected val gracefulStopTimeout: FiniteDuration = 6 seconds
+
   protected def gracefulActorStop(actor: ActorRef): Unit = {
-    await(gracefulStop(actor, awaitTimeout))
+    await(gracefulStop(actor, gracefulStopTimeout))
   }
 }

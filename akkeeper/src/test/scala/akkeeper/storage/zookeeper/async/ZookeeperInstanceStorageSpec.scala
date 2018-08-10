@@ -16,6 +16,7 @@
 package akkeeper.storage.zookeeper.async
 
 import akka.actor.Address
+import akka.cluster.UniqueAddress
 import akkeeper.AwaitMixin
 import akkeeper.common._
 import akkeeper.storage._
@@ -43,7 +44,7 @@ class ZookeeperInstanceStorageSpec extends FlatSpec
       status = InstanceUp,
       containerName = container,
       roles = Set("testRole"),
-      address = Some(Address("akka.tcp", "AkkaSystem", "localhost", port)),
+      address = Some(UniqueAddress(Address("akka.tcp", "AkkaSystem", "localhost", port), 1L)),
       actors = Set("/user/actor1")
     )
   }

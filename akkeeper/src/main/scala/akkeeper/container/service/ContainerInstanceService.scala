@@ -30,7 +30,8 @@ import ContainerInstanceService._
 class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
                                instanceId: InstanceId,
                                masterAddress: Address,
-                               retryInterval: FiniteDuration)
+                               registrationRetryInterval: FiniteDuration,
+                               joinClusterTimeout: FiniteDuration)
   extends Actor with ActorLogging {
 
   private implicit val dispatcher = context.dispatcher
@@ -77,7 +78,7 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
         status = InstanceUp,
         containerName = instanceId.containerName,
         roles = cluster.selfRoles,
-        address = Some(cluster.selfAddress),
+        address = Some(cluster.selfUniqueAddress),
         actors = actors.toSet
       )
       thisInstance = Some(info)
@@ -98,9 +99,11 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
       notifyMonitoringService
     case OperationFailed(_, e) =>
       // Failed to save the record to a storage.
-      log.error(e, s"Failed to store this instance information. Retrying in $retryInterval")
+      log.error(e, "Failed to store this instance information. " +
+        s"Retrying in $registrationRetryInterval")
       // Scheduling retry.
-      context.system.scheduler.scheduleOnce(retryInterval, self, RetryRegistration)
+      context.system.scheduler.scheduleOnce(registrationRetryInterval,
+        self, RetryRegistration)
     case RetryRegistration =>
       log.info("Retrying instance registration process")
       registerThisInstance
@@ -108,6 +111,8 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
       log.info("Termination command received. Stopping this instance")
       cluster.leave(cluster.selfAddress)
       context.system.terminate()
+    case JoinClusterTimeout =>
+      // Safely ignore the timeout command.
   }
 
   private def joiningTheClusterReceive: Receive = {
@@ -118,6 +123,10 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
         context.become(initializedReceive)
         registerThisInstance
       }
+    case JoinClusterTimeout =>
+      log.error(s"Couldn't join the cluster during ${joinClusterTimeout.toSeconds} seconds. " +
+        "Terminating this instance...")
+      context.system.terminate()
   }
 
   private def waitingForActorsReceive: Receive = {
@@ -127,6 +136,8 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
       log.debug(s"Joining the cluster (master: $masterAddress)")
       cluster.join(masterAddress)
       cluster.subscribe(self, initialStateMode = InitialStateAsEvents, classOf[MemberUp])
+      // Scheduling a timeout command.
+      context.system.scheduler.scheduleOnce(joinClusterTimeout, self, JoinClusterTimeout)
   }
 
   override def receive: Receive = waitingForActorsReceive
@@ -135,7 +146,9 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
 object ContainerInstanceService {
   private[akkeeper] case class LaunchActors(actors: Seq[ActorLaunchContext])
   private case object RetryRegistration
-  private val DefaultRetryInterval = 30 seconds
+  private case object JoinClusterTimeout
+  private val DefaultRegistrationRetryInterval = 30 seconds
+  private val DefaultJoinClusterTimeout = 120 seconds
 
   val ActorName = "akkeeperInstance"
 
@@ -143,9 +156,10 @@ object ContainerInstanceService {
                   instanceStorage: InstanceStorage.Async,
                   instanceId: InstanceId,
                   masterAddress: Address,
-                  retryInterval: FiniteDuration = DefaultRetryInterval): ActorRef = {
+                  registrationRetryInterval: FiniteDuration = DefaultRegistrationRetryInterval,
+                  joinClusterTimeout: FiniteDuration = DefaultJoinClusterTimeout): ActorRef = {
     val props = Props(classOf[ContainerInstanceService], instanceStorage,
-      instanceId, masterAddress, retryInterval)
+      instanceId, masterAddress, registrationRetryInterval, joinClusterTimeout)
     factory.actorOf(props, ActorName)
   }
 }

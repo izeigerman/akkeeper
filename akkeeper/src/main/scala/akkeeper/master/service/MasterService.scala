@@ -119,7 +119,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
       log.debug(s"Received instance info. ${numOfRequiredInstances - seedInstances.size} " +
         "more needed to proceed")
       if (seedInstances.size >= numOfRequiredInstances) {
-        val seedAddrs = immutable.Seq(seedInstances.map(_.address.get).toSeq: _*)
+        val seedAddrs = immutable.Seq(seedInstances.map(_.address.get.address).toSeq: _*)
         joinCluster(seedAddrs)
       }
 

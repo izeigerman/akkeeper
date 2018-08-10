@@ -114,7 +114,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
   it should "initialize successfully and join the existing cluster" in {
     new MasterServiceTestRunner() {
       override def test(): Unit = {
-        val selfAddr = Cluster(system).selfAddress
+        val selfAddr = Cluster(system).selfUniqueAddress
         val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
         val storage = mock[InstanceStorage.Async]
         (storage.start _).expects()
@@ -180,7 +180,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
   it should "shutdown the Actor system if the init process fails" in {
     new MasterServiceTestRunner() {
       override def test(): Unit = {
-        val selfAddr = Cluster(system).selfAddress
+        val selfAddr = Cluster(system).selfUniqueAddress
         val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
         val storage = mock[InstanceStorage.Async]
         (storage.start _).expects()

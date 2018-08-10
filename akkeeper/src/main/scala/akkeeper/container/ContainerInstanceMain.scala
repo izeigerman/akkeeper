@@ -39,7 +39,7 @@ import scala.concurrent.duration.Duration
 object ContainerInstanceMain extends App {
 
   val optParser = new OptionParser[ContainerInstanceArguments]("akkeeperInstance") {
-    head("akkeeperInstance", "0.1")
+    head("akkeeperInstance", "0.2.0")
 
     opt[String](AppIdArg).required().action((v, c) => {
       c.copy(appId = v)
