@@ -40,10 +40,10 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     super.afterAll()
   }
 
-  private def createTestMember(addr: Address): Member = {
+  private def createTestMember(addr: UniqueAddress): Member = {
     val ctr = classOf[Member].getDeclaredConstructor(classOf[UniqueAddress], classOf[Int],
       classOf[MemberStatus], classOf[Set[String]])
-    ctr.newInstance(UniqueAddress(addr, 1), new Integer(1), MemberStatus.Up, Set.empty[String])
+    ctr.newInstance(addr, new Integer(1), MemberStatus.Up, Set.empty[String])
   }
 
   "A Monitoring Service" should "not respond if it's not initialized" in {
@@ -327,7 +327,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "terminate instance successfully (instance from storage)" in {
-    val selfAddr = Cluster(system).selfAddress
+    val selfAddr = Cluster(system).selfUniqueAddress
     val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
     val storage = mock[InstanceStorage.Async]
     (storage.start _).expects()
@@ -349,7 +349,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "fail to terminate the instance (instance from local cache)" in {
-    val selfAddr = Cluster(system).selfAddress
+    val selfAddr = Cluster(system).selfUniqueAddress
     val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
     val storage = mock[InstanceStorage.Async]
     (storage.start _).expects()
@@ -375,7 +375,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "fail to terminate the instance" in {
-    val selfAddr = Cluster(system).selfAddress
+    val selfAddr = Cluster(system).selfUniqueAddress
     val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
     val storage = mock[InstanceStorage.Async]
     val exception = new AkkeeperException("fail")
@@ -432,9 +432,10 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
 
     val port = 12345
     val addr = Address("akka.tcp", system.name, "localhost", port)
-    val member = createTestMember(addr)
+    val uniqueAddr = UniqueAddress(addr, 1L)
+    val member = createTestMember(uniqueAddr)
 
-    val instance = createInstanceInfo("container").copy(address = Some(addr))
+    val instance = createInstanceInfo("container").copy(address = Some(uniqueAddr))
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _)

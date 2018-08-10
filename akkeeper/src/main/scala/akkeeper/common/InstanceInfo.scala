@@ -16,6 +16,7 @@
 package akkeeper.common
 
 import akka.actor.Address
+import akka.cluster.UniqueAddress
 import akkeeper.AkkeeperException
 import spray.json._
 
@@ -54,7 +55,7 @@ object InstanceStatus {
   */
 case class InstanceInfo private[akkeeper] (instanceId: InstanceId, status: InstanceStatus,
                                            containerName: String, roles: Set[String],
-                                           address: Option[Address], actors: Set[String],
+                                           address: Option[UniqueAddress], actors: Set[String],
                                            extra: Map[String, String] = Map.empty)
 
 object InstanceInfo {
@@ -105,6 +106,9 @@ trait InstanceStatusJsonProtocol extends DefaultJsonProtocol with InstanceIdJson
       }
     }
   }
+
+  implicit val uniqueAddressFormat =
+    jsonFormat[Address, Long, UniqueAddress]((a, u) => UniqueAddress(a, u), "address", "longUid")
 
   implicit val instanceStatusFormat = new JsonFormat[InstanceStatus] {
     override def read(json: JsValue): InstanceStatus = {

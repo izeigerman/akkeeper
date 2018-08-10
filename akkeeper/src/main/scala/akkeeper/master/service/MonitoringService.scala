@@ -16,13 +16,14 @@
 package akkeeper.master.service
 
 import akka.actor._
-import akka.cluster.Cluster
+import akka.cluster.{Cluster, UniqueAddress}
 import akka.cluster.ClusterEvent._
 import akka.pattern.pipe
 import akkeeper.api._
 import akkeeper.common._
 import akkeeper.container.service.ContainerInstanceService
 import akkeeper.storage._
+
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.control.NonFatal
@@ -63,23 +64,23 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
     sender() ! InstanceNotFound(requestId, instanceId)
   }
 
-  private def findInstanceByAddr(addr: Address): Option[InstanceInfo] = {
+  private def findInstanceByAddr(addr: UniqueAddress): Option[InstanceInfo] = {
     instances.collectFirst {
-      case (id, Some(info)) if info.address.exists(_ == addr) => info
+      case (_, Some(info)) if info.address.exists(_ == addr) => info
     }
   }
 
-  private def updateInstanceStatusByAddr(addr: Address, status: InstanceStatus): Unit = {
+  private def updateInstanceStatusByAddr(addr: UniqueAddress, status: InstanceStatus): Unit = {
     findInstanceByAddr(addr)
       .foreach(i => instances.put(i.instanceId, Some(i.copy(status = status))))
   }
 
   private def terminateInstance(instance: InstanceInfo): Unit = {
     val addr = instance.address.get
-    val path = RootActorPath(addr) / "user" / ContainerInstanceService.ActorName
+    val path = RootActorPath(addr.address) / "user" / ContainerInstanceService.ActorName
     val selection = context.actorSelection(path)
     selection ! StopInstance
-    cluster.down(addr)
+    cluster.down(addr.address)
     log.info(s"Instance ${instance.instanceId} terminated successfully")
   }
 
@@ -115,7 +116,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
   private def onInstanceInfoUpdate(info: InstanceInfo): Unit = {
     if (info.status != InstanceDeploying) {
       val updatedInfo =
-        if (info.address.exists(!cluster.failureDetector.isAvailable(_))) {
+        if (info.address.exists(a => !cluster.failureDetector.isAvailable(a.address))) {
           info.copy(status = InstanceUnreachable)
         } else {
           info
@@ -256,11 +257,11 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
 
   private def clusterEventReceive: Receive = {
     case UnreachableMember(member) =>
-      updateInstanceStatusByAddr(member.address, InstanceUnreachable)
+      updateInstanceStatusByAddr(member.uniqueAddress, InstanceUnreachable)
     case ReachableMember(member) =>
-      updateInstanceStatusByAddr(member.address, InstanceUp)
+      updateInstanceStatusByAddr(member.uniqueAddress, InstanceUp)
     case MemberRemoved(member, _) =>
-      val info = findInstanceByAddr(member.address)
+      val info = findInstanceByAddr(member.uniqueAddress)
       info.foreach(i => instances.remove(i.instanceId))
   }
 

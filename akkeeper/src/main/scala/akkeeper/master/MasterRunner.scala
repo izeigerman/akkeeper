@@ -95,7 +95,7 @@ private[master] class YarnMasterRunner extends MasterRunner {
     val instanceId = InstanceId(MasterService.MasterServiceName, UUID.randomUUID())
     val extra = Map("apiPort" -> restPort.toString)
     val info = InstanceInfo(instanceId, InstanceUp, MasterService.MasterServiceName,
-      cluster.selfRoles, Some(cluster.selfAddress), Set.empty, extra)
+      cluster.selfRoles, Some(cluster.selfUniqueAddress), Set.empty, extra)
     storage.registerInstance(info)
   }
 

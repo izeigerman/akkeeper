@@ -78,7 +78,7 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
         status = InstanceUp,
         containerName = instanceId.containerName,
         roles = cluster.selfRoles,
-        address = Some(cluster.selfAddress),
+        address = Some(cluster.selfUniqueAddress),
         actors = actors.toSet
       )
       thisInstance = Some(info)
