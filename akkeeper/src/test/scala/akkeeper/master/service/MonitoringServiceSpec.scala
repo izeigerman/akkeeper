@@ -40,12 +40,6 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     super.afterAll()
   }
 
-  private def createTestMember(addr: UniqueAddress): Member = {
-    val ctr = classOf[Member].getDeclaredConstructor(classOf[UniqueAddress], classOf[Int],
-      classOf[MemberStatus], classOf[Set[String]])
-    ctr.newInstance(addr, new Integer(1), MemberStatus.Up, Set.empty[String])
-  }
-
   "A Monitoring Service" should "not respond if it's not initialized" in {
     implicit val dispatcher = system.dispatcher
     val delayedResponse = Future {

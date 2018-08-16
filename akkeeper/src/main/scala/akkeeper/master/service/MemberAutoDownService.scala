@@ -105,7 +105,7 @@ object MemberAutoDownService {
                                     targetInstanceId: InstanceId,
                                     instanceStorage: InstanceStorage.Async,
                                     pollInterval: FiniteDuration = DefaultPollInterval): ActorRef = {
-    factory.actorOf(Props(classOf[MasterService], targetAddress,
+    factory.actorOf(Props(classOf[MemberAutoDownService], targetAddress,
       targetInstanceId, instanceStorage, pollInterval), s"autoDown-$targetInstanceId")
   }
 }

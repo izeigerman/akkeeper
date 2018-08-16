@@ -11,8 +11,6 @@ Some of the features provided by Akkeeper:
 * Allows to launch and terminate instances at runtime.
 * Application Master fault tolerance. Rejoins the existing cluster after restart.
 
-Note: Akkeeper doesn't provide any strategies of handling unreachable cluster nodes. This behaviour has to be defined by a user.
-
 Here are several ways of how Akkeeper can be useful for your project:
 * Distribute your microservices using Akkeeper.
 * Keep your master service(s) separately and use Akkeeper to launch new workers/executors on demand.
