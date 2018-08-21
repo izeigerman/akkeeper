@@ -18,11 +18,20 @@ Here are several ways of how Akkeeper can be useful for your project:
 The project documentation is under construction.
 
 ## How to build
-The required SBT version is >= 0.13.11.
+Requirements:
 ```
-git clone https://github.com/izeigerman/akkeeper.git
-cd akkeeper
-sbt assembly
+Java 8
+SBT version >= 1.0.0
+```
+To build a bundle for Scala 2.11:
+```
+sbt ++2.11.11 universal:packageBin
+sbt ++2.11.11 universal:packageZipTarball
+```
+Scala 2.12:
+```
+sbt ++2.12.6 universal:packageBin
+sbt ++2.12.6 universal:packageZipTarball
 ```
 To build examples:
 ```
@@ -39,6 +48,14 @@ Container defines an environment where the instance is running. Container determ
 Instance is an execution unit in Akkeeper. Instance is just a running process with capabilities and properties of its container. "Deploy container" or "launch instance of container `container_name`" means the same - launching a process on some node in a cluster using the specified container's definition. Instances can be launched, monitored and terminated dynamically at runtime.
 
 ## How to use
+Download and unpack the latest Akkeeper package:
+- Scala 2.11: [ZIP](https://bintray.com/izeigerman/akkeeper/download_file?file_path=akkeeper_2.11-0.2.0.zip) / [TGZ](https://bintray.com/izeigerman/akkeeper/download_file?file_path=akkeeper_2.11-0.2.0.tgz)
+- Scala 2.12: [ZIP](https://bintray.com/izeigerman/akkeeper/download_file?file_path=akkeeper_2.12-0.2.0.zip) / [TGZ](https://bintray.com/izeigerman/akkeeper/download_file?file_path=akkeeper_2.12-0.2.0.tgz)
+
+In order to use the Scala API the following dependency must be added to `build.sbt`:
+```
+libraryDependencies += "com.github.izeigerman" %% "akkeeper" % "0.2.0" % "provided"
+```
 The easiest way to start using Akkeeper is through the configuration file. Here is a quick start configuration file example:
 ```
 akkeeper {
@@ -75,7 +92,7 @@ akkeeper {
 Make sure your `HADOOP_CONF_DIR` and `YARN_CONF_DIR` environment variables point to the directory where the Hadoop configuration files are stored. Also `ZK_QUORUM` variable should contain a comma-separated list of ZooKeeper servers.
 Now just pass this file together with your JAR archive which contains actor `com.test.MyActor` to Akkeeper:
 ```
-java -cp /path/to/akkeeper.jar akkeeper.launcher.LauncherMain --akkeeperJar /path/to/akkeeper.jar --config ./config.conf /path/to/my.jar
+./bin/akkeeper-submit --config ./config.conf /path/to/my.jar
 ```
 
 ## How to deploy and monitor instances at runtime
