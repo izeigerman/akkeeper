@@ -19,7 +19,7 @@ val AkkaHttpVersion = "10.1.3"
 val CuratorVersion = "2.7.1"
 val SprayJsonVersion = "1.3.4"
 val HadoopVersion = "2.8.4"
-val ScalaTestVersion = "2.2.6"
+val ScalaTestVersion = "3.0.5"
 val ScalamockVersion = "3.4.2"
 val Slf4jVersion = "1.7.19"
 val ScoptsVersion = "3.5.0"
@@ -36,7 +36,8 @@ val HadoopDependencies = Seq(
 
 val CommonSettings = Seq(
   organization := "com.github.izeigerman",
-  scalaVersion := "2.11.8",
+  scalaVersion := "2.12.6",
+  crossScalaVersions := Seq("2.11.11", scalaVersion.value),
   version := "0.2.0-SNAPSHOT",
 
   organizationHomepage := Some(url("https://github.com/izeigerman")),
