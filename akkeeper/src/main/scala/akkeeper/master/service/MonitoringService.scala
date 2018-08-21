@@ -59,6 +59,12 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
       .pipeTo(self)
   }
 
+  private def memberAutoDown(instanceId: InstanceId, instanceAddr: UniqueAddress): Unit = {
+    val autoDownService = MemberAutoDownService.createLocal(context.system,
+      instanceAddr, instanceId, instanceStorage)
+    autoDownService ! MemberAutoDownService.PollInstanceStatus
+  }
+
   private def onInstanceNotFound(requestId: RequestId, instanceId: InstanceId): Unit = {
     log.warning(s"Instance $instanceId was not found")
     sender() ! InstanceNotFound(requestId, instanceId)
@@ -257,7 +263,13 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
 
   private def clusterEventReceive: Receive = {
     case UnreachableMember(member) =>
-      updateInstanceStatusByAddr(member.uniqueAddress, InstanceUnreachable)
+      findInstanceByAddr(member.uniqueAddress)
+        .foreach(i => {
+          // Update the instance's status and launch an actor which will automatically
+          // eliminate an unreachable member from the cluster.
+          instances.put(i.instanceId, Some(i.copy(status = InstanceUnreachable)))
+          memberAutoDown(i.instanceId, member.uniqueAddress)
+        })
     case ReachableMember(member) =>
       updateInstanceStatusByAddr(member.uniqueAddress, InstanceUp)
     case MemberRemoved(member, _) =>

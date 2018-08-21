@@ -16,7 +16,9 @@
 package akkeeper
 
 import akka.actor.ActorRef
+import akka.cluster.{Member, MemberStatus, UniqueAddress}
 import akka.pattern.gracefulStop
+
 import scala.concurrent.duration._
 
 trait ActorTestUtils extends AwaitMixin {
@@ -25,5 +27,15 @@ trait ActorTestUtils extends AwaitMixin {
 
   protected def gracefulActorStop(actor: ActorRef): Unit = {
     await(gracefulStop(actor, gracefulStopTimeout))
+  }
+
+  protected def createTestMember(addr: UniqueAddress): Member = {
+    createTestMember(addr, MemberStatus.Up)
+  }
+
+  protected def createTestMember(addr: UniqueAddress, status: MemberStatus): Member = {
+    val ctr = classOf[Member].getDeclaredConstructor(classOf[UniqueAddress], classOf[Int],
+      classOf[MemberStatus], classOf[Set[String]])
+    ctr.newInstance(addr, new Integer(1), status, Set("dc-default"))
   }
 }

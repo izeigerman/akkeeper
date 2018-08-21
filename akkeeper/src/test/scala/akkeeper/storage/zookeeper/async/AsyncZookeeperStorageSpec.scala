@@ -81,7 +81,7 @@ class AsyncZookeeperStorageSpec extends FlatSpec
     }
   }
 
-  it should "should throw an error on update attempt if node doesn't exist" in {
+  it should "throw an error on update attempt if node doesn't exist" in {
     withStorage { storage =>
       val node = UUID.randomUUID().toString
       val payload = Array[Byte](1, 1, 2, 3)
