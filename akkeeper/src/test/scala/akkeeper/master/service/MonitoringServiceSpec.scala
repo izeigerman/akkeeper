@@ -438,6 +438,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     (storage.getInstance _)
       .expects(instance.instanceId)
       .returns(Future successful instance)
+      .atLeastOnce()
 
     val service = MonitoringService.createLocal(system, storage)
 
