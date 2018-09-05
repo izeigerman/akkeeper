@@ -86,6 +86,7 @@ class YarnLauncherSpec extends FlatSpec with Matchers with MockFactory
       resources = Seq(new File(createResource(resourcesDir, "resource"))),
       masterJvmArgs = Seq("-test-prop"),
       userConfig = Some(ConfigFactory.load("application-container-test.conf")),
+      yarnQueue = Some("queue"),
       principal = Some("username"),
       keytab = new File(createResource(resourcesDir, "some.keytab"))
     )
@@ -136,6 +137,8 @@ class YarnLauncherSpec extends FlatSpec with Matchers with MockFactory
     launcher.stop()
 
     appContext.getApplicationName shouldBe config.getYarnApplicationName
+
+    appContext.getQueue shouldBe "queue"
 
     val resource = appContext.getResource
     resource.getMemory shouldBe config.getInt("akkeeper.yarn.master.memory")

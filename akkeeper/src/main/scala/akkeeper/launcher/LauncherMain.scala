@@ -46,6 +46,10 @@ object LauncherMain extends App {
       c.copy(masterJvmArgs = v)
     }).text("extra JVM arguments for the Akeeper master")
 
+    opt[String]("queue").valueName("<YARN queue>").action((v, c) => {
+      c.copy(yarnQueue = Some(v))
+    })
+
     opt[String]("principal").valueName("principal").action((v, c) => {
       c.copy(principal = Some(v))
     })
