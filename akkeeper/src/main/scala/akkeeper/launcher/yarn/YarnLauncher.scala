@@ -184,6 +184,8 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration,
       localResources, null, cmd.asJava, null, tokens, null)
     appContext.setAMContainerSpec(amContainer)
 
+    args.yarnQueue.foreach(appContext.setQueue(_))
+
     yarnClient.submitApplication(appContext)
     logger.info(s"Launched Akkeeper Cluster $appId")
 
