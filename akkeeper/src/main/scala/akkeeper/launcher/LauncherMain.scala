@@ -28,7 +28,7 @@ import scala.concurrent.duration._
 object LauncherMain extends App {
 
   val optParser = new OptionParser[LaunchArguments]("akkeeper") {
-    head("akkeeper", "0.2.0")
+    head("akkeeper", "0.2.2")
 
     opt[File]("akkeeperJar").required().action((v, c) => {
       c.copy(akkeeperJarPath = v)
