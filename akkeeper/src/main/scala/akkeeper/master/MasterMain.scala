@@ -23,7 +23,7 @@ import scala.util.control.NonFatal
 object MasterMain extends App {
 
   val optParser = new OptionParser[MasterArguments]("akkeeperMaster") {
-    head("akkeeperMaster", "0.2.0")
+    head("akkeeperMaster", "0.2.1")
 
     opt[String](AppIdArg).required().action((v, c) => {
       c.copy(appId = v)
