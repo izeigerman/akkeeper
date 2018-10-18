@@ -92,6 +92,13 @@ val AkkeeperSettings = CommonSettings ++ Seq(
       oldStrategy(x)
   },
 
+  packageName in Universal := {
+    val scalaVer = scalaVersion.value
+    name.value + "_" + scalaVer.substring(0, scalaVer.lastIndexOf('.')) + "-" + version.value
+  },
+
+  topLevelDirectory in Universal := Some(name.value + "-" + version.value),
+
   mappings in Universal := {
     val fatJar = (assembly in Compile).value
     Seq(
