@@ -17,54 +17,57 @@ package akkeeper.launcher
 
 import java.io.File
 
+import akkeeper.BuildInfo
 import akkeeper.launcher.yarn.YarnLauncher
 import akkeeper.utils.yarn.YarnUtils
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.ConfigFactory
 import scopt.OptionParser
+
 import scala.concurrent.Await
 import scala.util.control.NonFatal
 import scala.concurrent.duration._
 
 object LauncherMain extends App {
 
-  val optParser = new OptionParser[LaunchArguments]("akkeeper") {
-    head("akkeeper", "0.2.2")
+  val optParser = new OptionParser[LaunchArguments](BuildInfo.name) {
+    head(BuildInfo.name, BuildInfo.version)
 
     opt[File]("akkeeperJar").required().action((v, c) => {
       c.copy(akkeeperJarPath = v)
-    }).text("path to the Akkeeper fat Jar file")
+    }).text("Path to the Akkeeper fat Jar.")
 
-    opt[Seq[File]]("jars").valueName("<jar1>,<jar2>...").action((v, c) => {
+    opt[Seq[File]]("jars").valueName("<jar1>,<jar2>,...").action((v, c) => {
       c.copy(otherJars = v)
-    }).text("additional Jars that should be included into the classpath")
+    }).text("A comma-separated list of additional Jar files that have to be included into " +
+      "the container's classpath.")
 
-    opt[Seq[File]]("resources").valueName("<file1>,<file2>..").action((v, c) => {
+    opt[Seq[File]]("resources").valueName("<file1>,<file2>,...").action((v, c) => {
       c.copy(resources = v)
-    }).text("any resource files that have to be distributed within a cluster")
+    }).text("A comma-separated list of resource files that have to be distributed within a cluster.")
 
-    opt[Seq[String]]("masterJvmArgs").valueName("<prop1>,<prop2>...").action((v, c) => {
+    opt[Seq[String]]("masterJvmArgs").valueName("<prop1>,<prop2>,...").action((v, c) => {
       c.copy(masterJvmArgs = v)
-    }).text("extra JVM arguments for the Akeeper master")
+    }).text("Extra JVM arguments for the Akeeper master.")
 
     opt[String]("queue").valueName("<YARN queue>").action((v, c) => {
       c.copy(yarnQueue = Some(v))
-    })
+    }).text("The YARN queue (default: 'default')")
 
     opt[String]("principal").valueName("principal").action((v, c) => {
       c.copy(principal = Some(v))
-    })
+    }).text("Principal to be used to login to KDC.")
 
-    opt[File]("keytab").valueName("<keytab_file>").action((v, c) => {
+    opt[File]("keytab").valueName("<keytab path>").action((v, c) => {
       c.copy(keytab = v)
-    })
+    }).text("The full path to the file that contains the keytab for the principal specified above.")
 
     opt[File]("config").valueName("<file>").action((v, c) => {
       c.copy(userConfig = Some(ConfigFactory.parseFile(v)))
-    }).text("custom configuration file")
+    }).text("The path to the custom configuration file.")
 
     arg[File]("<jar>").required().action((x, c) => {
       c.copy(userJar = x)
-    }).text("a user Jar")
+    }).text("The path to the user Jar file.")
   }
 
   val LauncherTimeout = 30 seconds
