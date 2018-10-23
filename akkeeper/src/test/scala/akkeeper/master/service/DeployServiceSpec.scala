@@ -15,9 +15,9 @@
  */
 package akkeeper.master.service
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit}
-import akkeeper.{AkkeeperException, ActorTestUtils}
+import akkeeper.{ActorTestUtils, AkkeeperException}
 import akkeeper.api._
 import akkeeper.common._
 import akkeeper.deploy._
@@ -45,6 +45,13 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
     ContainerDefinition(name, cpus = cpus, memory = memory, actors = Seq(actor))
   }
 
+  private def createDeployService(deployClient: DeployClient.Async,
+                                  containerService: ActorRef,
+                                  monitoringService: ActorRef): ActorRef = {
+    childActorOf(Props(classOf[DeployService], deployClient,
+      containerService, monitoringService), DeployService.actorName)
+  }
+
   "A Deploy Service" should "deploy container successfully" in {
     val container = createContainer("container")
     val expectedContainer = container.copy(
@@ -58,7 +65,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
     val deployResult = ids.map(id => Future successful DeploySuccessful(id))
     (deployClient.deploy _).expects(expectedContainer, *).returning(deployResult)
 
-    val service = DeployService.createLocal(system, deployClient, self, self)
+    val service = createDeployService(deployClient, self, self)
     val deployRequest = DeployContainer("container", 2,
       jvmArgs = Some(Seq("-Xms1G")),
       properties = Some(Map("property" -> "other_value")))
@@ -109,7 +116,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
     (deployClient.start _).expects()
     (deployClient.stop _).expects()
 
-    val service = DeployService.createLocal(system, deployClient, self, self)
+    val service = createDeployService(deployClient, self, self)
     val deployRequest = DeployContainer("invalid", 1)
     service ! deployRequest
 
@@ -134,7 +141,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
     val deployResult = Future successful DeployFailed(id, new AkkeeperException(""))
     (deployClient.deploy _).expects(container, *).returning(Seq(deployResult))
 
-    val service = DeployService.createLocal(system, deployClient, self, self)
+    val service = createDeployService(deployClient, self, self)
     val deployRequest = DeployContainer("container", 1)
     service ! deployRequest
 
@@ -185,7 +192,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
     (deployClient.stop _).expects()
     (deployClient.stopWithError _).expects(exception)
 
-    val service = DeployService.createLocal(system, deployClient, self, self)
+    val service = createDeployService(deployClient, self, self)
     service ! StopWithError(exception)
 
     service ! DeployContainer("container", 2)

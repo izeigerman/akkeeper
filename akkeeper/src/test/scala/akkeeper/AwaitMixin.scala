@@ -20,7 +20,7 @@ import scala.concurrent.duration._
 
 trait AwaitMixin {
 
-  protected implicit val awaitTimeout = 3 seconds
+  protected implicit val awaitTimeout = 6 seconds
 
   protected def await[T](awaitable: Awaitable[T])
                         (implicit duration: Duration): T = {

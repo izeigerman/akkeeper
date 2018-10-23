@@ -40,6 +40,15 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
   def this() = this(ActorSystem("ContainerInstanceServiceSpec",
     ConfigFactory.load().withMasterPort.withMasterRole))
 
+  private val masterServiceMock: ActorRef = system.actorOf(
+    Props(classOf[MasterServiceMock], self), MasterService.actorName)
+
+
+  override protected def afterAll(): Unit = {
+    gracefulActorStop(masterServiceMock)
+    super.afterAll()
+  }
+
   private def createExpectedInstanceInfo(instanceId: InstanceId,
                                          addr: UniqueAddress): InstanceInfo = {
     InstanceInfo(
@@ -48,8 +57,19 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
       containerName = instanceId.containerName,
       roles = Set("akkeeperMaster", "dc-default"),
       address = Some(addr),
-      actors = Set("/user/akkeeperInstance/testActor")
+      actors = Set("/system/testActor-1/akkeeperInstance/testActor")
     )
+  }
+
+  private def createContainerInstanceService(instanceStorage: InstanceStorage.Async,
+                                             instanceId: InstanceId,
+                                             masterAddress: Address,
+                                             retryInterval: FiniteDuration = DefaultRegistrationRetryInterval,
+                                             joinClusterTimeout: FiniteDuration = DefaultJoinClusterTimeout
+                                            ): ActorRef = {
+    val props = Props(classOf[ContainerInstanceService], instanceStorage,
+      instanceId, masterAddress, retryInterval, joinClusterTimeout)
+    childActorOf(props, ContainerInstanceService.ActorName)
   }
 
   "A Container Instance service" should "register itself successfully" in {
@@ -64,9 +84,7 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
       .expects(expectedInstanceInfo)
       .returns(Future successful instanceId)
 
-    val masterServiceMock = createMasterServiceMock(system, self)
-    val service = ContainerInstanceService
-      .createLocal(system, storage, instanceId, selfAddr.address)
+    val service = createContainerInstanceService(storage, instanceId, selfAddr.address)
 
     service ! LaunchActors(Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName)))
 
@@ -74,7 +92,7 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
     expectMsg(expectedInstanceInfo)
 
     // Verify that the user actor was actually launched.
-    val userActor = system.actorSelection("/user/akkeeperInstance/testActor")
+    val userActor = system.actorSelection("/system/testActor-1/akkeeperInstance/testActor")
     userActor ! TestPing
     expectMsg(TestPong)
 
@@ -96,9 +114,8 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
       .returns(Future failed new AkkeeperException("Registration failed"))
       .repeated(numberOfAttempts)
 
-    val masterServiceMock = createMasterServiceMock(system, self)
-    val service = ContainerInstanceService.createLocal(system, storage,
-      instanceId, selfAddr.address, registrationRetryInterval = 1 second)
+    val service = createContainerInstanceService(storage,
+      instanceId, selfAddr.address, retryInterval = 1 second)
 
     service ! LaunchActors(Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName)))
 
@@ -130,10 +147,6 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
 }
 
 object ContainerInstanceServiceSpec {
-  def createMasterServiceMock(system: ActorSystem, callback: ActorRef): ActorRef = {
-    system.actorOf(Props(classOf[MasterServiceMock], callback), MasterService.actorName)
-  }
-
   case object GetLastReceivedInfo
 
   class MasterServiceMock(callback: ActorRef) extends Actor {

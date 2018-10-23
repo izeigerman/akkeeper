@@ -147,8 +147,8 @@ object ContainerInstanceService {
   private[akkeeper] case class LaunchActors(actors: Seq[ActorLaunchContext])
   private case object RetryRegistration
   private case object JoinClusterTimeout
-  private val DefaultRegistrationRetryInterval = 30 seconds
-  private val DefaultJoinClusterTimeout = 120 seconds
+  private[akkeeper] val DefaultRegistrationRetryInterval = 30 seconds
+  private[akkeeper] val DefaultJoinClusterTimeout = 120 seconds
 
   val ActorName = "akkeeperInstance"
 
