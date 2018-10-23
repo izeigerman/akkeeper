@@ -209,6 +209,7 @@ object MasterServiceSpec {
     config
       .withValue("akka.remote.netty.tcp.port", ConfigValueFactory.fromAnyRef(new Integer(0)))
       .withValue("akka.test.timefactor", ConfigValueFactory.fromAnyRef(new Integer(3)))
+      .withValue("akka.cluster.seed-node-timeout", ConfigValueFactory.fromAnyRef("2s"))
   }
 
   /** A custom test runner that produces a new Actor System for each test

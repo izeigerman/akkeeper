@@ -31,6 +31,9 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
                                       instanceStorage: InstanceStorage.Async)
   extends Actor with ActorLogging with Stash {
 
+  private val numOfInstancesToJoin: Int = context.system.settings.config
+    .getInt("akkeeper.akka.seed-nodes-num")
+
   private val containerService: ActorRef = ContainerService.createLocal(context)
   private val monitoringService: ActorRef = MonitoringService.createLocal(context, instanceStorage)
   private val deployService: ActorRef = DeployService.createLocal(context, deployClient,
@@ -39,7 +42,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
   private val cluster = Cluster(context.system)
 
   private val seedInstances: mutable.Set[InstanceInfo] = mutable.Set.empty
-  private var numOfRequiredInstances: Int = NumOfInstancesToJoin
+  private var numOfRequiredInstances: Int = numOfInstancesToJoin
 
   override def preStart(): Unit = {
     context.watch(containerService)
@@ -102,14 +105,15 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
   }
 
   private def fetchInstancesListReceive: Receive = {
-    case InstancesList(_, instances) =>
-      if (instances.isEmpty) {
+    case InstancesList(_, instanceIds) =>
+      val nonMasterInstanceIds = instanceIds.filter(_.containerName != MasterServiceName)
+      if (nonMasterInstanceIds.isEmpty) {
         log.info("No running instances were found. Creating a new Akka cluster")
         joinCluster(immutable.Seq(cluster.selfAddress))
       } else {
-        log.info(s"Found ${instances.size} running instances. Joining the existing Akka cluster")
+        log.info(s"Found ${nonMasterInstanceIds.size} running instances. Joining the existing Akka cluster")
         // Choose N random instances to join.
-        val seedNodeIds = scala.util.Random.shuffle(instances).take(NumOfInstancesToJoin)
+        val seedNodeIds = scala.util.Random.shuffle(nonMasterInstanceIds).take(numOfInstancesToJoin)
         numOfRequiredInstances = seedNodeIds.size
         seedNodeIds.foreach(id => monitoringService ! GetInstance(id))
       }
@@ -120,7 +124,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
         "more needed to proceed")
       if (seedInstances.size >= numOfRequiredInstances) {
         val seedAddrs = immutable.Seq(seedInstances.map(_.address.get.address).toSeq: _*)
-        joinCluster(seedAddrs)
+        joinCluster(cluster.selfAddress +: seedAddrs)
       }
 
     case other @ (_: InstanceResponse | _: OperationFailed) =>
@@ -144,8 +148,6 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
 }
 
 object MasterService extends RemoteServiceFactory {
-  val NumOfInstancesToJoin = 3
-
   val MasterServiceName = "akkeeperMaster"
 
   override val actorName = MasterServiceName
