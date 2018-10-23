@@ -15,9 +15,9 @@
  */
 package akkeeper.master.service
 
-import akka.actor.{ActorRef, ActorSystem, Address}
+import akka.actor.{ActorRef, ActorSystem, Address, Props}
 import akka.cluster.ClusterEvent._
-import akka.cluster.{Cluster, UniqueAddress, Member, MemberStatus}
+import akka.cluster.{Cluster, MemberStatus, UniqueAddress}
 import akka.testkit.{ImplicitSender, TestKit}
 import akkeeper._
 import akkeeper.api._
@@ -25,6 +25,7 @@ import akkeeper.common._
 import akkeeper.storage.InstanceStorage
 import org.scalamock.scalatest.MockFactory
 import org.scalatest._
+
 import scala.concurrent.Future
 import MonitoringService._
 import MonitoringServiceSpec._
@@ -40,6 +41,10 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     super.afterAll()
   }
 
+  private def createMonitoringService(instanceStorage: InstanceStorage.Async): ActorRef = {
+    childActorOf(Props(classOf[MonitoringService], instanceStorage), MonitoringService.actorName)
+  }
+
   "A Monitoring Service" should "not respond if it's not initialized" in {
     implicit val dispatcher = system.dispatcher
     val delayedResponse = Future {
@@ -52,7 +57,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(delayedResponse)
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     service ! GetInstances()
     expectNoMessage()
@@ -66,7 +71,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq.empty)
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     val getInstances = GetInstances()
     service ! getInstances
@@ -85,7 +90,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId))
     (storage.getInstance _).expects(instance.instanceId).returns(Future successful instance)
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     val getInstances = GetInstances()
     service ! getInstances
@@ -111,7 +116,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId))
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     val getInstances = GetInstances()
     service ! getInstances
@@ -138,7 +143,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
       .expects(instance.instanceId)
       .returns(Future failed new AkkeeperException(""))
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     val getInstances = GetInstances()
     service ! getInstances
@@ -185,7 +190,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     (storage.getInstance _).expects(instance1.instanceId).returns(Future successful instance1)
     (storage.getInstance _).expects(instance2.instanceId).returns(Future successful instance2)
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     val getInstances = GetInstances()
     service ! getInstances
@@ -218,7 +223,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     (storage.getInstance _).expects(instance1.instanceId).returns(Future successful instance1)
     (storage.getInstance _).expects(instance2.instanceId).returns(Future successful instance2)
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     val getInstances = GetInstances()
     service ! getInstances
@@ -265,7 +270,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     (storage.getInstance _).expects(instance3.instanceId).returns(Future successful instance3)
     (storage.getInstance _).expects(instance4.instanceId).returns(Future successful instance4)
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     val getInstances = GetInstances()
     service ! getInstances
@@ -304,7 +309,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
       .expects(instance2.instanceId)
       .returns(Future failed new AkkeeperException(""))
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     val getInstances = GetInstances()
     service ! getInstances
@@ -331,7 +336,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
       .expects(instance.instanceId)
       .returns(Future successful instance)
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     val terminateRequest = TerminateInstance(instance.instanceId)
     service ! terminateRequest
@@ -353,7 +358,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
       .expects(instance.instanceId)
       .returns(Future successful instance)
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     service ! GetInstance(instance.instanceId)
     val instanceResponse = expectMsgClass(classOf[InstanceInfoResponse])
@@ -380,7 +385,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
       .expects(instance.instanceId)
       .returns(Future failed exception)
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     val terminateRequest = TerminateInstance(instance.instanceId)
     service ! terminateRequest
@@ -401,7 +406,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq.empty)
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     val getInstances = GetInstances()
     service ! getInstances
@@ -440,7 +445,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
       .returns(Future successful instance)
       .atLeastOnce()
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     service ! GetInstance(instance.instanceId)
     expectMsgClass(classOf[InstanceInfoResponse])
@@ -468,7 +473,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq.empty)
 
-    val service = MonitoringService.createLocal(system, storage)
+    val service = createMonitoringService(storage)
 
     service ! StopWithError(new AkkeeperException(""))
 

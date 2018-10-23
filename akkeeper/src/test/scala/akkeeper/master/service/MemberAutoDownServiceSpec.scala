@@ -15,7 +15,7 @@
  */
 package akkeeper.master.service
 
-import akka.actor.{ActorSystem, Address, Terminated}
+import akka.actor.{ActorRef, ActorSystem, Address, Props, Terminated}
 import akka.cluster.ClusterEvent.{MemberRemoved, ReachableMember}
 import akka.cluster.{MemberStatus, UniqueAddress}
 import akka.testkit.{ImplicitSender, TestKit}
@@ -39,6 +39,14 @@ class MemberAutoDownServiceSpec(system: ActorSystem) extends TestKit(system)
     super.afterAll()
   }
 
+  private def createMemberAutdownService(targetAddress: UniqueAddress,
+                                         targetInstanceId: InstanceId,
+                                         instanceStorage: InstanceStorage.Async,
+                                         pollInterval: FiniteDuration = 30 seconds): ActorRef = {
+    childActorOf(Props(classOf[MemberAutoDownService], targetAddress,
+      targetInstanceId, instanceStorage, pollInterval), s"autoDown-$targetInstanceId")
+  }
+
   "A Member Auto Down Service" should "exclude a dead instance from the cluster" in {
     val port = 12345
     val address = UniqueAddress(Address("akka.tcp", "MemberAutoDownServiceSpec", "localhost", port), 1L)
@@ -47,7 +55,7 @@ class MemberAutoDownServiceSpec(system: ActorSystem) extends TestKit(system)
     val storage = mock[InstanceStorage.Async]
     (storage.getInstance _).expects(instanceId).returns(Future failed RecordNotFoundException(""))
 
-    val service = MemberAutoDownService.createLocal(system, address, instanceId, storage)
+    val service = createMemberAutdownService(address, instanceId, storage)
     watch(service)
     service ! MemberAutoDownService.PollInstanceStatus
 
@@ -63,7 +71,7 @@ class MemberAutoDownServiceSpec(system: ActorSystem) extends TestKit(system)
     val storage = mock[InstanceStorage.Async]
     (storage.getInstance _).expects(instanceId).returns(Future successful info).atLeastTwice()
 
-    val service = MemberAutoDownService.createLocal(system, address, instanceId, storage, 1 second)
+    val service = createMemberAutdownService(address, instanceId, storage, 1 second)
     service ! MemberAutoDownService.PollInstanceStatus
 
     val timeout = 2000
@@ -81,7 +89,7 @@ class MemberAutoDownServiceSpec(system: ActorSystem) extends TestKit(system)
     val storage = mock[InstanceStorage.Async]
     (storage.getInstance _).expects(instanceId).returns(Future successful info)
 
-    val service = MemberAutoDownService.createLocal(system, address, instanceId, storage)
+    val service = createMemberAutdownService(address, instanceId, storage)
     watch(service)
     service ! MemberAutoDownService.PollInstanceStatus
     service ! ReachableMember(member)
@@ -99,7 +107,7 @@ class MemberAutoDownServiceSpec(system: ActorSystem) extends TestKit(system)
     val storage = mock[InstanceStorage.Async]
     (storage.getInstance _).expects(instanceId).returns(Future successful info)
 
-    val service = MemberAutoDownService.createLocal(system, address, instanceId, storage)
+    val service = createMemberAutdownService(address, instanceId, storage)
     watch(service)
     service ! MemberAutoDownService.PollInstanceStatus
     service ! MemberRemoved(member, MemberStatus.exiting)
@@ -115,7 +123,7 @@ class MemberAutoDownServiceSpec(system: ActorSystem) extends TestKit(system)
     val storage = mock[InstanceStorage.Async]
     (storage.getInstance _).expects(instanceId).returns(Future failed new Exception("")).atLeastTwice()
 
-    val service = MemberAutoDownService.createLocal(system, address, instanceId, storage, 1 second)
+    val service = createMemberAutdownService(address, instanceId, storage, 1 second)
     service ! MemberAutoDownService.PollInstanceStatus
 
     val timeout = 2000

@@ -15,9 +15,9 @@
  */
 package akkeeper.master.service
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit}
-import akkeeper.{AkkeeperException, ActorTestUtils}
+import akkeeper.{ActorTestUtils, AkkeeperException}
 import akkeeper.api._
 import akkeeper.common.ActorLaunchContext
 import com.typesafe.config.ConfigFactory
@@ -34,8 +34,12 @@ class ContainerServiceSpec(system: ActorSystem) extends TestKit(system)
     super.afterAll()
   }
 
+  private def createContainerService: ActorRef = {
+    childActorOf(Props(classOf[ContainerService]), ContainerService.actorName)
+  }
+
   "A Container Service" should "return the list of available containers" in {
-    val service = ContainerService.createLocal(system)
+    val service = createContainerService
 
     val request = GetContainers()
     service ! request
@@ -48,7 +52,7 @@ class ContainerServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "return a container definition" in {
-    val service = ContainerService.createLocal(system)
+    val service = createContainerService
 
     val request1 = GetContainer("container1")
     service ! request1
@@ -85,7 +89,7 @@ class ContainerServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "not find a container" in {
-    val service = ContainerService.createLocal(system)
+    val service = createContainerService
 
     val request = GetContainer("invalid")
     service ! request
@@ -95,7 +99,7 @@ class ContainerServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "delete a container" in {
-    val service = ContainerService.createLocal(system)
+    val service = createContainerService
 
     val deleteRequest = DeleteContainer("container1")
     service ! deleteRequest
@@ -109,7 +113,7 @@ class ContainerServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "not delete a container that doesn't exist" in {
-    val service = ContainerService.createLocal(system)
+    val service = createContainerService
 
     val deleteRequest = DeleteContainer("invalid")
     service ! deleteRequest
@@ -119,7 +123,7 @@ class ContainerServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "update the existing container" in {
-    val service = ContainerService.createLocal(system)
+    val service = createContainerService
 
     val getRequest = GetContainer("container1")
     service ! getRequest
@@ -141,7 +145,7 @@ class ContainerServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "not update the container that doesn't exist" in {
-    val service = ContainerService.createLocal(system)
+    val service = createContainerService
 
     val getRequest = GetContainer("container1")
     service ! getRequest
@@ -158,7 +162,7 @@ class ContainerServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "should create a new container" in {
-    val service = ContainerService.createLocal(system)
+    val service = createContainerService
 
     val getRequest = GetContainer("container1")
     service ! getRequest
@@ -180,7 +184,7 @@ class ContainerServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "should not create a container which already exists" in {
-    val service = ContainerService.createLocal(system)
+    val service = createContainerService
 
     val getRequest = GetContainer("container1")
     service ! getRequest
@@ -196,7 +200,7 @@ class ContainerServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "stop with an error" in {
-    val service = ContainerService.createLocal(system)
+    val service = createContainerService
 
     service ! StopWithError(new AkkeeperException("fail"))
     service ! GetContainer("container1")
