@@ -16,26 +16,31 @@
 package akkeeper.master
 
 import java.io.File
+
+import akkeeper.BuildInfo
 import akkeeper.utils.CliArguments._
 import scopt.OptionParser
+
 import scala.util.control.NonFatal
 
 object MasterMain extends App {
 
-  val optParser = new OptionParser[MasterArguments]("akkeeperMaster") {
-    head("akkeeperMaster", "0.2.2")
+  private val appName: String = s"${BuildInfo.name}-master"
+
+  val optParser = new OptionParser[MasterArguments](appName) {
+    head(appName, BuildInfo.version)
 
     opt[String](AppIdArg).required().action((v, c) => {
       c.copy(appId = v)
-    }).text("ID of this application")
+    }).text("The ID of this application.")
 
     opt[File](ConfigArg).valueName("<file>").optional().action((v, c) => {
       c.copy(config = Some(v))
-    }).text("custom configuration file")
+    }).text("The path to the custom configuration file.")
 
     opt[String](PrincipalArg).valueName("principal").action((v, c) => {
       c.copy(principal = Some(v))
-    })
+    }).text("Principal to be used to login to KDC.")
   }
 
   try {

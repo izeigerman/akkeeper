@@ -118,7 +118,10 @@ val AkkeeperSettings = CommonSettings ++ Seq(
     } else {
       "releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
     }
-  )
+  ),
+
+  buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion),
+  buildInfoPackage := "akkeeper"
 )
 
 val NoPublishSettings = CommonSettings ++ Seq(
@@ -136,6 +139,7 @@ lazy val root = Project(id = "root", base = file("."))
 lazy val akkeeper = Project(id = "akkeeper", base = file("akkeeper"))
   .settings(AkkeeperSettings: _*)
   .enablePlugins(JavaAppPackaging)
+  .enablePlugins(BuildInfoPlugin)
 
 lazy val akkeeperExamples = Project(id = "akkeeper-examples", base = file("akkeeper-examples"))
   .settings(NoPublishSettings: _*)

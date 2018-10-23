@@ -32,38 +32,41 @@ import scala.util.control.NonFatal
 import spray.json._
 import ContainerDefinitionJsonProtocol._
 import ContainerInstanceService._
+import akkeeper.BuildInfo
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 object ContainerInstanceMain extends App {
 
-  val optParser = new OptionParser[ContainerInstanceArguments]("akkeeperInstance") {
-    head("akkeeperInstance", "0.2.2")
+  private val appName: String = s"${BuildInfo.name}-instance"
+
+  val optParser = new OptionParser[ContainerInstanceArguments](appName) {
+    head(appName, BuildInfo.version)
 
     opt[String](AppIdArg).required().action((v, c) => {
       c.copy(appId = v)
-    }).text("ID of this application")
+    }).text("The ID of this application.")
 
     opt[String](InstanceIdArg).required().action((v, c) => {
       c.copy(instanceId = InstanceId.fromString(v))
-    }).text("ID of this instance")
+    }).text("The ID of this instance.")
 
     opt[String](MasterAddressArg).required().action((v, c) => {
       c.copy(masterAddress = AddressFromURIString.parse(v))
-    }).text("master instance address")
+    }).text("The address of the master instance.")
 
     opt[File](ActorLaunchContextsArg).required().action((v, c) => {
       c.copy(actors = v)
-    }).text("actor launch context in JSON format")
+    }).text("The actor launch context in JSON format.")
 
     opt[File](ConfigArg).valueName("<file>").optional().action((v, c) => {
       c.copy(userConfig = Some(ConfigFactory.parseFile(v)))
-    }).text("configuration file")
+    }).text("The path to the configuration file.")
 
     opt[String](PrincipalArg).valueName("principal").optional().action((v, c) => {
       c.copy(principal = Some(v))
-    })
+    }).text("Principal to be used to login to KDC.")
   }
 
   def createInstanceConfig(instanceArgs: ContainerInstanceArguments): Config = {
