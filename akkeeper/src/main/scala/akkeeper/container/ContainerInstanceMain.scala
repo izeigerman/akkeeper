@@ -88,9 +88,8 @@ object ContainerInstanceMain extends App {
     val actorsJsonStr = Source.fromFile(instanceArgs.actors).getLines().mkString("\n")
     val actors = actorsJsonStr.parseJson.convertTo[Seq[ActorLaunchContext]]
 
-    val containerInstanceService = ContainerInstanceService.createLocal(actorSystem,
+    ContainerInstanceService.createLocal(actorSystem, actors,
       instanceStorage, instanceArgs.instanceId, instanceArgs.masterAddress)
-    containerInstanceService ! LaunchActors(actors)
 
     Await.result(actorSystem.whenTerminated, Duration.Inf)
     sys.exit(0)

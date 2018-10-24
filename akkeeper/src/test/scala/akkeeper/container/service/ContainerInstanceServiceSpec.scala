@@ -61,13 +61,14 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
     )
   }
 
-  private def createContainerInstanceService(instanceStorage: InstanceStorage.Async,
+  private def createContainerInstanceService(userActors: Seq[ActorLaunchContext],
+                                             instanceStorage: InstanceStorage.Async,
                                              instanceId: InstanceId,
                                              masterAddress: Address,
                                              retryInterval: FiniteDuration = DefaultRegistrationRetryInterval,
                                              joinClusterTimeout: FiniteDuration = DefaultJoinClusterTimeout
                                             ): ActorRef = {
-    val props = Props(classOf[ContainerInstanceService], instanceStorage,
+    val props = Props(classOf[ContainerInstanceService], userActors, instanceStorage,
       instanceId, masterAddress, retryInterval, joinClusterTimeout)
     childActorOf(props, ContainerInstanceService.ActorName)
   }
@@ -84,9 +85,9 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
       .expects(expectedInstanceInfo)
       .returns(Future successful instanceId)
 
-    val service = createContainerInstanceService(storage, instanceId, selfAddr.address)
+    val actors = Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName))
 
-    service ! LaunchActors(Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName)))
+    val service = createContainerInstanceService(actors, storage, instanceId, selfAddr.address)
 
     // Expect a notification from the Monitoring service mock.
     expectMsg(expectedInstanceInfo)
@@ -114,10 +115,10 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
       .returns(Future failed new AkkeeperException("Registration failed"))
       .repeated(numberOfAttempts)
 
-    val service = createContainerInstanceService(storage,
-      instanceId, selfAddr.address, retryInterval = 1 second)
+    val actors = Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName))
 
-    service ! LaunchActors(Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName)))
+    val service = createContainerInstanceService(actors, storage,
+      instanceId, selfAddr.address, retryInterval = 1 second)
 
     // No notification should arrive from the Monitoring service mock.
     val maxWaitForNoMsg = numberOfAttempts.seconds
@@ -135,12 +136,12 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
     (storage.start _).expects()
     (storage.stop _).expects()
 
+    val actors = Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName))
+
     val seedPort = 12345
-    val service = ContainerInstanceService.createLocal(newSystem, storage, instanceId,
+    ContainerInstanceService.createLocal(newSystem, actors, storage, instanceId,
       Address("akka.tcp", "ContainerInstanceServiceSpecTemp", "127.0.0.1", seedPort),
       joinClusterTimeout = 1 second)
-
-    service ! LaunchActors(Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName)))
 
     await(newSystem.whenTerminated)
   }
