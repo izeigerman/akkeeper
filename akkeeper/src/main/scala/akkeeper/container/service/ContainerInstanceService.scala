@@ -27,7 +27,8 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import ContainerInstanceService._
 
-class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
+class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
+                               instanceStorage: InstanceStorage.Async,
                                instanceId: InstanceId,
                                masterAddress: Address,
                                registrationRetryInterval: FiniteDuration,
@@ -40,20 +41,18 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
 
   override def preStart(): Unit = {
     instanceStorage.start()
-    super.preStart()
+    self ! JoinCluster
   }
 
   override def postStop(): Unit = {
     instanceStorage.stop()
-    super.postStop()
   }
 
-  private def launchActors(actors: Seq[ActorLaunchContext]): Unit = {
-    actors.foreach(actor => {
+  private def launchUserActors: Unit = {
+    userActors.foreach(actor => {
       log.debug(s"Deploying actor ${actor.name} (${actor.fqn})")
       val clazz = Class.forName(actor.fqn)
-      val actorRef = context.actorOf(Props(clazz), actor.name)
-      context.watch(actorRef)
+      context.actorOf(Props(clazz), actor.name)
     })
   }
 
@@ -119,6 +118,7 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
     case MemberUp(member) =>
       if (member.address == cluster.selfAddress) {
         log.debug("Successfully joined the cluster")
+        launchUserActors
         cluster.unsubscribe(self)
         context.become(initializedReceive)
         registerThisInstance
@@ -129,9 +129,8 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
       context.system.terminate()
   }
 
-  private def waitingForActorsReceive: Receive = {
-    case LaunchActors(actors) =>
-      launchActors(actors)
+  private def waitingForJoinCommandReceive: Receive = {
+    case JoinCluster =>
       context.become(joiningTheClusterReceive)
       log.debug(s"Joining the cluster (master: $masterAddress)")
       cluster.join(masterAddress)
@@ -140,11 +139,11 @@ class ContainerInstanceService(instanceStorage: InstanceStorage.Async,
       context.system.scheduler.scheduleOnce(joinClusterTimeout, self, JoinClusterTimeout)
   }
 
-  override def receive: Receive = waitingForActorsReceive
+  override def receive: Receive = waitingForJoinCommandReceive
 }
 
 object ContainerInstanceService {
-  private[akkeeper] case class LaunchActors(actors: Seq[ActorLaunchContext])
+  private case object JoinCluster
   private case object RetryRegistration
   private case object JoinClusterTimeout
   private[akkeeper] val DefaultRegistrationRetryInterval = 30 seconds
@@ -153,12 +152,13 @@ object ContainerInstanceService {
   val ActorName = "akkeeperInstance"
 
   def createLocal(factory: ActorRefFactory,
+                  userActors: Seq[ActorLaunchContext],
                   instanceStorage: InstanceStorage.Async,
                   instanceId: InstanceId,
                   masterAddress: Address,
                   registrationRetryInterval: FiniteDuration = DefaultRegistrationRetryInterval,
                   joinClusterTimeout: FiniteDuration = DefaultJoinClusterTimeout): ActorRef = {
-    val props = Props(classOf[ContainerInstanceService], instanceStorage,
+    val props = Props(classOf[ContainerInstanceService], userActors, instanceStorage,
       instanceId, masterAddress, registrationRetryInterval, joinClusterTimeout)
     factory.actorOf(props, ActorName)
   }
