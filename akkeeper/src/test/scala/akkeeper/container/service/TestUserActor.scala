@@ -21,10 +21,12 @@ import TestUserActor._
 class TestUserActor extends Actor {
   override def receive: Receive = {
     case TestPing => sender() ! TestPong
+    case TestTerminate => context.stop(self)
   }
 }
 
 object TestUserActor {
   case object TestPing
   case object TestPong
+  case object TestTerminate
 }

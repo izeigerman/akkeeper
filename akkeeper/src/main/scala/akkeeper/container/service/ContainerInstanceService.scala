@@ -48,15 +48,16 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
     instanceStorage.stop()
   }
 
-  private def launchUserActors: Unit = {
+  private def launchUserActors(): Unit = {
     userActors.foreach(actor => {
       log.debug(s"Deploying actor ${actor.name} (${actor.fqn})")
       val clazz = Class.forName(actor.fqn)
-      context.actorOf(Props(clazz), actor.name)
+      val userActorRef = context.actorOf(Props(clazz), actor.name)
+      context.watch(userActorRef)
     })
   }
 
-  private def notifyMonitoringService: Unit = {
+  private def notifyMonitoringService(): Unit = {
     try {
       thisInstance.foreach(info => {
         val monitoringService = MonitoringService.createRemote(context.system)
@@ -69,7 +70,7 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
     }
   }
 
-  private def registerThisInstance: Unit = {
+  private def registerThisInstance(): Unit = {
     if (!thisInstance.isDefined) {
       val actors = context.children.map(r => r.path.toStringWithoutAddress)
       val info = InstanceInfo(
@@ -91,11 +92,16 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
     })
   }
 
+  private def terminateThisInstance(): Unit = {
+    cluster.leave(cluster.selfAddress)
+    cluster.registerOnMemberRemoved(context.system.terminate())
+  }
+
   private def initializedReceive: Receive = {
     case _: InstanceId =>
       // The record was successfully saved to a storage.
       log.debug("Successfully registered this instance")
-      notifyMonitoringService
+      notifyMonitoringService()
     case OperationFailed(_, e) =>
       // Failed to save the record to a storage.
       log.error(e, "Failed to store this instance information. " +
@@ -105,24 +111,25 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
         self, RetryRegistration)
     case RetryRegistration =>
       log.info("Retrying instance registration process")
-      registerThisInstance
+      registerThisInstance()
     case StopInstance =>
       log.info("Termination command received. Stopping this instance")
-      cluster.leave(cluster.selfAddress)
-      context.system.terminate()
+      terminateThisInstance()
+    case Terminated(_) =>
+      if (context.children.isEmpty) {
+        log.info("No running user actors left. Terminating this instance")
+        terminateThisInstance()
+      }
     case JoinClusterTimeout =>
       // Safely ignore the timeout command.
   }
 
   private def joiningTheClusterReceive: Receive = {
-    case MemberUp(member) =>
-      if (member.address == cluster.selfAddress) {
-        log.debug("Successfully joined the cluster")
-        launchUserActors
-        cluster.unsubscribe(self)
-        context.become(initializedReceive)
-        registerThisInstance
-      }
+    case InstanceJoinedCluster =>
+      log.debug("Successfully joined the cluster")
+      launchUserActors()
+      context.become(initializedReceive)
+      registerThisInstance()
     case JoinClusterTimeout =>
       log.error(s"Couldn't join the cluster during ${joinClusterTimeout.toSeconds} seconds. " +
         "Terminating this instance...")
@@ -134,7 +141,7 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
       context.become(joiningTheClusterReceive)
       log.debug(s"Joining the cluster (master: $masterAddress)")
       cluster.join(masterAddress)
-      cluster.subscribe(self, initialStateMode = InitialStateAsEvents, classOf[MemberUp])
+      cluster.registerOnMemberUp(self ! InstanceJoinedCluster)
       // Scheduling a timeout command.
       context.system.scheduler.scheduleOnce(joinClusterTimeout, self, JoinClusterTimeout)
   }
@@ -146,6 +153,7 @@ object ContainerInstanceService {
   private case object JoinCluster
   private case object RetryRegistration
   private case object JoinClusterTimeout
+  private case object InstanceJoinedCluster
   private[akkeeper] val DefaultRegistrationRetryInterval = 30 seconds
   private[akkeeper] val DefaultJoinClusterTimeout = 120 seconds
 

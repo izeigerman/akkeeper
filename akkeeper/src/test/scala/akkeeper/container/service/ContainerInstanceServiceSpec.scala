@@ -17,7 +17,7 @@ package akkeeper.container.service
 
 import akka.actor._
 import akka.cluster.{Cluster, UniqueAddress}
-import akka.testkit.{ImplicitSender, TestKit}
+import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import akkeeper.{ActorTestUtils, AkkeeperException}
 import akkeeper.common._
 import akkeeper.master.service._
@@ -27,7 +27,7 @@ import com.typesafe.config.ConfigFactory
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
-import scala.concurrent.Future
+import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration._
 import ContainerInstanceService._
 import ContainerInstanceServiceSpec._
@@ -50,14 +50,16 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   private def createExpectedInstanceInfo(instanceId: InstanceId,
-                                         addr: UniqueAddress): InstanceInfo = {
+                                         addr: UniqueAddress,
+                                         actorPath: String = "/system/testActor-1/akkeeperInstance/testActor"
+                                        ): InstanceInfo = {
     InstanceInfo(
       instanceId = instanceId,
       status = InstanceUp,
       containerName = instanceId.containerName,
       roles = Set("akkeeperMaster", "dc-default"),
       address = Some(addr),
-      actors = Set("/system/testActor-1/akkeeperInstance/testActor")
+      actors = Set(actorPath)
     )
   }
 
@@ -98,7 +100,6 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
     expectMsg(TestPong)
 
     gracefulActorStop(service)
-    gracefulActorStop(masterServiceMock)
   }
 
   it should "retry if the registration failed" in {
@@ -124,7 +125,6 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
     val maxWaitForNoMsg = numberOfAttempts.seconds
     expectNoMessage(maxWaitForNoMsg)
 
-    gracefulActorStop(masterServiceMock)
     gracefulActorStop(service)
   }
 
@@ -142,6 +142,48 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
     ContainerInstanceService.createLocal(newSystem, actors, storage, instanceId,
       Address("akka.tcp", "ContainerInstanceServiceSpecTemp", "127.0.0.1", seedPort),
       joinClusterTimeout = 1 second)
+
+    await(newSystem.whenTerminated)
+  }
+
+  it should "terminate this instance if all user actors have been terminated" in {
+    val newSystem = ActorSystem("ContainerInstanceServiceSpecTemp",
+      ConfigFactory.load().withMasterPort.withMasterRole)
+    val newCluster = Cluster(newSystem)
+    val instanceId = InstanceId("container")
+    val expectedInstanceInfo = createExpectedInstanceInfo(instanceId,
+      newCluster.selfUniqueAddress, actorPath = "/user/akkeeperInstance/testActor")
+
+    val storage = mock[InstanceStorage.Async]
+    (storage.start _).expects()
+    (storage.stop _).expects()
+    (storage.registerInstance _)
+      .expects(expectedInstanceInfo)
+      .returns(Future successful instanceId)
+
+    val actors = Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName))
+
+    ContainerInstanceService.createLocal(newSystem, actors, storage, instanceId, newCluster.selfAddress)
+
+    // Verify that the user actor was actually launched.
+    val testProbe = TestProbe()(newSystem)
+    val userActor = newSystem.actorSelection("/user/akkeeperInstance/testActor")
+
+    val joinPromise = Promise[Unit]
+    newCluster.registerOnMemberUp(joinPromise.success(()))
+    await(joinPromise.future)
+    val waitTimeoutMs = 1000
+    Thread.sleep(waitTimeoutMs)
+
+    userActor.tell(TestPing, testProbe.ref)
+    testProbe.expectMsg(TestPong)
+
+    // Terminate the user actor.
+    userActor ! TestTerminate
+
+    val leavePromise = Promise[Unit]
+    newCluster.registerOnMemberRemoved(leavePromise.success(()))
+    await(leavePromise.future)
 
     await(newSystem.whenTerminated)
   }
