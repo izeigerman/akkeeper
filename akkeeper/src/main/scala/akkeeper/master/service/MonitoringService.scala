@@ -60,7 +60,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
   }
 
   private def memberAutoDown(instanceId: InstanceId, instanceAddr: UniqueAddress): Unit = {
-    val autoDownService = MemberAutoDownService.createLocal(context.system,
+    val autoDownService = MemberAutoDownService.createLocal(context,
       instanceAddr, instanceId, instanceStorage)
     autoDownService ! MemberAutoDownService.PollInstanceStatus
   }
