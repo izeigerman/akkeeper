@@ -68,10 +68,11 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
                                              instanceId: InstanceId,
                                              masterAddress: Address,
                                              retryInterval: FiniteDuration = DefaultRegistrationRetryInterval,
-                                             joinClusterTimeout: FiniteDuration = DefaultJoinClusterTimeout
+                                             joinClusterTimeout: FiniteDuration = DefaultJoinClusterTimeout,
+                                             leaveClusterTimeout: FiniteDuration = DefaultLeaveClusterTimeout
                                             ): ActorRef = {
     val props = Props(classOf[ContainerInstanceService], userActors, instanceStorage,
-      instanceId, masterAddress, retryInterval, joinClusterTimeout)
+      instanceId, masterAddress, retryInterval, joinClusterTimeout, leaveClusterTimeout)
     childActorOf(props, ContainerInstanceService.ActorName)
   }
 
