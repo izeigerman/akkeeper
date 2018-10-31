@@ -16,7 +16,7 @@
 package akkeeper.master.service
 
 import akka.actor._
-import akka.cluster.{Cluster, UniqueAddress}
+import akka.cluster.{Cluster, MemberStatus, UniqueAddress}
 import akka.cluster.ClusterEvent._
 import akka.pattern.pipe
 import akkeeper.api._
@@ -60,6 +60,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
   }
 
   private def memberAutoDown(instanceId: InstanceId, instanceAddr: UniqueAddress): Unit = {
+    log.debug(s"Launching the auto down job for instance ${instanceAddr.address}")
     val autoDownService = MemberAutoDownService.createLocal(context,
       instanceAddr, instanceId, instanceStorage)
     autoDownService ! MemberAutoDownService.PollInstanceStatus
@@ -263,13 +264,18 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
 
   private def clusterEventReceive: Receive = {
     case UnreachableMember(member) =>
-      findInstanceByAddr(member.uniqueAddress)
-        .foreach(i => {
-          // Update the instance's status and launch an actor which will automatically
-          // eliminate an unreachable member from the cluster.
-          instances.put(i.instanceId, Some(i.copy(status = InstanceUnreachable)))
-          memberAutoDown(i.instanceId, member.uniqueAddress)
-        })
+      if (member.status != MemberStatus.Exiting) {
+        findInstanceByAddr(member.uniqueAddress)
+          .foreach(i => {
+            // Update the instance's status and launch an actor which will automatically
+            // eliminate an unreachable member from the cluster.
+            instances.put(i.instanceId, Some(i.copy(status = InstanceUnreachable)))
+            memberAutoDown(i.instanceId, member.uniqueAddress)
+          })
+      } else {
+        // Receiving the UNREACHABLE event for exiting members - is an expected behavior.
+        cluster.down(member.address)
+      }
     case ReachableMember(member) =>
       updateInstanceStatusByAddr(member.uniqueAddress, InstanceUp)
     case MemberRemoved(member, _) =>
