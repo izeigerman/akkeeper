@@ -21,8 +21,17 @@ import scala.concurrent.Future
 
 case class LaunchResult(appId: String, masterAddress: Address)
 
-private[akkeeper] trait Launcher {
-  def start(): Unit
-  def stop(): Unit
+/** Launcher for the Akkeeper application. */
+trait Launcher {
+
+  /** Launches the Akkeeper application and returns an asynchronous
+    * launch result.
+    *
+    * @param config the app configuration.
+    * @param args the launch arguments.
+    * @return the asynchronous result that contains an ID of the
+    *         submitted application and the address of the node where
+    *         Akkeeper Master is running.
+    */
   def launch(config: Config, args: LaunchArguments): Future[LaunchResult]
 }

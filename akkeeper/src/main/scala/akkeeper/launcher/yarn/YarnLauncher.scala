@@ -29,15 +29,16 @@ import com.typesafe.config.{Config, ConfigRenderOptions}
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.slf4j.LoggerFactory
+
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 
-private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration,
-                                     yarnClient: YarnLauncherClient) extends Launcher {
+final class YarnLauncher(yarnConf: YarnConfiguration,
+                         yarnClientCreator: () => YarnLauncherClient) extends Launcher {
 
-  def this(yarnConf: YarnConfiguration) = this(yarnConf, new YarnLauncherClient)
+  def this(yarnConf: YarnConfiguration) = this(yarnConf, () => new YarnLauncherClient)
 
   private val logger = LoggerFactory.getLogger(classOf[YarnLauncher])
 
@@ -45,9 +46,19 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration,
   private implicit val pollingStatusExecutionContext = ExecutionContext
     .fromExecutor(pollingStatusExecutor)
 
-  yarnClient.init(yarnConf)
+  private def withYarnClient[T](f: YarnLauncherClient => T): T = {
+    val yarnClient = yarnClientCreator()
+    try {
+      yarnClient.init(yarnConf)
+      yarnClient.start()
+      f(yarnClient)
+    } finally {
+      yarnClient.stop()
+    }
+  }
 
-  private def retrieveMasterAddress(config: Config,
+  private def retrieveMasterAddress(yarnClient: YarnLauncherClient,
+                                    config: Config,
                                     appId: ApplicationId,
                                     pollInterval: Long): Future[Address] = {
     @tailrec
@@ -144,16 +155,9 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration,
     YarnUtils.buildCmd(mainClass, jvmArgs = jvmArgs, appArgs = appArgs)
   }
 
-  override def start(): Unit = {
-    yarnClient.start()
-  }
-
-  override def stop(): Unit = {
-    yarnClient.stop()
-    pollingStatusExecutor.shutdownNow()
-  }
-
-  override def launch(config: Config, args: LaunchArguments): Future[LaunchResult] = {
+  private def launchWithClient(yarnClient: YarnLauncherClient,
+                               config: Config,
+                               args: LaunchArguments): Future[LaunchResult] = {
     val application = yarnClient.createApplication()
 
     val appContext = application.getApplicationSubmissionContext
@@ -189,7 +193,15 @@ private[akkeeper] class YarnLauncher(yarnConf: YarnConfiguration,
     yarnClient.submitApplication(appContext)
     logger.info(s"Launched Akkeeper Cluster $appId")
 
-    val masterAddressFuture = retrieveMasterAddress(config, appId, args.pollInterval)
+    val masterAddressFuture = retrieveMasterAddress(yarnClient, config, appId, args.pollInterval)
     masterAddressFuture.map(addr => LaunchResult(appId.toString, addr))
+  }
+
+  override def launch(config: Config, args: LaunchArguments): Future[LaunchResult] = {
+    Future {
+      withYarnClient { yarnClient =>
+        launchWithClient(yarnClient, config, args)
+      }
+    }.flatten
   }
 }
