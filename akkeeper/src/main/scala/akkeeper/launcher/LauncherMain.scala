@@ -16,9 +16,9 @@
 package akkeeper.launcher
 
 import java.io.File
+import java.net.URI
 
 import akkeeper.BuildInfo
-import akkeeper.launcher.yarn.YarnLauncher
 import akkeeper.utils.yarn.YarnUtils
 import com.typesafe.config.ConfigFactory
 import scopt.OptionParser
@@ -26,23 +26,40 @@ import scopt.OptionParser
 import scala.concurrent.Await
 import scala.util.control.NonFatal
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object LauncherMain extends App {
 
-  val optParser = new OptionParser[LaunchArguments](BuildInfo.name) {
+  private[akkeeper] def transformUri(uri: URI): URI = {
+    val uriStr = uri.toString
+    if (Option(uri.getScheme).isEmpty) {
+      // If the scheme is not specified, use the "file" scheme as a default choice.
+      if (uriStr.startsWith("/")) {
+        // Absolute path.
+        new URI("file://" + uriStr)
+      } else {
+        // Relative path.
+        new URI("file://" + new File(uriStr).getAbsolutePath)
+      }
+    } else {
+      uri
+    }
+  }
+
+  private val optParser = new OptionParser[LaunchArguments](BuildInfo.name) {
     head(BuildInfo.name, BuildInfo.version)
 
-    opt[File]("akkeeperJar").required().action((v, c) => {
-      c.copy(akkeeperJarPath = v)
+    opt[URI]("akkeeperJar").required().action((v, c) => {
+      c.copy(akkeeperJarPath = transformUri(v))
     }).text("Path to the Akkeeper fat Jar.")
 
-    opt[Seq[File]]("jars").valueName("<jar1>,<jar2>,...").action((v, c) => {
-      c.copy(otherJars = v)
+    opt[Seq[URI]]("jars").valueName("<jar1>,<jar2>,...").action((v, c) => {
+      c.copy(otherJars = v.map(transformUri))
     }).text("A comma-separated list of additional Jar files that have to be included into " +
       "the container's classpath.")
 
-    opt[Seq[File]]("resources").valueName("<file1>,<file2>,...").action((v, c) => {
-      c.copy(resources = v)
+    opt[Seq[URI]]("resources").valueName("<file1>,<file2>,...").action((v, c) => {
+      c.copy(resources = v.map(transformUri))
     }).text("A comma-separated list of resource files that have to be distributed within a cluster.")
 
     opt[Seq[String]]("masterJvmArgs").valueName("<prop1>,<prop2>,...").action((v, c) => {
@@ -57,20 +74,20 @@ object LauncherMain extends App {
       c.copy(principal = Some(v))
     }).text("Principal to be used to login to KDC.")
 
-    opt[File]("keytab").valueName("<keytab path>").action((v, c) => {
-      c.copy(keytab = v)
+    opt[URI]("keytab").valueName("<keytab path>").action((v, c) => {
+      c.copy(keytab = transformUri(v))
     }).text("The full path to the file that contains the keytab for the principal specified above.")
 
     opt[File]("config").valueName("<file>").action((v, c) => {
       c.copy(userConfig = Some(ConfigFactory.parseFile(v)))
     }).text("The path to the custom configuration file.")
 
-    arg[File]("<jar>").required().action((x, c) => {
-      c.copy(userJar = x)
+    arg[URI]("<jar>").required().action((x, c) => {
+      c.copy(userJar = transformUri(x))
     }).text("The path to the user Jar file.")
   }
 
-  val LauncherTimeout = 30 seconds
+  private val LauncherTimeout = 30 seconds
 
   private def runYarn(launcherArgs: LaunchArguments): Unit = {
     val config = launcherArgs.userConfig
@@ -78,10 +95,10 @@ object LauncherMain extends App {
       .getOrElse(ConfigFactory.load())
 
     launcherArgs.principal.foreach(p => {
-      YarnUtils.loginFromKeytab(p, launcherArgs.keytab.getAbsolutePath)
+      YarnUtils.loginFromKeytab(p, launcherArgs.keytab.toString)
     })
 
-    val launcher = new YarnLauncher(YarnUtils.getYarnConfiguration)
+    val launcher = Launcher.createYarnLauncher(YarnUtils.getYarnConfiguration)
     val launchResult = launcher.launch(config, launcherArgs)
     Await.result(launchResult, LauncherTimeout)
   }

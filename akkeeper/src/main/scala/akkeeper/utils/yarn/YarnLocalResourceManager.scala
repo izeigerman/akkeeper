@@ -26,6 +26,8 @@ import org.apache.hadoop.yarn.util.ConverterUtils
 private[akkeeper] final class YarnLocalResourceManager(conf: Configuration,
                                                        stagingDir: String) {
 
+  private val stagingDirPath: Path = new Path(stagingDir)
+
   private def withStream[S <: Closeable, R](s: => S)(f: S => R): R = {
     val stream = s
     try {
@@ -43,59 +45,34 @@ private[akkeeper] final class YarnLocalResourceManager(conf: Configuration,
     )
   }
 
-  private def uploadLocalResourceImpl(fs: FileSystem, srcStream: InputStream,
-                                      dstPath: String): Path = {
-    val dst = new Path(stagingDir, dstPath)
-    withStream(fs.create(dst)) { out =>
+  private def copyResourceToStagingDir(dstFs: FileSystem, srcStream: InputStream,
+                                       dstPath: String): Path = {
+    val dst = new Path(stagingDirPath, dstPath)
+    withStream(dstFs.create(dst)) { out =>
       IOUtils.copy(srcStream, out)
       out.hsync()
     }
     dst
   }
 
-  private def createLocalResourceImpl(fs: FileSystem, srcStream: InputStream,
-                                      dstPath: String): LocalResource = {
-    val dst = uploadLocalResourceImpl(fs, srcStream, dstPath)
-    val dstStatus = fs.getFileStatus(dst)
-    create(fs, dstStatus)
-  }
-
-  def uploadLocalResource(srcPath: String, dstPath: String): Unit = {
-    val fs = FileSystem.get(conf)
-    withStream(new FileInputStream(srcPath)) { srcStream =>
-      uploadLocalResourceImpl(fs, srcStream, dstPath)
-    }
-  }
-
-  def uploadLocalResource(srcStream: InputStream, dstPath: String): Unit = {
-    val fs = FileSystem.get(conf)
-    uploadLocalResourceImpl(fs, srcStream, dstPath)
-  }
-
-
   def createLocalResource(srcStream: InputStream, dstPath: String): LocalResource = {
-    val fs = FileSystem.get(conf)
-    createLocalResourceImpl(fs, srcStream, dstPath)
+    val dstFs = stagingDirPath.getFileSystem(conf)
+    val dst = copyResourceToStagingDir(dstFs, srcStream, dstPath)
+    val dstStatus = dstFs.getFileStatus(dst)
+    create(dstFs, dstStatus)
   }
 
   def createLocalResource(srcPath: String, dstPath: String): LocalResource = {
-    val fs = FileSystem.get(conf)
-    withStream(new FileInputStream(srcPath)) { srcStream =>
-      createLocalResourceImpl(fs, srcStream, dstPath)
-    }
-  }
-
-  def createLocalResourceFromHdfs(srcPath: String, dstPath: String): LocalResource = {
-    val fs = FileSystem.get(conf)
     val path = new Path(srcPath)
-    withStream(fs.open(path)) { srcStream =>
-      createLocalResourceImpl(fs, srcStream, dstPath)
+    val srcFs = path.getFileSystem(conf)
+    withStream(srcFs.open(path)) { srcStream =>
+      createLocalResource(srcStream, dstPath)
     }
   }
 
   def getExistingLocalResource(dstPath: Path): LocalResource = {
-    val fs = FileSystem.get(conf)
-    val dstStatus = fs.getFileStatus(new Path(stagingDir, dstPath))
+    val fs = dstPath.getFileSystem(conf)
+    val dstStatus = fs.getFileStatus(new Path(stagingDirPath, dstPath))
     create(fs, dstStatus)
   }
 
