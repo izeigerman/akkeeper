@@ -15,21 +15,21 @@
  */
 package akkeeper.launcher
 
-import java.io.File
+import java.net.URI
 
 import com.typesafe.config.Config
 import LaunchArguments._
 
-private[akkeeper] case class LaunchArguments(akkeeperJarPath: File = new File("."),
-                                             userJar: File = new File("."),
-                                             otherJars: Seq[File] = Seq.empty,
-                                             resources: Seq[File] = Seq.empty,
+private[akkeeper] case class LaunchArguments(akkeeperJarPath: URI = new URI("."),
+                                             userJar: URI = new URI("."),
+                                             otherJars: Seq[URI] = Seq.empty,
+                                             resources: Seq[URI] = Seq.empty,
                                              masterJvmArgs: Seq[String] = Seq.empty,
                                              userConfig: Option[Config] = None,
                                              pollInterval: Long = DefaultPollInterval,
                                              yarnQueue: Option[String] = None,
                                              principal: Option[String] = None,
-                                             keytab: File = new File("."))
+                                             keytab: URI = new URI("."))
 
 object LaunchArguments {
   val DefaultPollInterval = 1000

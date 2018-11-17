@@ -16,6 +16,7 @@
 package akkeeper.launcher.yarn
 
 import java.io.{File, FileOutputStream}
+import java.net.URI
 import java.util.UUID
 
 import akkeeper.AwaitMixin
@@ -31,8 +32,10 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.apache.hadoop.yarn.util.Records
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
 import YarnLauncherSpec._
 
@@ -80,15 +83,15 @@ class YarnLauncherSpec extends FlatSpec with Matchers with MockFactory
   private def createTestLaunchArguments: LaunchArguments = {
     val resourcesDir = new Path(resourcesDirectory, UUID.randomUUID().toString).toString
     LaunchArguments(
-      akkeeperJarPath = new File(createResource(resourcesDir, "akkeeper.jar")),
-      userJar = new File(createResource(resourcesDir, "user.jar")),
-      otherJars = Seq(new File(createResource(resourcesDir, "other.jar"))),
-      resources = Seq(new File(createResource(resourcesDir, "resource"))),
+      akkeeperJarPath = new URI(createResource(resourcesDir, "akkeeper.jar")),
+      userJar = new URI(createResource(resourcesDir, "user.jar")),
+      otherJars = Seq(new URI(createResource(resourcesDir, "other.jar"))),
+      resources = Seq(new URI(createResource(resourcesDir, "resource"))),
       masterJvmArgs = Seq("-test-prop"),
       userConfig = Some(ConfigFactory.load("application-container-test.conf")),
       yarnQueue = Some("queue"),
       principal = Some("username"),
-      keytab = new File(createResource(resourcesDir, "some.keytab"))
+      keytab = new URI(createResource(resourcesDir, "some.keytab"))
     )
   }
 

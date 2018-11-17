@@ -16,8 +16,8 @@
 package akkeeper.launcher.yarn
 
 import java.io.ByteArrayInputStream
+import java.net.URI
 import java.util
-import java.util.concurrent.Executors
 
 import akka.actor.Address
 import akkeeper.launcher._
@@ -26,6 +26,7 @@ import akkeeper.utils.CliArguments._
 import akkeeper.utils.ConfigUtils._
 import akkeeper.utils.yarn._
 import com.typesafe.config.{Config, ConfigRenderOptions}
+import org.apache.commons.io.FilenameUtils
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.slf4j.LoggerFactory
@@ -36,15 +37,10 @@ import scala.concurrent.{ExecutionContext, Future}
 
 
 final class YarnLauncher(yarnConf: YarnConfiguration,
-                         yarnClientCreator: () => YarnLauncherClient) extends Launcher {
-
-  def this(yarnConf: YarnConfiguration) = this(yarnConf, () => new YarnLauncherClient)
+                         yarnClientCreator: () => YarnLauncherClient)
+                        (implicit context: ExecutionContext)extends Launcher[Future] {
 
   private val logger = LoggerFactory.getLogger(classOf[YarnLauncher])
-
-  private val pollingStatusExecutor = Executors.newSingleThreadExecutor()
-  private implicit val pollingStatusExecutionContext = ExecutionContext
-    .fromExecutor(pollingStatusExecutor)
 
   private def withYarnClient[T](f: YarnLauncherClient => T): T = {
     val yarnClient = yarnClientCreator()
@@ -92,36 +88,39 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
     Resource.newInstance(memory, cpus)
   }
 
+  private def uploadGenericFiles(files: Seq[URI], dstLocalDir: String,
+                                 resourceManger: YarnLocalResourceManager): Unit = {
+    files.foreach(file => {
+      val fileName = FilenameUtils.getName(file.getPath)
+      val localPath = dstLocalDir + "/" + fileName
+      resourceManger.createLocalResource(file.toString, localPath)
+    })
+  }
+
   private def buildLocalResources(stagingDir: String,
                                   args: LaunchArguments): util.HashMap[String, LocalResource] = {
     val resourceManger = new YarnLocalResourceManager(yarnConf, stagingDir)
     val localResources = new util.HashMap[String, LocalResource]()
 
-    val akkeeperJar = resourceManger.createLocalResource(args.akkeeperJarPath.getAbsolutePath,
+    val akkeeperJar = resourceManger.createLocalResource(args.akkeeperJarPath.toString,
       LocalResourceNames.AkkeeperJarName)
     localResources.put(LocalResourceNames.AkkeeperJarName, akkeeperJar)
 
     // Add a user jar to the staging directory. No need to include it
     // into master local resources.
-    resourceManger.uploadLocalResource(args.userJar.getAbsolutePath,
+    resourceManger.createLocalResource(args.userJar.toString,
       LocalResourceNames.UserJarName)
 
-    args.otherJars.foreach(jarFile => {
-      // Just upload the third-party jars. No need to include them
-      // into master local resources.
-      val localPath = LocalResourceNames.ExtraJarsDirName + "/" + jarFile.getName
-      resourceManger.uploadLocalResource(jarFile.getAbsolutePath, localPath)
-    })
+    // Just upload the third-party jars. No need to include them
+    // into master local resources.
+    uploadGenericFiles(args.otherJars, LocalResourceNames.ExtraJarsDirName, resourceManger)
 
-    args.resources.foreach(resource => {
-      // Distribute resources.
-      val localPath = LocalResourceNames.ResourcesDirName + "/" + resource.getName
-      resourceManger.uploadLocalResource(resource.getAbsolutePath, localPath)
-    })
+    // Distribute resources.
+    uploadGenericFiles(args.resources, LocalResourceNames.ResourcesDirName, resourceManger)
 
     args.principal.foreach(_ => {
       // Distribute keytab.
-      val keytabResource = resourceManger.createLocalResource(args.keytab.getAbsolutePath,
+      val keytabResource = resourceManger.createLocalResource(args.keytab.toString,
         LocalResourceNames.KeytabName)
       localResources.put(LocalResourceNames.KeytabName, keytabResource)
     })

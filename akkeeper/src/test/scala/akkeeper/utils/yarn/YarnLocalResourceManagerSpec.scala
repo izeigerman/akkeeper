@@ -86,33 +86,12 @@ class YarnLocalResourceManagerSpec extends FlatSpec with Matchers with BeforeAnd
     val expectedFileName = UUID.randomUUID().toString
     val expectedPath = new Path(stagingDir, expectedFileName).toString
 
-    manager.uploadLocalResource(resource, expectedFileName)
+    manager.createLocalResource(resource, expectedFileName)
     val newExpectedFileName = UUID.randomUUID().toString
     val newExpectedPath = new Path(stagingDir, newExpectedFileName).toString
-    val actualResult = manager.createLocalResourceFromHdfs(expectedPath, newExpectedFileName)
+    val actualResult = manager.createLocalResource(expectedPath, newExpectedFileName)
     validateLocalResource(actualResult, newExpectedPath)
     validateResourcePayload("/application-container-test.conf", newExpectedPath)
-  }
-
-  it should "only upload a local resource (using path)" in {
-    val manager = new YarnLocalResourceManager(hadoopConfig, stagingDir)
-    val resource = getClass.getResource("/application-container-test.conf").getPath
-    val expectedFileName = UUID.randomUUID().toString
-    val expectedPath = new Path(stagingDir, expectedFileName).toString
-
-    manager.uploadLocalResource(resource, expectedFileName)
-    validateResourcePayload("/application-container-test.conf", expectedPath)
-  }
-
-  it should "only upload a local resource (using stream)" in {
-    val manager = new YarnLocalResourceManager(hadoopConfig, stagingDir)
-    val resource = getClass.getResourceAsStream("/application-container-test.conf")
-    val expectedFileName = UUID.randomUUID().toString
-    val expectedPath = new Path(stagingDir, expectedFileName).toString
-
-    manager.uploadLocalResource(resource, expectedFileName)
-    validateResourcePayload("/application-container-test.conf", expectedPath)
-    resource.close()
   }
 
   it should "return the existing local resource" in {
@@ -121,7 +100,7 @@ class YarnLocalResourceManagerSpec extends FlatSpec with Matchers with BeforeAnd
     val expectedFileName = UUID.randomUUID().toString
     val expectedPath = new Path(stagingDir, expectedFileName).toString
 
-    manager.uploadLocalResource(resource, expectedFileName)
+    manager.createLocalResource(resource, expectedFileName)
     val actualResult = manager.getExistingLocalResource(expectedFileName)
     validateLocalResource(actualResult, expectedPath)
     validateResourcePayload("/application-container-test.conf", expectedPath)
