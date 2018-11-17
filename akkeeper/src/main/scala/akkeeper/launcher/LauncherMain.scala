@@ -82,10 +82,8 @@ object LauncherMain extends App {
     })
 
     val launcher = new YarnLauncher(YarnUtils.getYarnConfiguration)
-    launcher.start()
     val launchResult = launcher.launch(config, launcherArgs)
     Await.result(launchResult, LauncherTimeout)
-    launcher.stop()
   }
 
   def run(launcherArgs: LaunchArguments): Unit = {

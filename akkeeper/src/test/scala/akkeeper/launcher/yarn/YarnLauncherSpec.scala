@@ -126,15 +126,13 @@ class YarnLauncherSpec extends FlatSpec with Matchers with MockFactory
       .onCall((_: ApplicationId) => reportGenerator.getNextReport())
       .repeated(3)
 
-    val launcher = new YarnLauncher(yarnConfig, yarnClient)
+    val launcher = new YarnLauncher(yarnConfig, () => yarnClient)
     val launchArgs = createTestLaunchArguments
-    launcher.start()
     val result = await(launcher.launch(config, launchArgs))
     result.appId shouldBe appId.toString
     result.masterAddress.host shouldBe Some("localhost")
     result.masterAddress.port shouldBe Some(config.getInt("akkeeper.akka.port"))
     result.masterAddress.system shouldBe config.getActorSystemName
-    launcher.stop()
 
     appContext.getApplicationName shouldBe config.getYarnApplicationName
 
@@ -179,13 +177,11 @@ class YarnLauncherSpec extends FlatSpec with Matchers with MockFactory
       .onCall((_: ApplicationId) => reportGenerator.getNextReport())
       .repeated(3)
 
-    val launcher = new YarnLauncher(yarnConfig, yarnClient)
+    val launcher = new YarnLauncher(yarnConfig, () => yarnClient)
     val launchArgs = createTestLaunchArguments
-    launcher.start()
     intercept[YarnLauncherException] {
       await(launcher.launch(config, launchArgs))
     }
-    launcher.stop()
   }
 }
 
