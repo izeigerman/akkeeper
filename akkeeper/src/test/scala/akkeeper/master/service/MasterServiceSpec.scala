@@ -201,6 +201,33 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
       }
     }.run()
   }
+
+  it should "shutdown the Actor system if the termination request has been received" in {
+    new MasterServiceTestRunner() {
+      override def test(): Unit = {
+        val storage = mock[InstanceStorage.Async]
+        (storage.start _).expects()
+        (storage.stop _).expects()
+        (storage.getInstances _).expects().returns(Future successful Seq.empty)
+
+        val deployClient = mock[DeployClient.Async]
+        (deployClient.start _).expects()
+        (deployClient.stop _).expects()
+
+        val service = MasterService.createLocal(system, deployClient, storage)
+
+        val getInstances = GetInstances()
+        service ! getInstances
+        val response = expectMsgClass(classOf[InstancesList])
+        response.requestId shouldBe getInstances.requestId
+        response.instanceIds shouldBe empty
+
+        service ! TerminateMaster
+
+        Await.result(system.whenTerminated, 3 seconds)
+      }
+    }.run()
+  }
 }
 
 object MasterServiceSpec {

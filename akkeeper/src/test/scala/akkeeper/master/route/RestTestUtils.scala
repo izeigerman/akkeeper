@@ -55,7 +55,7 @@ trait RestTestUtils extends AwaitMixin {
     await(result)
   }
 
-  private def sendRequest(request: HttpRequest, port: Int): Future[(Int, String)] = {
+  protected def sendRequest(request: HttpRequest, port: Int): Future[(Int, String)] = {
     val connectionFlow = Http().outgoingConnection("localhost", port)
     Source
       .single(request)

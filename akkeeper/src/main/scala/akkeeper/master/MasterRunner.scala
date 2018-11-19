@@ -84,7 +84,8 @@ private[master] class YarnMasterRunner extends MasterRunner {
     ControllerComposite("api/v1", Seq(
       DeployController(masterService),
       ContainerController(masterService),
-      MonitoringController(masterService)
+      MonitoringController(masterService),
+      MasterController(masterService)
     )).route
   }
 

@@ -73,14 +73,14 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
   private def serviceTerminatedReceive: Receive = {
     case Terminated(actor) =>
       if (actor == containerService) {
-        log.error("Container Service was terminated")
+        log.error("Container Service has been terminated")
       } else if (actor == monitoringService) {
-        log.error("Monitoring Service was terminated")
+        log.error("Monitoring Service has been terminated")
       } else {
-        log.error("Deploy Service was terminated.")
+        log.error("Deploy Service has been terminated.")
       }
       if (context.children.isEmpty) {
-        log.error("Can't proceed further. Shutting down the master")
+        log.error("All services have been terminated. Shutting down the master")
         context.system.terminate()
       }
   }
@@ -89,6 +89,9 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
     case r: DeployContainer => deployService.forward(r)
     case r: InstanceRequest => monitoringService.forward(r)
     case r: ContainerRequest => containerService.forward(r)
+    case TerminateMaster =>
+      log.info("Master termination request has been received")
+      Seq(containerService, monitoringService, deployService).foreach(context.stop(_))
   }
 
   private def clusterEventReceive: Receive = {
