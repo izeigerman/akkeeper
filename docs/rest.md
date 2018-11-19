@@ -13,6 +13,8 @@
   * [Create a new container](#create-a-new-container)
   * [Update the existing container](#update-the-existing-container)
   * [Delete container](#delete-container)
+* [Master API](#master-api)
+  * [Terminate master](#terminate-master)
 
 ## Deploy API
 ### Deploy instances
@@ -267,3 +269,18 @@ curl -X DELETE -H "Content-Type: application/json" http://<master_host>:5050/api
   "name": "myContainer"
 }
 ```
+
+## Master API
+### Terminate master
+
+**Command**
+```bash
+curl -X POST http://<master_host>:5050/api/v1/master/terminate
+```
+**Request body**
+
+**Response code**
+
+202 - Accepted
+
+**Response body**
