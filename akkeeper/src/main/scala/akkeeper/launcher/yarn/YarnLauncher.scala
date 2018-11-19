@@ -201,6 +201,6 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
       withYarnClient { yarnClient =>
         launchWithClient(yarnClient, config, args)
       }
-    }.flatten
+    }.flatMap(identity) // There is no Future.flatten method in Scala 2.11.
   }
 }
