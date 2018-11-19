@@ -17,6 +17,7 @@ package akkeeper.launcher
 
 import java.io.File
 import java.net.URI
+import java.util.concurrent.TimeUnit
 
 import akkeeper.BuildInfo
 import akkeeper.utils.yarn.YarnUtils
@@ -87,7 +88,7 @@ object LauncherMain extends App {
     }).text("The path to the user Jar file.")
   }
 
-  private val LauncherTimeout = 30 seconds
+  private val DefaultLauncherTimeout = 90 seconds
 
   private def runYarn(launcherArgs: LaunchArguments): Unit = {
     val config = launcherArgs.userConfig
@@ -98,9 +99,15 @@ object LauncherMain extends App {
       YarnUtils.loginFromKeytab(p, launcherArgs.keytab.toString)
     })
 
+    val launcherTimeout =
+      if (config.hasPath("akkeeper.launcher.timeout")) {
+        config.getDuration("akkeeper.launcher.timeout", TimeUnit.SECONDS).seconds
+      } else {
+        DefaultLauncherTimeout
+      }
     val launcher = Launcher.createYarnLauncher(YarnUtils.getYarnConfiguration)
     val launchResult = launcher.launch(config, launcherArgs)
-    Await.result(launchResult, LauncherTimeout)
+    Await.result(launchResult, launcherTimeout)
   }
 
   def run(launcherArgs: LaunchArguments): Unit = {
