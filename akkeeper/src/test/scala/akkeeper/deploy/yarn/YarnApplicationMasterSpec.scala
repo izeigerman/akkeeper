@@ -146,7 +146,11 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
     val deployResult = await(actualResult(0))
     deployResult shouldBe DeploySuccessful(instanceId)
 
+    val stagingDirectory = masterConfig.config.getString("akkeeper.yarn.staging-directory")
+    hadoopFs.exists(new Path(stagingDirectory, "appId")) shouldBe true
     master.stop()
+    // Make sure that the staging directory has been cleaned up.
+    hadoopFs.exists(new Path(stagingDirectory, "appId")) shouldBe false
   }
 
   it should "handle failed deployment properly" in {

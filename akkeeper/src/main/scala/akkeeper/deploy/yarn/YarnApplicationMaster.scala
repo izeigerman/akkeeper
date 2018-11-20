@@ -15,9 +15,9 @@
  */
 package akkeeper.deploy.yarn
 
-import java.io.{FileNotFoundException, ByteArrayInputStream}
+import java.io.{ByteArrayInputStream, FileNotFoundException}
 import java.util
-import java.util.concurrent.{TimeUnit, Executors, ScheduledExecutorService}
+import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 
 import akkeeper.common.{ContainerDefinition, InstanceId}
 import akkeeper.container.ContainerInstanceMain
@@ -29,6 +29,7 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest
 import org.slf4j.LoggerFactory
+
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 import scala.util._
@@ -276,10 +277,22 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     isRunning = false
   }
 
+  private def cleanupStagingDirectory(): Unit = {
+    val path = new Path(stagingDirectory)
+    val fs = path.getFileSystem(config.yarnConf)
+    try {
+      fs.delete(path, true)
+    } catch {
+      case NonFatal(e) =>
+        logger.error("Failed to remove the staging directory", e)
+    }
+  }
+
   override def stop(): Unit = {
     if (isRunning) {
       unregisterApplicationMaster(FinalApplicationStatus.SUCCEEDED, "")
       stopClients()
+      cleanupStagingDirectory()
       logger.info("YARN Application Master stopped")
     }
   }
@@ -288,6 +301,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     if (isRunning) {
       unregisterApplicationMaster(FinalApplicationStatus.FAILED, error.getMessage)
       stopClients()
+      cleanupStagingDirectory()
       logger.error("YARN Application Master stopped with errors", error)
     }
   }
