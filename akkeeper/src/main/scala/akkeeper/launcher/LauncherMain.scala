@@ -76,7 +76,7 @@ object LauncherMain extends App {
     }).text("Principal to be used to login to KDC.")
 
     opt[URI]("keytab").valueName("<keytab path>").action((v, c) => {
-      c.copy(keytab = transformUri(v))
+      c.copy(keytab = Some(transformUri(v)))
     }).text("The full path to the file that contains the keytab for the principal specified above.")
 
     opt[File]("config").valueName("<file>").action((v, c) => {
@@ -96,7 +96,7 @@ object LauncherMain extends App {
       .getOrElse(ConfigFactory.load())
 
     launcherArgs.principal.foreach(p => {
-      YarnUtils.loginFromKeytab(p, launcherArgs.keytab.toString)
+      YarnUtils.loginFromKeytab(p, launcherArgs.keytab.get.toString)
     })
 
     val launcherTimeout =

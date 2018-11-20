@@ -120,7 +120,7 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
 
     args.principal.foreach(_ => {
       // Distribute keytab.
-      val keytabResource = resourceManger.createLocalResource(args.keytab.toString,
+      val keytabResource = resourceManger.createLocalResource(args.keytab.get.toString,
         LocalResourceNames.KeytabName)
       localResources.put(LocalResourceNames.KeytabName, keytabResource)
     })

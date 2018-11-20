@@ -23,7 +23,7 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class LaunchResult(appId: String, masterAddress: Address)
+final case class LaunchResult(appId: String, masterAddress: Address)
 
 /** Launcher for the Akkeeper application. */
 trait Launcher[F[_]] {

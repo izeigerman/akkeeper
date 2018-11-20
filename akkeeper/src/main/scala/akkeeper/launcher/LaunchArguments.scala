@@ -20,16 +20,16 @@ import java.net.URI
 import com.typesafe.config.Config
 import LaunchArguments._
 
-private[akkeeper] case class LaunchArguments(akkeeperJarPath: URI = new URI("."),
-                                             userJar: URI = new URI("."),
-                                             otherJars: Seq[URI] = Seq.empty,
-                                             resources: Seq[URI] = Seq.empty,
-                                             masterJvmArgs: Seq[String] = Seq.empty,
-                                             userConfig: Option[Config] = None,
-                                             pollInterval: Long = DefaultPollInterval,
-                                             yarnQueue: Option[String] = None,
-                                             principal: Option[String] = None,
-                                             keytab: URI = new URI("."))
+final case class LaunchArguments(akkeeperJarPath: URI = new URI("."),
+                                 userJar: URI = new URI("."),
+                                 otherJars: Seq[URI] = Seq.empty,
+                                 resources: Seq[URI] = Seq.empty,
+                                 masterJvmArgs: Seq[String] = Seq.empty,
+                                 userConfig: Option[Config] = None,
+                                 pollInterval: Long = DefaultPollInterval,
+                                 yarnQueue: Option[String] = None,
+                                 principal: Option[String] = None,
+                                 keytab: Option[URI] = None)
 
 object LaunchArguments {
   val DefaultPollInterval = 1000
