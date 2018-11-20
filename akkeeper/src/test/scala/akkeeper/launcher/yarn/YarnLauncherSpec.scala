@@ -91,7 +91,7 @@ class YarnLauncherSpec extends FlatSpec with Matchers with MockFactory
       userConfig = Some(ConfigFactory.load("application-container-test.conf")),
       yarnQueue = Some("queue"),
       principal = Some("username"),
-      keytab = new URI(createResource(resourcesDir, "some.keytab"))
+      keytab = Some(new URI(createResource(resourcesDir, "some.keytab")))
     )
   }
 
