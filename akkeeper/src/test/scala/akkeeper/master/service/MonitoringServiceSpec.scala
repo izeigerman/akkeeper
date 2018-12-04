@@ -29,12 +29,14 @@ import org.scalatest._
 import scala.concurrent.Future
 import MonitoringService._
 import MonitoringServiceSpec._
+import com.typesafe.config.{ConfigFactory, ConfigValueFactory}
 
 class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   with FlatSpecLike with Matchers with ImplicitSender with MockFactory with ActorTestUtils
   with BeforeAndAfterAll {
 
-  def this() = this(ActorSystem("MonitoringServiceSpec"))
+  def this() = this(ActorSystem("MonitoringServiceSpec", ConfigFactory.load()
+    .withValue("akkeeper.monitoring.launch-timeout", ConfigValueFactory.fromAnyRef("2s"))))
 
   override def afterAll(): Unit = {
     system.terminate()
@@ -479,6 +481,90 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
 
     service ! GetInstances()
     expectNoMessage()
+
+    gracefulActorStop(service)
+  }
+
+  it should "remove instances which hasn't been transitioned from the launching state" in {
+    val storage = mock[InstanceStorage.Async]
+    val instanceId1 = InstanceId("container")
+    val instance1 = InstanceInfo.launching(instanceId1)
+    val instanceId2 = InstanceId("container")
+    val instance2 = InstanceInfo.launching(instanceId2)
+    (storage.start _).expects()
+    (storage.stop _).expects()
+    (storage.getInstances _).expects().returns(Future successful Seq.empty)
+
+    val service = createMonitoringService(storage)
+
+    service ! instance1
+    service ! instance2
+
+    service ! GetInstances()
+    expectMsgClass(classOf[InstancesList])
+
+    service ! instance1.copy(status = InstanceUp)
+
+    val waitTimeout = 3000
+    Thread.sleep(waitTimeout)
+
+    service ! GetInstance(instanceId1)
+    expectMsgClass(classOf[InstanceInfoResponse])
+
+    service ! GetInstance(instanceId2)
+    expectMsgClass(classOf[InstanceNotFound])
+
+    gracefulActorStop(service)
+  }
+
+  it should "remove instances whose deployment has failed" in {
+    val storage = mock[InstanceStorage.Async]
+    val instanceId1 = InstanceId("container")
+    val instance1 = InstanceInfo.deploying(instanceId1)
+    (storage.start _).expects()
+    (storage.stop _).expects()
+    (storage.getInstances _).expects().returns(Future successful Seq.empty)
+
+    val service = createMonitoringService(storage)
+
+    service ! instance1
+
+    service ! GetInstances()
+    expectMsgClass(classOf[InstancesList])
+
+    service ! instance1.copy(status = InstanceDeployFailed)
+
+    service ! GetInstance(instanceId1)
+    expectMsgClass(classOf[InstanceNotFound])
+
+    gracefulActorStop(service)
+  }
+
+  it should "terminate instance that has been considered dead previously" in {
+    val storage = mock[InstanceStorage.Async]
+    val instanceId1 = InstanceId("container")
+    val instance1 = InstanceInfo.launching(instanceId1)
+    (storage.start _).expects()
+    (storage.stop _).expects()
+    (storage.getInstances _).expects().returns(Future successful Seq.empty)
+
+    val service = createMonitoringService(storage)
+
+    service ! instance1
+
+    service ! GetInstances()
+    expectMsgClass(classOf[InstancesList])
+
+    val waitTimeout = 3000
+    Thread.sleep(waitTimeout)
+
+    service ! GetInstance(instanceId1)
+    expectMsgClass(classOf[InstanceNotFound])
+
+    val address = UniqueAddress(Address("akka.tcp", "MonitoringServiceSpec", "localhost", 2), 0L)
+    service ! instance1.copy(status = InstanceUp, address = Some(address))
+    service ! GetInstance(instanceId1)
+    expectMsgClass(classOf[InstanceNotFound])
 
     gracefulActorStop(service)
   }
