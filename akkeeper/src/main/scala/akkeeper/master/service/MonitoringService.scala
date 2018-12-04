@@ -23,19 +23,27 @@ import akkeeper.api._
 import akkeeper.common._
 import akkeeper.container.service.ContainerInstanceService
 import akkeeper.storage._
-
+import com.typesafe.config.Config
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.control.NonFatal
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import MonitoringService._
 
 private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async)
   extends RequestTrackingService with Stash {
 
+  private val config: Config = context.system.settings.config
+  private val monitoringConfig: Config = config.getConfig("akkeeper.monitoring")
+  private val instanceLaunchTimeout: FiniteDuration = Duration.fromNanos(
+    monitoringConfig.getDuration("launch-timeout").toNanos)
+
   private implicit val dispatcher = context.dispatcher
   private val cluster = Cluster(context.system)
   private val instances: mutable.Map[InstanceId, Option[InstanceInfo]] = mutable.Map.empty
   private val pendingTermination: mutable.Map[InstanceId, RequestId] = mutable.Map.empty
+  private val launchTimeoutTasks: mutable.Map[InstanceId, Cancellable] = mutable.Map.empty
+  private val deadInstances: mutable.Set[InstanceId] = mutable.Set.empty
 
   override protected def trackedMessages: List[Class[_]] = List(classOf[TerminateInstance])
 
@@ -79,7 +87,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
 
   private def updateInstanceStatusByAddr(addr: UniqueAddress, status: InstanceStatus): Unit = {
     findInstanceByAddr(addr)
-      .foreach(i => instances.put(i.instanceId, Some(i.copy(status = status))))
+      .foreach(i => onInstanceInfoUpdate(i.copy(status = status)))
   }
 
   private def terminateInstance(instance: InstanceInfo): Unit = {
@@ -121,7 +129,13 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
   }
 
   private def onInstanceInfoUpdate(info: InstanceInfo): Unit = {
-    if (info.status != InstanceDeploying) {
+    if (deadInstances.contains(info.instanceId)) {
+      log.warning(s"Received update from the dead instance ${info.instanceId}. " +
+        "Attempting to terminate this instance")
+      if (info.address.nonEmpty) {
+        terminateInstance(info)
+      }
+    } else if (info.status != InstanceDeploying) {
       val updatedInfo =
         if (info.address.exists(a => !cluster.failureDetector.isAvailable(a.address))) {
           info.copy(status = InstanceUnreachable)
@@ -129,6 +143,19 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
           info
         }
       instances.put(info.instanceId, Some(updatedInfo))
+
+      if (info.status == InstanceDeployFailed) {
+        log.error(s"Instance ${info.instanceId} deployment failed")
+        instances.remove(info.instanceId)
+      } else if (info.status == InstanceLaunching) {
+        val timeoutTask = context.system.scheduler.scheduleOnce(
+          instanceLaunchTimeout, self,
+          InstanceLaunchTimeout(info.instanceId))
+        launchTimeoutTasks.put(info.instanceId, timeoutTask)
+      } else {
+        launchTimeoutTasks.get(info.instanceId).foreach(_.cancel())
+        launchTimeoutTasks.remove(info.instanceId)
+      }
     } else {
       instances.put(info.instanceId, Some(info))
     }
@@ -260,6 +287,13 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
     case StopWithError(_) =>
       log.error("Stopping the Monitoring service because of external error")
       context.stop(self)
+    case InstanceLaunchTimeout(instanceId) =>
+      if (instances.get(instanceId).flatten.exists(_.status == InstanceLaunching)) {
+        log.error(s"Launch timeout occurred for instance ${instanceId}")
+        instances.remove(instanceId)
+        deadInstances.add(instanceId)
+      }
+      launchTimeoutTasks.remove(instanceId)
   }
 
   private def clusterEventReceive: Receive = {
@@ -278,9 +312,15 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
       }
     case ReachableMember(member) =>
       updateInstanceStatusByAddr(member.uniqueAddress, InstanceUp)
+    case MemberUp(member) =>
+      updateInstanceStatusByAddr(member.uniqueAddress, InstanceUp)
     case MemberRemoved(member, _) =>
       val info = findInstanceByAddr(member.uniqueAddress)
-      info.foreach(i => instances.remove(i.instanceId))
+      info.foreach { i =>
+        instances.remove(i.instanceId)
+        launchTimeoutTasks.remove(i.instanceId)
+        pendingTermination.remove(i.instanceId)
+      }
   }
 
   private def uninitializedReceive: Receive = {
@@ -294,7 +334,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
     case InitFailed(reason) =>
       log.error(reason, "Monitoring service initialization failed")
       context.stop(self)
-    case other: WithRequestId =>
+    case _: WithRequestId =>
       stash()
   }
 
@@ -312,6 +352,7 @@ object MonitoringService extends RemoteServiceFactory {
   private case class InitFailed(reason: Throwable)
   private case class InstanceTerminationFailed(instanceId: InstanceId, originalMsg: WithRequestId)
   private[akkeeper] case class InstancesUpdate(updates: Seq[InstanceInfo])
+  private[akkeeper] case class InstanceLaunchTimeout(instanceId: InstanceId)
 
   override val actorName = "monitoringService"
 
