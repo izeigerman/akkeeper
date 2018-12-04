@@ -31,7 +31,7 @@ import scala.io.Source
 import scala.util.control.NonFatal
 import spray.json._
 import ContainerDefinitionJsonProtocol._
-import ContainerInstanceService._
+import akka.remote.WireFormats.TimeUnit
 import akkeeper.BuildInfo
 
 import scala.concurrent.Await
@@ -88,8 +88,14 @@ object ContainerInstanceMain extends App {
     val actorsJsonStr = Source.fromFile(instanceArgs.actors).getLines().mkString("\n")
     val actors = actorsJsonStr.parseJson.convertTo[Seq[ActorLaunchContext]]
 
+    val joinClusterTimeout = Duration.fromNanos(
+      instanceConfig.getDuration("akkeeper.akka.join-cluster-timeout").toNanos)
+    val leaveClusterTimeout = Duration.fromNanos(
+      instanceConfig.getDuration("akkeeper.akka.leave-cluster-timeout").toNanos)
+
     ContainerInstanceService.createLocal(actorSystem, actors,
-      instanceStorage, instanceArgs.instanceId, instanceArgs.masterAddress)
+      instanceStorage, instanceArgs.instanceId, instanceArgs.masterAddress,
+      joinClusterTimeout = joinClusterTimeout, leaveClusterTimeout = leaveClusterTimeout)
 
     Await.result(actorSystem.whenTerminated, Duration.Inf)
     sys.exit(0)
