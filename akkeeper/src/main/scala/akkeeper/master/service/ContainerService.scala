@@ -26,7 +26,7 @@ private[akkeeper] class ContainerService extends Actor with ActorLogging {
   private val containers: mutable.Map[String, ContainerDefinition] = mutable.Map.empty
 
   override def preStart(): Unit = {
-    loadContainersFromConfig
+    loadContainersFromConfig()
     log.info("Container service successfully initialized")
     super.preStart()
   }

@@ -90,7 +90,7 @@ private[akkeeper] object ConfigUtils {
     def getContainers: Seq[ContainerDefinition] = {
       if (config.hasPath("akkeeper.containers")) {
         val configContainers = config.getConfigList("akkeeper.containers").asScala
-        configContainers.map(ContainerDefinition.fromConfig(_))
+        configContainers.map(ContainerDefinition.fromConfig)
       } else {
         Seq.empty
       }
