@@ -15,13 +15,12 @@
  */
 package akkeeper.utils.yarn
 
-import java.io.{Closeable, FileInputStream, InputStream}
+import java.io.{Closeable, InputStream}
 
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.apache.hadoop.yarn.api.records._
-import org.apache.hadoop.yarn.util.ConverterUtils
 
 private[akkeeper] final class YarnLocalResourceManager(conf: Configuration,
                                                        stagingDir: String) {
@@ -39,7 +38,7 @@ private[akkeeper] final class YarnLocalResourceManager(conf: Configuration,
 
   private def create(fs: FileSystem, status: FileStatus): LocalResource = {
     LocalResource.newInstance(
-      ConverterUtils.getYarnUrlFromURI(fs.makeQualified(status.getPath).toUri()),
+      URL.fromURI(fs.makeQualified(status.getPath).toUri),
       LocalResourceType.FILE, LocalResourceVisibility.APPLICATION,
       status.getLen, status.getModificationTime
     )
