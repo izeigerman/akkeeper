@@ -187,13 +187,13 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
       localResources, null, cmd.asJava, null, tokens, null)
     appContext.setAMContainerSpec(amContainer)
 
-    args.yarnQueue.foreach(appContext.setQueue(_))
+    args.yarnQueue.foreach(appContext.setQueue)
 
     yarnClient.submitApplication(appContext)
     logger.info(s"Launched Akkeeper Cluster $appId")
 
     val masterAddressFuture = retrieveMasterAddress(yarnClient, config, appId, args.pollInterval)
-    masterAddressFuture.map(addr => LaunchResult(appId.toString, addr))
+    masterAddressFuture.map(LaunchResult(appId.toString, _))
   }
 
   override def launch(config: Config, args: LaunchArguments): Future[LaunchResult] = {

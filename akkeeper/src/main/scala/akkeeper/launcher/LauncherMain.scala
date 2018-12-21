@@ -95,9 +95,9 @@ object LauncherMain extends App {
       .map(c => c.withFallback(ConfigFactory.load()))
       .getOrElse(ConfigFactory.load())
 
-    launcherArgs.principal.foreach(p => {
-      YarnUtils.loginFromKeytab(p, launcherArgs.keytab.get.toString)
-    })
+    launcherArgs.principal.foreach(
+      YarnUtils.loginFromKeytab(_, launcherArgs.keytab.get.toString)
+    )
 
     val launcherTimeout =
       if (config.hasPath("akkeeper.launcher.timeout")) {
