@@ -27,7 +27,7 @@ private[akkeeper] class DeployService(deployClient: DeployClient.Async,
                                       monitoringService: ActorRef) extends RequestTrackingService {
 
   private implicit val dispatcher = context.dispatcher
-  override protected val trackedMessages: List[Class[_]] = List(classOf[DeployContainer])
+  override protected val trackedMessages: Set[Class[_]] = Set(classOf[DeployContainer])
 
   private def deployInstances(request: DeployContainer,
                               container: ContainerDefinition): SubmittedInstances = {

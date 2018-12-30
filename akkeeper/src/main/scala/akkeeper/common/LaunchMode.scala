@@ -19,9 +19,7 @@ private[akkeeper] sealed abstract class LaunchMode(val value: String)
 private[akkeeper] case object YarnLaunchMode extends LaunchMode("yarn")
 
 private[akkeeper] object LaunchMode {
-  def fromString(str: String): LaunchMode = {
-    str match {
-      case YarnLaunchMode.value => YarnLaunchMode
-    }
+  def fromString(str: String): LaunchMode = str match {
+    case YarnLaunchMode.value => YarnLaunchMode
   }
 }

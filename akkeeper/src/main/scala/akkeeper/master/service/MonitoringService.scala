@@ -45,7 +45,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
   private val launchTimeoutTasks: mutable.Map[InstanceId, Cancellable] = mutable.Map.empty
   private val deadInstances: mutable.Set[InstanceId] = mutable.Set.empty
 
-  override protected def trackedMessages: List[Class[_]] = List(classOf[TerminateInstance])
+  override protected def trackedMessages: Set[Class[_]] = Set(classOf[TerminateInstance])
 
   override def preStart(): Unit = {
     log.debug("Initializing Monitoring service")
