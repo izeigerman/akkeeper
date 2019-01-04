@@ -18,7 +18,7 @@ package akkeeper.master.service
 import akka.actor._
 import akkeeper.api._
 import akkeeper.common.{ContainerDefinition, RequestId}
-import akkeeper.utils.ConfigUtils._
+import akkeeper.config._
 import scala.collection.mutable
 
 private[akkeeper] class ContainerService extends Actor with ActorLogging {

@@ -21,7 +21,7 @@ import akka.actor.Address
 import akkeeper.deploy.{DeployFailed, DeploySuccessful}
 import akkeeper.{AwaitMixin, AkkeeperException}
 import akkeeper.common.InstanceId
-import akkeeper.utils.ConfigUtils._
+import akkeeper.config._
 import akkeeper.utils.yarn.LocalResourceNames
 import com.typesafe.config.{ConfigValueFactory, Config, ConfigFactory}
 import org.apache.hadoop.conf.Configuration

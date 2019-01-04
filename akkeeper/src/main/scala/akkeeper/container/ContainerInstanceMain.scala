@@ -19,10 +19,10 @@ import java.io.File
 
 import akka.actor.{ActorSystem, AddressFromURIString}
 import akkeeper.common._
+import akkeeper.config._
 import akkeeper.container.service.ContainerInstanceService
 import akkeeper.storage.InstanceStorageFactory
 import akkeeper.utils.CliArguments._
-import akkeeper.utils.ConfigUtils._
 import akkeeper.utils.yarn.LocalResourceNames
 import com.typesafe.config.{Config, ConfigFactory}
 import scopt.OptionParser
