@@ -82,7 +82,7 @@ case class TerminateInstance(instanceId: InstanceId,
 /** The base interface for all responses related to Monitoring API. */
 sealed trait InstanceResponse extends WithRequestId
 
-/** A response that contains an information about the requested intance.
+/** A response that contains an information about the requested instance.
   * This is a result of the [[GetInstance]] operation.
   *
   * @param requestId the ID of the original request.

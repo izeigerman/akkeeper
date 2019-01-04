@@ -62,7 +62,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
 
   private def initInstanceList(): Unit = {
     instanceStorage.getInstances
-      .map(InitSuccessful(_))
+      .map(InitSuccessful)
       .recover { case NonFatal(e) => InitFailed(e) }
       .pipeTo(self)
   }
@@ -108,7 +108,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
       if (instance.exists(_.address.isDefined)) {
         // If the address is present we can use the local storage to retrieve
         // the information about this instance.
-        instance.foreach(terminateInstance(_))
+        instance.foreach(terminateInstance)
         sendAndRemoveOriginalSender(InstanceTerminated(requestId, instanceId))
       } else {
         // Redirecting the information about the instance to ourselves
@@ -201,18 +201,18 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
   }
 
   private def localGetInstancesBy(requestId: RequestId, roles: Set[String],
-                                  container: String): Unit = {
-    log.debug(s"Accessing the local cache to get instances (roles=$roles, container=$container)")
+                                  containerName: String): Unit = {
+    log.debug(s"Accessing the local cache to get instances (roles=$roles, containerName=$containerName)")
     val defaultFilter = (s: InstanceInfo) => true
     val containerFilter =
-      if (container.nonEmpty) {
-        (s: InstanceInfo) => s.containerName == container
+      if (containerName.nonEmpty) {
+        s: InstanceInfo => s.containerName == containerName
       } else {
         defaultFilter
       }
     val roleFilter =
       if (roles.nonEmpty) {
-        (s: InstanceInfo) => roles.intersect(s.roles).nonEmpty
+        s: InstanceInfo => roles.intersect(s.roles).nonEmpty
       } else {
         defaultFilter
       }
@@ -224,16 +224,16 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
   }
 
   private def storageGetInstancesBy(requestId: RequestId, roles: Set[String],
-                                    container: String): Unit = {
-    log.debug(s"Accessing the remote storage to get instances (roles=$roles, container=$container)")
+                                    containerName: String): Unit = {
+    log.debug(s"Accessing the remote storage to get instances (roles=$roles, containerName=$containerName)")
     val localSelf = self
     val localSender = sender()
 
-    val instancesFuture = instanceStorage.getInstancesByContainer(container)
+    val instancesFuture = instanceStorage.getInstancesByContainer(containerName)
     if (roles.nonEmpty) {
       instancesFuture.foreach(ids => {
         val infosFuture = Future.sequence(ids.map(id => instanceStorage.getInstance(id)))
-        infosFuture.map(InstancesUpdate(_)).pipeTo(localSelf)
+        infosFuture.map(InstancesUpdate).pipeTo(localSelf)
 
         val response = infosFuture.map(infos => {
           val infoByRoles = infos.filter(s => roles.intersect(s.roles).nonEmpty)
@@ -253,7 +253,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
     val roles = request.roles
     val containerName = request.containerName.getOrElse("")
 
-    if (instances.exists(i => i._2 eq None)) {
+    if (instances.exists(_._2 eq None)) {
       // If we are missing information about at least one instance
       // we can't perform a proper local search.
       storageGetInstancesBy(requestId, roles, containerName)
@@ -325,7 +325,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async
 
   private def uninitializedReceive: Receive = {
     case InitSuccessful(knownInstances) =>
-      knownInstances.foreach(id => instances.put(id, None))
+      knownInstances.foreach(instances.put(_, None))
       cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
         classOf[MemberRemoved], classOf[UnreachableMember], classOf[ReachableMember])
       log.info("Monitoring service successfully initialized")
