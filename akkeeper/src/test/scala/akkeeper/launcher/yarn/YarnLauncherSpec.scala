@@ -20,8 +20,8 @@ import java.net.URI
 import java.util.UUID
 
 import akkeeper.AwaitMixin
+import akkeeper.config._
 import akkeeper.launcher.LaunchArguments
-import akkeeper.utils.ConfigUtils._
 import com.typesafe.config.{ConfigFactory, ConfigValueFactory}
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration

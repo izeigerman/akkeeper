@@ -15,7 +15,7 @@
  */
 package akkeeper.common
 
-import akkeeper.utils.ConfigUtils._
+import akkeeper.config._
 import com.typesafe.config.Config
 import spray.json.DefaultJsonProtocol
 import scala.collection.JavaConverters._

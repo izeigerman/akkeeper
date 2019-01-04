@@ -20,10 +20,10 @@ import java.net.URI
 import java.util
 
 import akka.actor.Address
+import akkeeper.config._
 import akkeeper.launcher._
 import akkeeper.master.MasterMain
 import akkeeper.utils.CliArguments._
-import akkeeper.utils.ConfigUtils._
 import akkeeper.utils.yarn._
 import com.typesafe.config.{Config, ConfigRenderOptions}
 import org.apache.commons.io.FilenameUtils
