@@ -32,7 +32,7 @@ private[akkeeper] class ZookeeperInstanceStorage(config: ZookeeperClientConfig)
 
   override def registerInstance(status: InstanceInfo): Future[InstanceId] = {
     val instanceId = status.instanceId
-    val path = instancePath(status)
+    val path = instancePath(status.instanceId)
     zookeeperClient
       .exists(path)
       .map(_ => throw RecordAlreadyExistsException(s"Instance $instanceId already exists"))
@@ -44,7 +44,7 @@ private[akkeeper] class ZookeeperInstanceStorage(config: ZookeeperClientConfig)
 
   override def getInstance(instanceId: InstanceId): Future[InstanceInfo] = {
     zookeeperClient
-      .get(instanceId.containerName + "/" + instanceId.toString)
+      .get(instancePath(instanceId))
       .map(fromBytes[InstanceInfo])
   }
 
@@ -68,8 +68,8 @@ private[akkeeper] class ZookeeperInstanceStorage(config: ZookeeperClientConfig)
 }
 
 private[akkeeper] object ZookeeperInstanceStorage {
-  private def instancePath(status: InstanceInfo): String = {
-    status.containerName + "/" + status.instanceId.toString
+  private def instancePath(instanceId: InstanceId): String = {
+    instanceId.containerName + "/" + instanceId.toString
   }
 
   private def pathToInstanceId(path: String): InstanceId = {

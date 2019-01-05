@@ -32,8 +32,7 @@ case class InstanceId(containerName: String, uuid: UUID) {
 object InstanceId {
   def apply(containerName: String): InstanceId = InstanceId(containerName, UUID.randomUUID())
   def fromString(str: String): InstanceId = {
-    val split = str.split("-", 2)
-    val (containerName, uuid) = (split(0), split(1))
+    val List(containerName, uuid) = str.split("-", 2).toList
     InstanceId(containerName, UUID.fromString(uuid))
   }
 }

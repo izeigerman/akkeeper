@@ -22,7 +22,6 @@ import akka.cluster.Cluster
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
-import akka.util.Timeout
 import akkeeper.config._
 import akkeeper.deploy.{DeployClient, DeployClientFactory}
 import akkeeper.deploy.yarn.YarnApplicationMasterConfig
@@ -78,7 +77,7 @@ private[master] class YarnMasterRunner extends MasterRunner {
     val selfAddr = Cluster(actorSystem).selfAddress
     val principal = masterArgs.principal
 
-    val trackingUrl = s"http://${selfAddr.host.get}:${restApiPort}/api/v1"
+    val trackingUrl = s"http://${selfAddr.host.get}:$restApiPort/api/v1"
     val yarnConfig = YarnApplicationMasterConfig(
       config = config, yarnConf = yarnConf,
       appId = masterArgs.appId, selfAddress = selfAddr, trackingUrl = trackingUrl,

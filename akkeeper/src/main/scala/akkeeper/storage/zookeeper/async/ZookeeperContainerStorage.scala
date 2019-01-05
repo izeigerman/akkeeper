@@ -29,14 +29,6 @@ private[akkeeper] class ZookeeperContainerStorage(config: ZookeeperClientConfig)
     new AsyncZookeeperClient(config, CreateMode.PERSISTENT)
   private implicit val executionContext = zookeeperClient.getExecutionContext
 
-  override def start(): Unit = {
-    zookeeperClient.start()
-  }
-
-  override def stop(): Unit = {
-    zookeeperClient.stop()
-  }
-
   override def createContainer(container: ContainerDefinition): Future[String] = {
     val path = container.name
     zookeeperClient

@@ -71,7 +71,7 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
           logger.info(s"Akkeeper Master address is $addr")
           addr
         case other =>
-          throw new YarnLauncherException(s"Unexpected Akkeeper Master state: $other\n" +
+          throw YarnLauncherException(s"Unexpected Akkeeper Master state: $other\n" +
             appReport.getDiagnostics)
       }
     }
@@ -152,26 +152,13 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
     YarnUtils.buildCmd(mainClass, jvmArgs = jvmArgs, appArgs = appArgs)
   }
 
-  private def launchWithClient(yarnClient: YarnLauncherClient,
-                               config: Config,
-                               args: LaunchArguments): Future[LaunchResult] = {
-    val application = yarnClient.createApplication()
-
-    val appContext = application.getApplicationSubmissionContext
-    val appId = appContext.getApplicationId
-
-    appContext.setKeepContainersAcrossApplicationAttempts(true)
-    appContext.setApplicationName(config.yarnApplicationName)
-
+  private def getMaxAppAttempts(configMaxAttempts: Int): Int = {
     val globalMaxAttempts = yarnConf.getInt(YarnConfiguration.RM_AM_MAX_ATTEMPTS,
       YarnConfiguration.DEFAULT_RM_AM_MAX_ATTEMPTS)
-    val configMaxAttempts = config.yarnMaxAttempts
-    val actualMaxAttempts = Math.min(globalMaxAttempts, configMaxAttempts)
-    logger.debug(s"Akkeeper application maximum number of attempts is $actualMaxAttempts")
-    appContext.setMaxAppAttempts(actualMaxAttempts)
+    Math.min(globalMaxAttempts, configMaxAttempts)
+  }
 
-    appContext.setResource(getResource(config))
-
+  private def getAMContainer(config: Config, appId: ApplicationId, args: LaunchArguments): ContainerLaunchContext = {
     val stagingDir = config.yarnStagingDirectory(yarnConf, appId.toString)
     val localResources = buildLocalResources(stagingDir, args)
     val cmd = buildCmd(appId, config, args)
@@ -181,9 +168,26 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
       .map(_ => YarnUtils.obtainContainerTokens(stagingDir, yarnConf))
       .orNull
 
-    val amContainer = ContainerLaunchContext.newInstance(
+    ContainerLaunchContext.newInstance(
       localResources, null, cmd.asJava, null, tokens, null)
-    appContext.setAMContainerSpec(amContainer)
+  }
+
+  private def launchWithClient(yarnClient: YarnLauncherClient,
+                               config: Config,
+                               args: LaunchArguments): Future[LaunchResult] = {
+    val application = yarnClient.createApplication()
+
+    val appContext = application.getApplicationSubmissionContext
+    val appId: ApplicationId = appContext.getApplicationId
+
+    val maxAppAttempts = getMaxAppAttempts(config.yarnMaxAttempts)
+    logger.debug(s"Akkeeper application maximum number of attempts is $maxAppAttempts")
+
+    appContext.setResource(getResource(config))
+    appContext.setKeepContainersAcrossApplicationAttempts(true)
+    appContext.setApplicationName(config.yarnApplicationName)
+    appContext.setMaxAppAttempts(maxAppAttempts)
+    appContext.setAMContainerSpec(getAMContainer(config, appId, args))
 
     args.yarnQueue.foreach(appContext.setQueue)
 

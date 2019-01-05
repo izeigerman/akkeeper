@@ -119,8 +119,8 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     localResources.toMap
   }
 
-  private def buildActorLaunchContextResource(containerDefinition: ContainerDefinition,
-                                              instanceId: InstanceId): LocalResource = {
+  private def createActorsLaunchContextResource(containerDefinition: ContainerDefinition,
+                                                instanceId: InstanceId): LocalResource = {
     import spray.json._
     import akkeeper.common.ContainerDefinitionJsonProtocol._
     val jsonStr = containerDefinition.actors.toJson.compactPrint
@@ -131,9 +131,9 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   private def launchInstance(container: Container,
                              containerDefinition: ContainerDefinition,
                              instanceId: InstanceId): Unit = {
-    val actorLaunchResource = buildActorLaunchContextResource(containerDefinition, instanceId)
+    val actorsLaunchResource = createActorsLaunchContextResource(containerDefinition, instanceId)
     val instanceResources = instanceCommonResources + (
-      LocalResourceNames.ActorLaunchContextsName -> actorLaunchResource
+      LocalResourceNames.ActorLaunchContextsName -> actorsLaunchResource
     )
 
     val env = containerDefinition.environment
@@ -242,9 +242,9 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   }
 
   private def scheduleAllocateResources(): Unit = {
-    executorService.scheduleAtFixedRate(new Runnable {
-      override def run(): Unit = allocateResources()
-    }, AMHeartbeatInterval, AMHeartbeatInterval, TimeUnit.MILLISECONDS)
+    executorService.scheduleAtFixedRate(
+      () => allocateResources(),
+      AMHeartbeatInterval, AMHeartbeatInterval, TimeUnit.MILLISECONDS)
   }
 
   override def start(): Unit = {

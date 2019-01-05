@@ -71,7 +71,7 @@ object LauncherMain extends App {
       c.copy(yarnQueue = Some(v))
     }).text("The YARN queue (default: 'default')")
 
-    opt[String]("principal").valueName("principal").action((v, c) => {
+    opt[String]("principal").valueName("<principal>").action((v, c) => {
       c.copy(principal = Some(v))
     }).text("Principal to be used to login to KDC.")
 

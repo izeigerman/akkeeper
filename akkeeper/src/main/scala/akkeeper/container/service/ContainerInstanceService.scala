@@ -71,8 +71,8 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
   }
 
   private def registerThisInstance(): Unit = {
-    if (!thisInstance.isDefined) {
-      val actors = context.children.map(r => r.path.toStringWithoutAddress)
+    if (thisInstance.isEmpty) {
+      val actors = context.children.map(_.path.toStringWithoutAddress)
       val info = InstanceInfo(
         instanceId = instanceId,
         status = InstanceUp,
