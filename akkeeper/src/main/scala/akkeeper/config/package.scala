@@ -18,5 +18,5 @@ package akkeeper
 import com.typesafe.config.Config
 
 package object config {
-  implicit def enrichConfig(config: Config): RichConfig = new RichConfig(config)
+  implicit private[akkeeper] def enrichConfig(config: Config): RichConfig = new RichConfig(config)
 }

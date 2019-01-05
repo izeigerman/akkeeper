@@ -36,18 +36,14 @@ case class OperationFailed(requestId: RequestId, cause: Throwable) extends WithR
 trait CommonApiJsonProtocol extends DefaultJsonProtocol with RequestIdJsonProtocol {
 
   implicit val operationFailedWriter = new RootJsonWriter[OperationFailed] {
-    override def write(obj: OperationFailed): JsValue = {
-      val requestIdField = obj.requestId.toJson
-      val messageField = JsString(obj.cause.getMessage)
-      val stackTraceField = JsArray(
-        obj.cause.getStackTrace.map(s => JsString(s.toString)): _*
-      )
+    override def write(obj: OperationFailed): JsValue =
       JsObject(
-        "requestId" -> requestIdField,
-        "message" -> messageField,
-        "stackTrace" -> stackTraceField
+        "requestId" -> obj.requestId.toJson,
+        "message" -> JsString(obj.cause.getMessage),
+        "stackTrace" -> JsArray(
+          obj.cause.getStackTrace.map(s => JsString(s.toString)): _*
+        )
       )
-    }
   }
 }
 

@@ -55,8 +55,7 @@ case class SubmittedInstances(requestId: RequestId, containerName: String,
 trait DeployApiJsonProtocol extends DefaultJsonProtocol
   with RequestIdJsonProtocol with InstanceIdJsonProtocol {
 
-  implicit val deployContainerFormat = AutoRequestIdFormat(jsonFormat5(DeployContainer.apply))
-  implicit val deployedInstancesFormat = jsonFormat3(SubmittedInstances.apply)
+  implicit val deployContainerFormat = AutoRequestIdFormat(jsonFormat5(DeployContainer))
+  implicit val deployedInstancesFormat = jsonFormat3(SubmittedInstances)
 }
 
-object DeployApiJsonProtocol extends DeployApiJsonProtocol

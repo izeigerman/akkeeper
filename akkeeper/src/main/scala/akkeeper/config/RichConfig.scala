@@ -24,7 +24,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import scala.collection.JavaConverters._
 
-class RichConfig(config: Config) {
+private[akkeeper] final class RichConfig(config: Config) {
 
   def withMasterRole: Config = {
     config.withValue("akka.cluster.roles",
