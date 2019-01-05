@@ -17,9 +17,9 @@ package akkeeper.launcher
 
 import java.io.File
 import java.net.URI
-import java.util.concurrent.TimeUnit
 
 import akkeeper.BuildInfo
+import akkeeper.config._
 import akkeeper.utils.yarn.YarnUtils
 import com.typesafe.config.ConfigFactory
 import scopt.OptionParser
@@ -99,12 +99,8 @@ object LauncherMain extends App {
       YarnUtils.loginFromKeytab(_, launcherArgs.keytab.get.toString)
     )
 
-    val launcherTimeout =
-      if (config.hasPath("akkeeper.launcher.timeout")) {
-        config.getDuration("akkeeper.launcher.timeout", TimeUnit.SECONDS).seconds
-      } else {
-        DefaultLauncherTimeout
-      }
+    val launcherTimeout = config.launcherTimeout.getOrElse(DefaultLauncherTimeout)
+
     val launcher = Launcher.createYarnLauncher(YarnUtils.getYarnConfiguration)
     val launchResult = launcher.launch(config, launcherArgs)
     Await.result(launchResult, launcherTimeout)

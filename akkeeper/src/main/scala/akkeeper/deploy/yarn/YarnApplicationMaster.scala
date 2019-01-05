@@ -44,10 +44,9 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   private val logger = LoggerFactory.getLogger(classOf[YarnApplicationMaster])
 
   private val executorService: ScheduledExecutorService = Executors.newScheduledThreadPool(
-    config.config.getInt("akkeeper.yarn.client-threads"))
+    config.config.yarnClientThreads)
 
-  private val stagingDirectory: String = config.config
-    .getYarnStagingDirectory(config.yarnConf, config.appId)
+  private val stagingDirectory: String = config.config.yarnStagingDirectory(config.yarnConf, config.appId)
   private val localResourceManager: YarnLocalResourceManager =
     new YarnLocalResourceManager(config.yarnConf, stagingDirectory)
   private val instanceCommonResources: Map[String, LocalResource] = buildInstanceCommonResources

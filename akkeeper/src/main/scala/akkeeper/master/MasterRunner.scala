@@ -66,7 +66,7 @@ private[master] class YarnMasterRunner extends MasterRunner {
 
   private def createInstanceStorage(actorSystem: ActorSystem,
                                     appId: String): InstanceStorage.Async = {
-    val zkConfig = actorSystem.settings.config.getZookeeperClientConfig
+    val zkConfig = actorSystem.settings.config.zookeeperClientConfig
     InstanceStorageFactory.createAsync(zkConfig.child(appId))
   }
 
@@ -88,16 +88,12 @@ private[master] class YarnMasterRunner extends MasterRunner {
 
   private def loginAndGetRenewer(config: Config, principal: String): KerberosTicketRenewer = {
     val loginUser = YarnUtils.loginFromKeytab(principal, LocalResourceNames.KeytabName)
-    new KerberosTicketRenewer(
-      loginUser,
-      config.getDuration("akkeeper.kerberos.ticket-check-interval", TimeUnit.MILLISECONDS))
+    new KerberosTicketRenewer(loginUser, config.kerberosTicketCheckInterval)
   }
 
-  private def createRestHandler(restConfig: Config, masterService: ActorRef)
+  private def createRestHandler(config: Config, masterService: ActorRef)
                                (implicit dispatcher: ExecutionContext): Route = {
-    implicit val timeout = Timeout(
-      restConfig.getDuration("request-timeout", TimeUnit.MILLISECONDS),
-      TimeUnit.MILLISECONDS)
+    implicit val timeout = config.restRequestTimeout
 
     ControllerComposite("api/v1", Seq(
       DeployController(masterService),
@@ -135,17 +131,16 @@ private[master] class YarnMasterRunner extends MasterRunner {
     })
     ticketRenewer.foreach(_.start())
 
-    val restConfig = config.getRestConfig
-    val restPort = restConfig.getInt("port")
-    val restPortMaxAttempts = restConfig.getInt("port-max-attempts")
+    val restPort = config.restPort
+    val restPortMaxAttempts = config.restPortMaxAttempts
 
     val masterConfig = config.withMasterPort.withMasterRole
-    implicit val actorSystem = ActorSystem(config.getActorSystemName, masterConfig)
+    implicit val actorSystem = ActorSystem(config.akkaActorSystemName, masterConfig)
     implicit val materializer = ActorMaterializer()
     implicit val dispatcher = actorSystem.dispatcher
 
     val masterServiceProxy = actorSystem.actorOf(Props(classOf[MasterRunner.ServiceProxy]))
-    val restHandler = createRestHandler(restConfig, masterServiceProxy)
+    val restHandler = createRestHandler(config, masterServiceProxy)
     val actualRestPort = Await.result(bindHttp(restHandler, restPort, restPortMaxAttempts), Duration.Inf)
 
     val instanceStorage = createInstanceStorage(actorSystem, masterArgs.appId)
