@@ -151,19 +151,18 @@ case class ContainerDeleted(requestId: RequestId, name: String) extends Containe
 trait ContainerApiJsonProtocol extends DefaultJsonProtocol
   with RequestIdJsonProtocol with ContainerDefinitionJsonProtocol {
 
-  implicit val createContainerFormat = AutoRequestIdFormat(jsonFormat2(CreateContainer.apply))
-  implicit val updateContainerFormat = AutoRequestIdFormat(jsonFormat2(UpdateContainer.apply))
-  implicit val getContainerFormat = AutoRequestIdFormat(jsonFormat2(GetContainer.apply))
-  implicit val getContainersFormat = AutoRequestIdFormat(jsonFormat1(GetContainers.apply))
-  implicit val deleteContainersFormat = AutoRequestIdFormat(jsonFormat2(DeleteContainer.apply))
+  implicit val createContainerFormat = AutoRequestIdFormat(jsonFormat2(CreateContainer))
+  implicit val updateContainerFormat = AutoRequestIdFormat(jsonFormat2(UpdateContainer))
+  implicit val getContainerFormat = AutoRequestIdFormat(jsonFormat2(GetContainer))
+  implicit val getContainersFormat = AutoRequestIdFormat(jsonFormat1(GetContainers))
+  implicit val deleteContainersFormat = AutoRequestIdFormat(jsonFormat2(DeleteContainer))
 
-  implicit val containersListFormat = jsonFormat2(ContainersList.apply)
-  implicit val containersGetResultFormat = jsonFormat2(ContainerGetResult.apply)
-  implicit val containerNotFoundFormat = jsonFormat2(ContainerNotFound.apply)
-  implicit val containerAlreadyExistsFormat = jsonFormat2(ContainerAlreadyExists.apply)
-  implicit val containerCreatedFormat = jsonFormat2(ContainerCreated.apply)
-  implicit val containerUpdatedFormat = jsonFormat2(ContainerUpdated.apply)
-  implicit val containerDeletedFormat = jsonFormat2(ContainerDeleted.apply)
+  implicit val containersListFormat = jsonFormat2(ContainersList)
+  implicit val containersGetResultFormat = jsonFormat2(ContainerGetResult)
+  implicit val containerNotFoundFormat = jsonFormat2(ContainerNotFound)
+  implicit val containerAlreadyExistsFormat = jsonFormat2(ContainerAlreadyExists)
+  implicit val containerCreatedFormat = jsonFormat2(ContainerCreated)
+  implicit val containerUpdatedFormat = jsonFormat2(ContainerUpdated)
+  implicit val containerDeletedFormat = jsonFormat2(ContainerDeleted)
 }
 
-object ContainerApiJsonProtocol extends ContainerApiJsonProtocol
