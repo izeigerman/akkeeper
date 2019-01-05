@@ -20,10 +20,10 @@ import java.util
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 
 import akkeeper.common.{ContainerDefinition, InstanceId}
+import akkeeper.config._
 import akkeeper.container.ContainerInstanceMain
 import akkeeper.deploy._
 import akkeeper.utils.CliArguments._
-import akkeeper.utils.ConfigUtils._
 import akkeeper.utils.yarn._
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.yarn.api.records._

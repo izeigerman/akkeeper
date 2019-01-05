@@ -24,11 +24,11 @@ import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import akkeeper.common.ControllerComposite
+import akkeeper.config._
 import akkeeper.deploy.{DeployClient, DeployClientFactory}
 import akkeeper.deploy.yarn.YarnApplicationMasterConfig
 import akkeeper.master.route._
 import akkeeper.master.service.MasterService
-import akkeeper.utils.ConfigUtils._
 import akkeeper.storage.{InstanceStorage, InstanceStorageFactory}
 import akkeeper.utils.yarn._
 import com.typesafe.config.{Config, ConfigFactory}

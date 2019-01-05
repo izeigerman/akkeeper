@@ -20,9 +20,9 @@ import akka.cluster.{Cluster, UniqueAddress}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import akkeeper.{ActorTestUtils, AkkeeperException}
 import akkeeper.common._
+import akkeeper.config._
 import akkeeper.master.service._
 import akkeeper.storage.InstanceStorage
-import akkeeper.utils.ConfigUtils._
 import com.typesafe.config.ConfigFactory
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}

@@ -20,10 +20,10 @@ import java.net.URI
 import java.util
 
 import akka.actor.Address
+import akkeeper.config._
 import akkeeper.launcher._
 import akkeeper.master.MasterMain
 import akkeeper.utils.CliArguments._
-import akkeeper.utils.ConfigUtils._
 import akkeeper.utils.yarn._
 import com.typesafe.config.{Config, ConfigRenderOptions}
 import org.apache.commons.io.FilenameUtils
@@ -187,13 +187,13 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
       localResources, null, cmd.asJava, null, tokens, null)
     appContext.setAMContainerSpec(amContainer)
 
-    args.yarnQueue.foreach(appContext.setQueue(_))
+    args.yarnQueue.foreach(appContext.setQueue)
 
     yarnClient.submitApplication(appContext)
     logger.info(s"Launched Akkeeper Cluster $appId")
 
     val masterAddressFuture = retrieveMasterAddress(yarnClient, config, appId, args.pollInterval)
-    masterAddressFuture.map(addr => LaunchResult(appId.toString, addr))
+    masterAddressFuture.map(LaunchResult(appId.toString, _))
   }
 
   override def launch(config: Config, args: LaunchArguments): Future[LaunchResult] = {

@@ -31,15 +31,15 @@ private[service] trait RequestTrackingService extends Actor with ActorLogging {
     currentServiceReceive.getOrElse(serviceReceive)
   }
 
-  private def baseReceive: Receive = {
-    case request: WithRequestId if (trackedMessages.contains(request.getClass)) =>
+  private def trackedMessagesReceive: Receive = {
+    case request: WithRequestId if trackedMessages.contains(request.getClass) =>
       sendersById.put(request.requestId, SenderContext(sender(), None))
       getServiceReceive(request)
   }
 
   protected def serviceReceive: Receive
 
-  protected def trackedMessages: List[Class[_]] = Nil
+  protected def trackedMessages: Set[Class[_]] = Set.empty
 
   protected def setOriginalSenderContext(id: RequestId, context: Any): Unit = {
     if (sendersById.contains(id)) {
@@ -75,10 +75,10 @@ private[service] trait RequestTrackingService extends Actor with ActorLogging {
 
   protected def become(newState: Receive): Unit = {
     currentServiceReceive = Some(newState)
-    context.become(baseReceive orElse newState)
+    context.become(trackedMessagesReceive orElse newState)
   }
 
   override def receive: Receive = {
-    baseReceive orElse serviceReceive
+    trackedMessagesReceive orElse serviceReceive
   }
 }

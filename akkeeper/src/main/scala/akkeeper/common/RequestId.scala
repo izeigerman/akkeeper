@@ -32,12 +32,10 @@ object RequestId {
 
 trait RequestIdJsonProtocol extends DefaultJsonProtocol {
   implicit val requestIdFormat = new JsonFormat[RequestId] {
-    override def write(obj: RequestId): JsValue = {
-      JsString(obj.toString)
-    }
-    override def read(json: JsValue): RequestId = {
-      RequestId(UUID.fromString(json.convertTo[String]))
-    }
+
+    override def write(obj: RequestId): JsValue = JsString(obj.toString)
+
+    override def read(json: JsValue): RequestId = RequestId(UUID.fromString(json.convertTo[String]))
   }
 }
 

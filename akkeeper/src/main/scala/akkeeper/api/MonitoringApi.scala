@@ -82,7 +82,7 @@ case class TerminateInstance(instanceId: InstanceId,
 /** The base interface for all responses related to Monitoring API. */
 sealed trait InstanceResponse extends WithRequestId
 
-/** A response that contains an information about the requested intance.
+/** A response that contains an information about the requested instance.
   * This is a result of the [[GetInstance]] operation.
   *
   * @param requestId the ID of the original request.
@@ -122,15 +122,13 @@ trait MonitoringApiJsonProtocol extends DefaultJsonProtocol
   with InstanceIdJsonProtocol with RequestIdJsonProtocol
   with InstanceStatusJsonProtocol {
 
-  implicit val getInstanceFormat = AutoRequestIdFormat(jsonFormat2(GetInstance.apply))
-  implicit val getInstancesFormat = AutoRequestIdFormat(jsonFormat1(GetInstances.apply))
-  implicit val getInstancesByFormat = AutoRequestIdFormat(jsonFormat3(GetInstancesBy.apply))
-  implicit val terminateInstancesFormat = AutoRequestIdFormat(jsonFormat2(TerminateInstance.apply))
+  implicit val getInstanceFormat = AutoRequestIdFormat(jsonFormat2(GetInstance))
+  implicit val getInstancesFormat = AutoRequestIdFormat(jsonFormat1(GetInstances))
+  implicit val getInstancesByFormat = AutoRequestIdFormat(jsonFormat3(GetInstancesBy))
+  implicit val terminateInstancesFormat = AutoRequestIdFormat(jsonFormat2(TerminateInstance))
 
-  implicit val instanceInfoResponseFormat = jsonFormat2(InstanceInfoResponse.apply)
-  implicit val instanceListFormat = jsonFormat2(InstancesList.apply)
-  implicit val instanceNotFoundFormat = jsonFormat2(InstanceNotFound.apply)
-  implicit val instanceTerminatedFormat = jsonFormat2(InstanceTerminated.apply)
+  implicit val instanceInfoResponseFormat = jsonFormat2(InstanceInfoResponse)
+  implicit val instanceListFormat = jsonFormat2(InstancesList)
+  implicit val instanceNotFoundFormat = jsonFormat2(InstanceNotFound)
+  implicit val instanceTerminatedFormat = jsonFormat2(InstanceTerminated)
 }
-
-object MonitoringApiJsonProtocol extends MonitoringApiJsonProtocol
