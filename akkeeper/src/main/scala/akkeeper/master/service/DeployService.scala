@@ -15,16 +15,19 @@
  */
 package akkeeper.master.service
 
-import akka.actor.{Props, ActorRefFactory, ActorRef}
+import akka.actor.{ActorRef, ActorRefFactory, Props, Stash}
 import akka.pattern.pipe
 import akkeeper.api._
 import akkeeper.common._
 import akkeeper.deploy._
-import MonitoringService._
+import MonitoringService.InstancesUpdate
+import akkeeper.master.service.DeployService.{InitFailed, InitSuccessful}
+
+import scala.util.control.NonFatal
 
 private[akkeeper] class DeployService(deployClient: DeployClient.Async,
                                       containerService: ActorRef,
-                                      monitoringService: ActorRef) extends RequestTrackingService {
+                                      monitoringService: ActorRef) extends RequestTrackingService with Stash {
 
   private implicit val dispatcher = context.dispatcher
   override protected val trackedMessages: Set[Class[_]] = Set(classOf[DeployContainer])
@@ -55,8 +58,13 @@ private[akkeeper] class DeployService(deployClient: DeployClient.Async,
   }
 
   override def preStart(): Unit = {
+    log.info("Starting deploy client initialization")
+
     deployClient.start()
-    log.info("Deploy service successfully initialized")
+      .map {_ => InitSuccessful()}
+      .recover { case NonFatal(e) => InitFailed(e) }
+      .pipeTo(self)
+
     super.preStart()
   }
 
@@ -65,7 +73,19 @@ private[akkeeper] class DeployService(deployClient: DeployClient.Async,
     super.postStop()
   }
 
-  override protected def serviceReceive: Receive = {
+  def uninitializedReceive: Receive = {
+    case InitSuccessful() =>
+      log.info("Deploy client initialized")
+      become(initializedReceive)
+      unstashAll()
+    case InitFailed(reason) =>
+      log.error(reason, "Deploy client initialization failed")
+      context.stop(self)
+    case _: WithRequestId =>
+      stash()
+  }
+
+  def apiCommandReceive: Receive = {
     case request: DeployContainer =>
       // Before launching a new instance we should first
       // retrieve an information about the container.
@@ -81,14 +101,28 @@ private[akkeeper] class DeployService(deployClient: DeployClient.Async,
       // Some unexpected response from the container service (likely error).
       // Just send it as is to the original sender.
       sendAndRemoveOriginalSender(other)
+  }
+
+  private def internalEventReceive: Receive = {
     case StopWithError(e) =>
       log.error("Stopping the Deploy service because of external error")
       deployClient.stopWithError(e)
       context.stop(self)
   }
+
+  private def initializedReceive: Receive = {
+    apiCommandReceive orElse internalEventReceive
+  }
+
+  override protected def serviceReceive: Receive = {
+    uninitializedReceive orElse internalEventReceive
+  }
 }
 
 object DeployService extends RemoteServiceFactory {
+  private case class InitSuccessful()
+  private case class InitFailed(reason: Throwable)
+
   override val actorName = "deployService"
 
   private[akkeeper] def createLocal(factory: ActorRefFactory,

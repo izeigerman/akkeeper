@@ -25,7 +25,8 @@ import akkeeper.master.service.MonitoringService.InstancesUpdate
 import org.scalamock.scalatest.MockFactory
 import org.scalatest._
 
-import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 
 class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
   with FlatSpecLike with Matchers with ImplicitSender with MockFactory with ActorTestUtils
@@ -52,7 +53,31 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
       containerService, monitoringService), DeployService.actorName)
   }
 
-  "A Deploy Service" should "deploy container successfully" in {
+  private def successfulFuture = Future {
+    val sleepMs = 1000
+    Thread.sleep(sleepMs)
+  }
+
+  "A Deploy Service" should "not respond if it's not initialized" in {
+    val delayedResponse = Future {
+      val sleepMs = 1000
+      Thread.sleep(sleepMs)
+      throw new AkkeeperException("")
+    }
+
+    val deployClient = mock[DeployClient.Async]
+    (deployClient.start()(_: ExecutionContext)).expects(*).returns(delayedResponse)
+
+    val service = createDeployService(deployClient, self, self)
+    val deployRequest = DeployContainer("container", 2, jvmArgs = None, properties = None)
+
+    service ! deployRequest
+    expectNoMessage()
+
+    gracefulActorStop(service)
+  }
+
+  it should "deploy container successfully" in {
     val container = createContainer("container")
     val expectedContainer = container.copy(
       jvmArgs = Seq("-Xms1G") ++ container.jvmArgs,
@@ -60,7 +85,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
 
     val ids = (0 until 2).map(_ => InstanceId("container"))
     val deployClient = mock[DeployClient.Async]
-    (deployClient.start _).expects()
+    (deployClient.start()(_: ExecutionContext)).expects(*).returns(successfulFuture)
     (deployClient.stop _).expects()
     val deployResult = ids.map(id => Future successful DeploySuccessful(id))
     (deployClient.deploy _).expects(expectedContainer, *).returning(deployResult)
@@ -113,7 +138,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
 
   it should "return an error if the specified container is invalid" in {
     val deployClient = mock[DeployClient.Async]
-    (deployClient.start _).expects()
+    (deployClient.start()(_: ExecutionContext)).expects(*).returns(successfulFuture)
     (deployClient.stop _).expects()
 
     val service = createDeployService(deployClient, self, self)
@@ -136,7 +161,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
     val container = createContainer("container")
     val id = InstanceId("container")
     val deployClient = mock[DeployClient.Async]
-    (deployClient.start _).expects()
+    (deployClient.start()(_: ExecutionContext)).expects(*).returns(successfulFuture)
     (deployClient.stop _).expects()
     val deployResult = Future successful DeployFailed(id, new AkkeeperException(""))
     (deployClient.deploy _).expects(container, *).returning(Seq(deployResult))
@@ -188,7 +213,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
   it should "stop with an error" in {
     val exception = new AkkeeperException("fail")
     val deployClient = mock[DeployClient.Async]
-    (deployClient.start _).expects()
+    (deployClient.start()(_: ExecutionContext)).expects(*).returns(successfulFuture)
     (deployClient.stop _).expects()
     (deployClient.stopWithError _).expects(exception)
 

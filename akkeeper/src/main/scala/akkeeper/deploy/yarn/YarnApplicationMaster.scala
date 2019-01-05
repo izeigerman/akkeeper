@@ -31,7 +31,7 @@ import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util._
 import scala.util.control.NonFatal
 import scala.collection.JavaConverters._
@@ -248,7 +248,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     }, AMHeartbeatInterval, AMHeartbeatInterval, TimeUnit.MILLISECONDS)
   }
 
-  override def start(): Unit = {
+  override def start()(implicit dispatcher: ExecutionContext) = Future {
     yarnClient.init(config.yarnConf)
     yarnClient.start()
 

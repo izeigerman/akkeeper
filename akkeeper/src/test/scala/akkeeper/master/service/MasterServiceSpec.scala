@@ -29,12 +29,18 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest._
 
 import scala.annotation.tailrec
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 import MasterServiceSpec._
 import MonitoringServiceSpec._
 
 class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
+
+  private def successfulFuture = Future {
+    val sleepMs = 1000
+    Thread.sleep(sleepMs)
+  }
 
   "A Master Service" should "initialize successfully and create a new cluster" in {
     val storage = mock[InstanceStorage.Async]
@@ -43,7 +49,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
     (storage.getInstances _).expects().returns(Future successful Seq.empty)
 
     val deployClient = mock[DeployClient.Async]
-    (deployClient.start _).expects()
+    (deployClient.start()(_: ExecutionContext)).expects(*).returning(successfulFuture)
     (deployClient.stop _).expects()
 
     new MasterServiceTestRunner() {
@@ -68,7 +74,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
     (storage.getInstances _).expects().returns(Future successful Seq.empty)
 
     val deployClient = mock[DeployClient.Async]
-    (deployClient.start _).expects()
+    (deployClient.start()(_: ExecutionContext)).expects(*).returning(successfulFuture)
     (deployClient.stop _).expects()
     (deployClient.deploy _)
       .expects(*, *)
@@ -123,7 +129,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
         (storage.getInstance _).expects(instance.instanceId).returns(Future successful instance)
 
         val deployClient = mock[DeployClient.Async]
-        (deployClient.start _).expects()
+        (deployClient.start()(_: ExecutionContext)).expects(*).returning(successfulFuture)
         (deployClient.stop _).expects()
 
         val service = MasterService.createLocal(system, deployClient, storage)
@@ -148,7 +154,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
     val instanceIds = (0 until 2).map(_ => InstanceId("container1"))
     val deployFutures = instanceIds.map(id => Future successful DeploySuccessful(id))
     val deployClient = mock[DeployClient.Async]
-    (deployClient.start _).expects()
+    (deployClient.start()(_: ExecutionContext)).expects(*).returning(successfulFuture)
     (deployClient.stop _).expects()
     (deployClient.deploy _)
       .expects(*, new ArgThat[Seq[InstanceId]](ids => ids.size == 2))
@@ -191,7 +197,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
           .returns(Future failed new AkkeeperException(""))
 
         val deployClient = mock[DeployClient.Async]
-        (deployClient.start _).expects()
+        (deployClient.start()(_: ExecutionContext)).expects(*).returning(successfulFuture)
         (deployClient.stop _).expects()
         (deployClient.stopWithError _).expects(*)
 
@@ -211,7 +217,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
         (storage.getInstances _).expects().returns(Future successful Seq.empty)
 
         val deployClient = mock[DeployClient.Async]
-        (deployClient.start _).expects()
+        (deployClient.start()(_: ExecutionContext)).expects(*).returning(successfulFuture)
         (deployClient.stop _).expects()
 
         val service = MasterService.createLocal(system, deployClient, storage)

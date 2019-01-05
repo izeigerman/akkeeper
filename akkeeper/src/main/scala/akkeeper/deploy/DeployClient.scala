@@ -17,13 +17,14 @@ package akkeeper.deploy
 
 import akkeeper.common._
 import akkeeper.deploy.yarn._
-import scala.concurrent.Future
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /** A client that is responsible for deploying new container instances. */
 private[akkeeper] trait DeployClient[F[_]] {
 
   /** Starts the client. */
-  def start(): Unit
+  def start()(implicit dispatcher: ExecutionContext): F[Unit]
 
   /** Stops the client. */
   def stop(): Unit
