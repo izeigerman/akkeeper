@@ -135,9 +135,9 @@ class YarnLauncherSpec extends FlatSpec with Matchers with MockFactory
     result.appId shouldBe appId.toString
     result.masterAddress.host shouldBe Some("localhost")
     result.masterAddress.port shouldBe Some(config.getInt("akkeeper.akka.port"))
-    result.masterAddress.system shouldBe config.getActorSystemName
+    result.masterAddress.system shouldBe config.akkaActorSystemName
 
-    appContext.getApplicationName shouldBe config.getYarnApplicationName
+    appContext.getApplicationName shouldBe config.yarnApplicationName
 
     appContext.getQueue shouldBe "queue"
 

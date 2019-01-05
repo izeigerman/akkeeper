@@ -20,6 +20,7 @@ import akka.cluster.Cluster
 import akka.cluster.ClusterEvent.{InitialStateAsEvents, MemberUp}
 import akkeeper.api._
 import akkeeper.common.InstanceInfo
+import akkeeper.config._
 import akkeeper.deploy.DeployClient
 import akkeeper.master.service.MasterService._
 import akkeeper.storage.InstanceStorage
@@ -31,8 +32,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
                                       instanceStorage: InstanceStorage.Async)
   extends Actor with ActorLogging with Stash {
 
-  private val numOfInstancesToJoin: Int = context.system.settings.config
-    .getInt("akkeeper.akka.seed-nodes-num")
+  private val numOfInstancesToJoin: Int = context.system.settings.config.akkaSeedNodesNum
 
   private val containerService: ActorRef = ContainerService.createLocal(context)
   private val monitoringService: ActorRef = MonitoringService.createLocal(context, instanceStorage)

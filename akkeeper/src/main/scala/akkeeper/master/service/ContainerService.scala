@@ -33,7 +33,7 @@ private[akkeeper] class ContainerService extends Actor with ActorLogging {
 
   private def loadContainersFromConfig(): Unit = {
     val config = context.system.settings.config
-    val configContainers = config.getContainers
+    val configContainers = config.containers
     configContainers.foreach(c => containers.put(c.name, c))
   }
 

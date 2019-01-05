@@ -34,9 +34,9 @@ class KerberosTicketRenewer(user: UserGroupInformation, checkInterval: Long) {
   private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
 
   def start(): Unit = {
-    scheduler.scheduleAtFixedRate(new Runnable {
-      override def run(): Unit = user.checkTGTAndReloginFromKeytab()
-    }, checkInterval, checkInterval, TimeUnit.MILLISECONDS)
+    scheduler.scheduleAtFixedRate(
+      () => user.checkTGTAndReloginFromKeytab(),
+      checkInterval, checkInterval, TimeUnit.MILLISECONDS)
     logger.info("Kerberos Ticket Renewer started successfully")
   }
 

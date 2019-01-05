@@ -31,11 +31,10 @@ import scala.io.Source
 import scala.util.control.NonFatal
 import spray.json._
 import ContainerDefinitionJsonProtocol._
-import akka.remote.WireFormats.TimeUnit
 import akkeeper.BuildInfo
 
 import scala.concurrent.Await
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 object ContainerInstanceMain extends App {
 
@@ -80,22 +79,18 @@ object ContainerInstanceMain extends App {
 
   def run(instanceArgs: ContainerInstanceArguments): Unit = {
     val instanceConfig = createInstanceConfig(instanceArgs)
-    val actorSystem = ActorSystem(instanceConfig.getActorSystemName, instanceConfig)
+    val actorSystem = ActorSystem(instanceConfig.akkaActorSystemName, instanceConfig)
 
-    val zkConfig = actorSystem.settings.config.getZookeeperClientConfig
+    val zkConfig = actorSystem.settings.config.zookeeperClientConfig
     val instanceStorage = InstanceStorageFactory.createAsync(zkConfig.child(instanceArgs.appId))
 
     val actorsJsonStr = Source.fromFile(instanceArgs.actors).getLines().mkString("\n")
     val actors = actorsJsonStr.parseJson.convertTo[Seq[ActorLaunchContext]]
 
-    val joinClusterTimeout = Duration.fromNanos(
-      instanceConfig.getDuration("akkeeper.akka.join-cluster-timeout").toNanos)
-    val leaveClusterTimeout = Duration.fromNanos(
-      instanceConfig.getDuration("akkeeper.akka.leave-cluster-timeout").toNanos)
-
     ContainerInstanceService.createLocal(actorSystem, actors,
       instanceStorage, instanceArgs.instanceId, instanceArgs.masterAddress,
-      joinClusterTimeout = joinClusterTimeout, leaveClusterTimeout = leaveClusterTimeout)
+      joinClusterTimeout = instanceConfig.akkaJoinClusterTimeout,
+      leaveClusterTimeout = instanceConfig.akkaLeaveClusterTimeout)
 
     Await.result(actorSystem.whenTerminated, Duration.Inf)
     sys.exit(0)
