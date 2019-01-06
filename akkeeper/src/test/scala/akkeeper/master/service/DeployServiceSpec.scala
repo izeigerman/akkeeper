@@ -46,7 +46,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
     ContainerDefinition(name, cpus = cpus, memory = memory, actors = Seq(actor))
   }
 
-  private def createDeployService(deployClient: DeployClient.Async,
+  private def createDeployService(deployClient: DeployClient,
                                   containerService: ActorRef,
                                   monitoringService: ActorRef): ActorRef = {
     childActorOf(Props(classOf[DeployService], deployClient,
@@ -65,7 +65,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
       throw new AkkeeperException("")
     }
 
-    val deployClient = mock[DeployClient.Async]
+    val deployClient = mock[DeployClient]
     (deployClient.start()(_: ExecutionContext)).expects(*).returns(delayedResponse)
 
     val service = createDeployService(deployClient, self, self)
@@ -84,7 +84,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
       jvmProperties = Map("property" -> "other_value"))
 
     val ids = (0 until 2).map(_ => InstanceId("container"))
-    val deployClient = mock[DeployClient.Async]
+    val deployClient = mock[DeployClient]
     (deployClient.start()(_: ExecutionContext)).expects(*).returns(successfulFuture)
     (deployClient.stop _).expects()
     val deployResult = ids.map(id => Future successful DeploySuccessful(id))
@@ -137,7 +137,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "return an error if the specified container is invalid" in {
-    val deployClient = mock[DeployClient.Async]
+    val deployClient = mock[DeployClient]
     (deployClient.start()(_: ExecutionContext)).expects(*).returns(successfulFuture)
     (deployClient.stop _).expects()
 
@@ -160,7 +160,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
   it should "fail the container deployment" in {
     val container = createContainer("container")
     val id = InstanceId("container")
-    val deployClient = mock[DeployClient.Async]
+    val deployClient = mock[DeployClient]
     (deployClient.start()(_: ExecutionContext)).expects(*).returns(successfulFuture)
     (deployClient.stop _).expects()
     val deployResult = Future successful DeployFailed(id, new AkkeeperException(""))
@@ -212,7 +212,7 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
 
   it should "stop with an error" in {
     val exception = new AkkeeperException("fail")
-    val deployClient = mock[DeployClient.Async]
+    val deployClient = mock[DeployClient]
     (deployClient.start()(_: ExecutionContext)).expects(*).returns(successfulFuture)
     (deployClient.stop _).expects()
     (deployClient.stopWithError _).expects(exception)

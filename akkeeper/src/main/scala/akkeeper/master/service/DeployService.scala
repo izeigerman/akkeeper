@@ -25,7 +25,7 @@ import akkeeper.master.service.DeployService.{InitFailed, InitSuccessful}
 
 import scala.util.control.NonFatal
 
-private[akkeeper] class DeployService(deployClient: DeployClient.Async,
+private[akkeeper] class DeployService(deployClient: DeployClient,
                                       containerService: ActorRef,
                                       monitoringService: ActorRef) extends RequestTrackingService with Stash {
 
@@ -126,7 +126,7 @@ object DeployService extends RemoteServiceFactory {
   override val actorName = "deployService"
 
   private[akkeeper] def createLocal(factory: ActorRefFactory,
-                                    deployClient: DeployClient.Async,
+                                    deployClient: DeployClient,
                                     containerService: ActorRef,
                                     monitoringService: ActorRef): ActorRef = {
     factory.actorOf(Props(classOf[DeployService], deployClient,

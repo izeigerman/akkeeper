@@ -72,7 +72,7 @@ private[master] class YarnMasterRunner extends MasterRunner {
 
   private def createDeployClient(actorSystem: ActorSystem,
                                  masterArgs: MasterArguments,
-                                 restApiPort: Int): DeployClient.Async = {
+                                 restApiPort: Int): DeployClient = {
     val yarnConf = YarnUtils.getYarnConfiguration
     val config = actorSystem.settings.config
     val selfAddr = Cluster(actorSystem).selfAddress

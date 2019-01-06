@@ -48,7 +48,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq.empty)
 
-    val deployClient = mock[DeployClient.Async]
+    val deployClient = mock[DeployClient]
     (deployClient.start()(_: ExecutionContext)).expects(*).returning(successfulFuture)
     (deployClient.stop _).expects()
 
@@ -73,7 +73,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq.empty)
 
-    val deployClient = mock[DeployClient.Async]
+    val deployClient = mock[DeployClient]
     (deployClient.start()(_: ExecutionContext)).expects(*).returning(successfulFuture)
     (deployClient.stop _).expects()
     (deployClient.deploy _)
@@ -128,7 +128,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
         (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId))
         (storage.getInstance _).expects(instance.instanceId).returns(Future successful instance)
 
-        val deployClient = mock[DeployClient.Async]
+        val deployClient = mock[DeployClient]
         (deployClient.start()(_: ExecutionContext)).expects(*).returning(successfulFuture)
         (deployClient.stop _).expects()
 
@@ -153,7 +153,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
 
     val instanceIds = (0 until 2).map(_ => InstanceId("container1"))
     val deployFutures = instanceIds.map(id => Future successful DeploySuccessful(id))
-    val deployClient = mock[DeployClient.Async]
+    val deployClient = mock[DeployClient]
     (deployClient.start()(_: ExecutionContext)).expects(*).returning(successfulFuture)
     (deployClient.stop _).expects()
     (deployClient.deploy _)
@@ -196,7 +196,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
           .expects(instance.instanceId)
           .returns(Future failed new AkkeeperException(""))
 
-        val deployClient = mock[DeployClient.Async]
+        val deployClient = mock[DeployClient]
         (deployClient.start()(_: ExecutionContext)).expects(*).returning(successfulFuture)
         (deployClient.stop _).expects()
         (deployClient.stopWithError _).expects(*)
@@ -216,7 +216,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
         (storage.stop _).expects()
         (storage.getInstances _).expects().returns(Future successful Seq.empty)
 
-        val deployClient = mock[DeployClient.Async]
+        val deployClient = mock[DeployClient]
         (deployClient.start()(_: ExecutionContext)).expects(*).returning(successfulFuture)
         (deployClient.stop _).expects()
 

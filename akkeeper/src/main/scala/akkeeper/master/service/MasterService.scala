@@ -27,7 +27,7 @@ import akkeeper.storage.InstanceStorage
 import scala.collection.{immutable, mutable}
 
 
-private[akkeeper] class MasterService(deployClient: DeployClient.Async,
+private[akkeeper] class MasterService(deployClient: DeployClient,
                                       instanceStorage: InstanceStorage.Async)
   extends Actor with ActorLogging with Stash {
 
@@ -158,7 +158,7 @@ object MasterService extends RemoteServiceFactory {
 
   override val actorName = MasterServiceName
 
-  private[akkeeper] def createLocal(factory: ActorRefFactory, deployClient: DeployClient.Async,
+  private[akkeeper] def createLocal(factory: ActorRefFactory, deployClient: DeployClient,
                                     instanceStorage: InstanceStorage.Async): ActorRef = {
     factory.actorOf(Props(classOf[MasterService], deployClient, instanceStorage), actorName)
   }

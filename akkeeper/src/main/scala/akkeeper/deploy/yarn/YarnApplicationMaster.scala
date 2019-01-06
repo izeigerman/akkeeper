@@ -39,7 +39,7 @@ import YarnApplicationMaster._
 
 private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfig,
                                               yarnClient: YarnMasterClient)
-  extends DeployClient.Async {
+  extends DeployClient {
 
   private val logger = LoggerFactory.getLogger(classOf[YarnApplicationMaster])
 
