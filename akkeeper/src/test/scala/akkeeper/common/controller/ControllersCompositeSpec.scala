@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package akkeeper.common
+package akkeeper.common.controller
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.StatusCodes
@@ -22,7 +22,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import akkeeper.master.route.RestTestUtils
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
-class ControllersSpec(testSystem: ActorSystem) extends TestKit(testSystem)
+class ControllersCompositeSpec(testSystem: ActorSystem) extends TestKit(testSystem)
   with FlatSpecLike with Matchers with ImplicitSender with RestTestUtils
   with BeforeAndAfterAll {
 
@@ -34,8 +34,8 @@ class ControllersSpec(testSystem: ActorSystem) extends TestKit(testSystem)
   }
 
   "Composite Controller" should "compose multiple controllers" in {
-    val controller1 = ControllersSpec.createTestController("test1", self)
-    val controller2 = ControllersSpec.createTestController("test2", self)
+    val controller1 = ControllersCompositeSpec.createTestController("test1", self)
+    val controller2 = ControllersCompositeSpec.createTestController("test2", self)
 
     def testRoute(name: String, restPort: Int): Unit = {
       val response = getRaw(s"/api/v1/$name", restPort)
@@ -52,9 +52,9 @@ class ControllersSpec(testSystem: ActorSystem) extends TestKit(testSystem)
   }
 }
 
-object ControllersSpec extends Directives {
-  private def createTestController(name: String, testService: ActorRef): RouteController = {
-    new RouteController {
+object ControllersCompositeSpec extends Directives {
+  private def createTestController(name: String, testService: ActorRef): Controller = {
+    new Controller {
       val service = testService
 
       override val route: Route =

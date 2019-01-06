@@ -22,7 +22,8 @@ import akka.http.scaladsl.server.PathMatcher._
 import akka.http.scaladsl.server.{PathMatcher1, Route}
 import akka.util.Timeout
 import akkeeper.api._
-import akkeeper.common.{BaseController, InstanceId}
+import akkeeper.common.controller.BaseController
+import akkeeper.common.InstanceId
 
 import scala.concurrent.ExecutionContext
 import scala.util.Try

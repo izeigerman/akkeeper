@@ -20,7 +20,8 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import akkeeper.api._
-import akkeeper.common.{BaseController, ContainerDefinition, ContainerDefinitionJsonProtocol}
+import akkeeper.common.controller.BaseController
+import akkeeper.common.{ContainerDefinition, ContainerDefinitionJsonProtocol}
 
 import scala.concurrent.ExecutionContext
 
