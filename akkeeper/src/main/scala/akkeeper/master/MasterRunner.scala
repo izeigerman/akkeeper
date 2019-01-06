@@ -83,7 +83,7 @@ private[master] class YarnMasterRunner extends MasterRunner {
       config = config, yarnConf = yarnConf,
       appId = masterArgs.appId, selfAddress = selfAddr, trackingUrl = trackingUrl,
       principal = principal)
-    DeployClientFactory.createAsync(yarnConfig)
+    DeployClientFactory.create(yarnConfig)
   }
 
   private def loginAndGetRenewer(config: Config, principal: String): KerberosTicketRenewer = {

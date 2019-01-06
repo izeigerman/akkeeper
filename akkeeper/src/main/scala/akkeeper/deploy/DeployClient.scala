@@ -24,10 +24,10 @@ import scala.concurrent.{ExecutionContext, Future}
 private[akkeeper] trait DeployClient {
 
   /** Starts the client. */
-  def start()(implicit dispatcher: ExecutionContext): Future[Unit]
+  def start(): Future[Unit]
 
   /** Stops the client. */
-  def stop(): Unit
+  def stop(): Future[Unit]
 
   /** Indicates that the client must be stopped because of the error.
     *
@@ -74,7 +74,7 @@ private[akkeeper] object DeployClientFactory {
     }
   }
 
-  def createAsync[T: DeployClientFactory](config: T): DeployClient = {
+  def create[T: DeployClientFactory](config: T): DeployClient = {
     implicitly[T](config)
   }
 }

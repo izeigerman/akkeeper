@@ -46,6 +46,8 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   private val executorService: ScheduledExecutorService = Executors.newScheduledThreadPool(
     config.config.getInt("akkeeper.yarn.client-threads"))
 
+  private implicit val executionContext = ExecutionContext.fromExecutor(executorService)
+
   private val stagingDirectory: String = config.config
     .getYarnStagingDirectory(config.yarnConf, config.appId)
   private val localResourceManager: YarnLocalResourceManager =
@@ -248,7 +250,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     }, AMHeartbeatInterval, AMHeartbeatInterval, TimeUnit.MILLISECONDS)
   }
 
-  override def start()(implicit dispatcher: ExecutionContext) = Future {
+  override def start(): Future[Unit] = Future {
     yarnClient.init(config.yarnConf)
     yarnClient.start()
 
@@ -288,7 +290,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     }
   }
 
-  override def stop(): Unit = {
+  override def stop(): Future[Unit] = Future {
     if (isRunning) {
       unregisterApplicationMaster(FinalApplicationStatus.SUCCEEDED, "")
       stopClients()

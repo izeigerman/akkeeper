@@ -33,7 +33,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
 import scala.collection.JavaConverters._
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -87,9 +87,8 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
 
     val masterConfig = createStagingAppMasterConfig
     val master = new YarnApplicationMaster(masterConfig, yarnClient)
-    val future = master.start()
-    Await.ready(future, 1 seconds)
-    master.stop()
+    Await.ready(master.start(), 1 seconds)
+    Await.ready(master.stop(), 1 seconds)
   }
 
   it should "start successfully and stop with error" in {
@@ -105,8 +104,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
 
     val masterConfig = createStagingAppMasterConfig
     val master = new YarnApplicationMaster(masterConfig, yarnClient)
-    val future = master.start()
-    Await.ready(future, 1 seconds)
+    Await.ready(master.start(), 1 seconds)
     master.stopWithError(expectedException)
   }
 
@@ -144,8 +142,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
 
     val masterConfig = createStagingAppMasterConfig
     val master = new YarnApplicationMaster(masterConfig, yarnClient)
-    val future = master.start()
-    Await.ready(future, 1 seconds)
+    Await.ready(master.start(), 1 seconds)
 
     val actualResult = master.deploy(container, Seq(instanceId))
     actualResult.size shouldBe 1
@@ -155,7 +152,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
 
     val stagingDirectory = masterConfig.config.getString("akkeeper.yarn.staging-directory")
     hadoopFs.exists(new Path(stagingDirectory, "appId")) shouldBe true
-    master.stop()
+    Await.ready(master.stop(), 1 seconds)
     // Make sure that the staging directory has been cleaned up.
     hadoopFs.exists(new Path(stagingDirectory, "appId")) shouldBe false
   }
@@ -182,8 +179,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
 
     val masterConfig = createStagingAppMasterConfig
     val master = new YarnApplicationMaster(masterConfig, yarnClient)
-    val future = master.start()
-    Await.ready(future, 1 seconds)
+    Await.ready(master.start(), 1 seconds)
 
     val actualResult = master.deploy(container, Seq(instanceId))
     actualResult.size shouldBe 1
@@ -191,7 +187,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
     val deployResult = await(actualResult(0).mapTo[DeployFailed])
     deployResult.instanceId shouldBe instanceId
 
-    master.stop()
+    Await.ready(master.stop(), 1 seconds)
   }
 
   it should "handle the failed unregister process properly" in {
@@ -206,8 +202,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
 
     val masterConfig = createStagingAppMasterConfig
     val master = new YarnApplicationMaster(masterConfig, yarnClient)
-    val future = master.start()
-    Await.ready(future, 1 seconds)
+    Await.ready(master.start(), 1 seconds)
     master.stop()
   }
 }
