@@ -15,25 +15,32 @@
  */
 package akkeeper.config
 
-import akkeeper.api.DeployContainer
-import akkeeper.common.ContainerDefinition
 import akkeeper.master.service.MasterService
-import akkeeper.storage.zookeeper.ZookeeperClientConfig
 import com.typesafe.config.{Config, ConfigValueFactory}
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FileSystem, Path}
+
 import scala.collection.JavaConverters._
+
 
 private[akkeeper] final class RichConfig(config: Config) {
 
+  // Configs
+  def akkeeper: AkkeeperConfig = new AkkeeperConfig(config.getConfig("akkeeper"))
+  def akkeeperAkka: AkkeeperAkkaConfig = new AkkeeperAkkaConfig(config.getConfig("akkeeper.akka"))
+  def monitoring: MonitoringConfig = new MonitoringConfig(config.getConfig("akkeeper.monitoring"))
+  def launcher: LauncherConfig = new LauncherConfig(config.getConfig("akkeeper.launcher"))
+  def yarn: YarnConfig = new YarnConfig(config.getConfig("akkeeper.yarn"))
+  def zookeeper: ZookeeperConfig = new ZookeeperConfig(config.getConfig("akkeeper.zookeeper"))
+  def rest: RestConfig = new RestConfig(config.getConfig("akkeeper.api.rest"))
+  def kerberos: KerberosConfig = new KerberosConfig(config.getConfig("akkeeper.kerberos"))
+
+  // Other
   def withMasterRole: Config = {
     config.withValue("akka.cluster.roles",
       ConfigValueFactory.fromIterable(Seq(MasterService.MasterServiceName).asJava))
   }
 
   def withMasterPort: Config = {
-    config.withValue("akka.remote.netty.tcp.port",
-      ConfigValueFactory.fromAnyRef(config.getInt("akkeeper.akka.port")))
+    config.withValue("akka.remote.netty.tcp.port", ConfigValueFactory.fromAnyRef(akkeeperAkka.port))
   }
 
   def withPrincipalAndKeytab(principal: String, keytab: String): Config = {
@@ -42,6 +49,7 @@ private[akkeeper] final class RichConfig(config: Config) {
       .withValue("akka.kerberos.keytab", ConfigValueFactory.fromAnyRef(keytab))
   }
 
+  // Utils
   def getMapOfStrings(path: String): Map[String, String] = {
     if (config.hasPath(path)) {
       config.getConfig(path).entrySet().asScala.map(entry => {
@@ -58,59 +66,5 @@ private[akkeeper] final class RichConfig(config: Config) {
     } else {
       Seq.empty
     }
-  }
-
-  def getActorSystemName: String = {
-    config.getString("akkeeper.akka.system-name")
-  }
-
-  def getYarnConfig: Config = {
-    config.getConfig("akkeeper.yarn")
-  }
-
-  def getYarnApplicationName: String = {
-    getYarnConfig.getString("application-name")
-  }
-
-  def getYarnStagingDirectory(conf: Configuration, appId: String): String ={
-    val basePath =
-      if (getYarnConfig.hasPath("staging-directory")) {
-        getYarnConfig.getString("staging-directory")
-      } else {
-        new Path(FileSystem.get(conf).getHomeDirectory, ".akkeeper").toString
-      }
-    new Path(basePath, appId).toString
-  }
-
-  def getZookeeperClientConfig: ZookeeperClientConfig = {
-    ZookeeperClientConfig.fromConfig(config.getConfig("akkeeper.zookeeper"))
-  }
-
-  def getContainers: Seq[ContainerDefinition] = {
-    if (config.hasPath("akkeeper.containers")) {
-      val configContainers = config.getConfigList("akkeeper.containers").asScala
-      configContainers.map(ContainerDefinition.fromConfig)
-    } else {
-      Seq.empty
-    }
-  }
-
-  def getDeployRequests: Seq[DeployContainer] = {
-    if (config.hasPath("akkeeper.instances")) {
-      val instances = config.getConfigList("akkeeper.instances").asScala
-      instances.map(conf => {
-        val containerName = conf.getString("name")
-        val quantity = conf.getInt("quantity")
-        val jvmArgs = config.getListOfStrings("jvm-args")
-        val properties = config.getMapOfStrings("properties")
-        DeployContainer(containerName, quantity, Some(jvmArgs), Some(properties))
-      })
-    } else {
-      Seq.empty
-    }
-  }
-
-  def getRestConfig: Config = {
-    config.getConfig("akkeeper.api.rest")
   }
 }

@@ -24,6 +24,7 @@ import akka.util.Timeout
 import akkeeper.AkkeeperException
 import akkeeper.api._
 import akkeeper.common.InstanceId
+import akkeeper.common.api.OperationFailed
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 class DeployControllerSpec(testSystem: ActorSystem) extends TestKit(testSystem)

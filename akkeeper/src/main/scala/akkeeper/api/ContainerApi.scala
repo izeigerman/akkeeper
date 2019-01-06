@@ -16,6 +16,7 @@
 package akkeeper.api
 
 import akkeeper.common._
+import akkeeper.common.api._
 import spray.json._
 
 /** The base interface for all requests related to Container API. */

@@ -21,6 +21,7 @@ import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import akkeeper.api._
 import akkeeper.common.{ContainerDefinition, ContainerDefinitionJsonProtocol}
+import akkeeper.common.api.OperationFailed
 import scala.concurrent.ExecutionContext
 
 class ContainerController(service: ActorRef)(implicit dispatcher: ExecutionContext,

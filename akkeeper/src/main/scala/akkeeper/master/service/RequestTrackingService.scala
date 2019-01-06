@@ -16,7 +16,7 @@
 package akkeeper.master.service
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
-import akkeeper.api.WithRequestId
+import akkeeper.common.api.WithRequestId
 import akkeeper.common.RequestId
 import scala.collection.mutable
 

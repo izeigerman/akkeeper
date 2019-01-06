@@ -15,10 +15,11 @@
  */
 package akkeeper.master.service
 
-import akka.actor.{Props, ActorRefFactory, ActorRef}
+import akka.actor.{ActorRef, ActorRefFactory, Props}
 import akka.pattern.pipe
 import akkeeper.api._
 import akkeeper.common._
+import akkeeper.common.api._
 import akkeeper.deploy._
 import MonitoringService._
 

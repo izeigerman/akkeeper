@@ -16,6 +16,7 @@
 package akkeeper.api
 
 import akkeeper.common._
+import akkeeper.common.api._
 import spray.json.DefaultJsonProtocol
 
 /** A request to deploy (launch) new instance(s) of the given container.

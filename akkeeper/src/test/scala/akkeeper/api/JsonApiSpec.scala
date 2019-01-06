@@ -17,6 +17,7 @@ package akkeeper.api
 
 import akkeeper.AkkeeperException
 import akkeeper.common._
+import akkeeper.common.api.OperationFailed
 import org.scalatest.{FlatSpec, Matchers}
 import spray.json._
 

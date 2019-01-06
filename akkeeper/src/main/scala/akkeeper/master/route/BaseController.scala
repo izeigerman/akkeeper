@@ -22,7 +22,7 @@ import akka.http.scaladsl.model.StatusCode
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.util.Timeout
 import akkeeper.AkkeeperException
-import akkeeper.api.CommonApiJsonProtocol
+import akkeeper.common.api.CommonApiJsonProtocol
 import spray.json.RootJsonWriter
 import scala.collection.mutable
 import scala.reflect.ClassTag

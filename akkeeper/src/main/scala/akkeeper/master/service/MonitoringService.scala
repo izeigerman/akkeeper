@@ -21,22 +21,21 @@ import akka.cluster.ClusterEvent._
 import akka.pattern.pipe
 import akkeeper.api._
 import akkeeper.common._
+import akkeeper.common.api._
+import akkeeper.config._
 import akkeeper.container.service.ContainerInstanceService
 import akkeeper.storage._
-import com.typesafe.config.Config
+
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.control.NonFatal
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 import MonitoringService._
 
 private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async)
   extends RequestTrackingService with Stash {
 
-  private val config: Config = context.system.settings.config
-  private val monitoringConfig: Config = config.getConfig("akkeeper.monitoring")
-  private val instanceLaunchTimeout: FiniteDuration = Duration.fromNanos(
-    monitoringConfig.getDuration("launch-timeout").toNanos)
+  private val instanceLaunchTimeout: FiniteDuration = context.system.settings.config.monitoring.launchTimeout
 
   private implicit val dispatcher = context.dispatcher
   private val cluster = Cluster(context.system)

@@ -20,6 +20,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import akkeeper.api._
+import akkeeper.common.api.OperationFailed
 import scala.concurrent.ExecutionContext
 
 class DeployController(service: ActorRef)(implicit dispatcher: ExecutionContext,

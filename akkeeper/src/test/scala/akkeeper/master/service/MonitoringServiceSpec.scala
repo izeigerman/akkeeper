@@ -29,6 +29,7 @@ import org.scalatest._
 import scala.concurrent.Future
 import MonitoringService._
 import MonitoringServiceSpec._
+import akkeeper.common.api.OperationFailed
 import com.typesafe.config.{ConfigFactory, ConfigValueFactory}
 
 class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)

@@ -16,6 +16,7 @@
 package akkeeper.api
 
 import akkeeper.common._
+import akkeeper.common.api._
 import spray.json.DefaultJsonProtocol
 
 /** The base interface for all requests related to Monitoring API. */
