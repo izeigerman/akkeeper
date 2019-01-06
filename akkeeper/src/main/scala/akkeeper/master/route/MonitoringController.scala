@@ -22,13 +22,14 @@ import akka.http.scaladsl.server.PathMatcher._
 import akka.http.scaladsl.server.{PathMatcher1, Route}
 import akka.util.Timeout
 import akkeeper.api._
+import akkeeper.common.controller.BaseController
 import akkeeper.common.InstanceId
+
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 import MonitoringController._
 
-class MonitoringController(service: ActorRef)(implicit dispatcher: ExecutionContext,
-                                              timeout: Timeout)
+class MonitoringController(override protected val service: ActorRef)(implicit timeout: Timeout)
   extends BaseController with MonitoringApiJsonProtocol {
 
   registerHandler[InstanceInfoResponse](StatusCodes.OK)
@@ -40,10 +41,10 @@ class MonitoringController(service: ActorRef)(implicit dispatcher: ExecutionCont
     pathPrefix("instances") {
       path(InstanceIdMatcher) { instanceId =>
         get {
-          handleRequest(service, GetInstance(instanceId))
+          handleRequest(GetInstance(instanceId))
         } ~
         delete {
-          handleRequest(service, TerminateInstance(instanceId))
+          handleRequest(TerminateInstance(instanceId))
         }
       } ~
       path(Segment) { segment =>
@@ -52,9 +53,9 @@ class MonitoringController(service: ActorRef)(implicit dispatcher: ExecutionCont
       (pathEnd | pathSingleSlash) {
         parameters('role.*, 'containerName.?) { (role, containerName) =>
           if (role.isEmpty && containerName.isEmpty) {
-            handleRequest(service, GetInstances())
+            handleRequest(GetInstances())
           } else {
-            handleRequest(service, GetInstancesBy(role.toSet, containerName))
+            handleRequest(GetInstancesBy(role.toSet, containerName))
           }
         }
       }
@@ -63,7 +64,7 @@ class MonitoringController(service: ActorRef)(implicit dispatcher: ExecutionCont
 
 object MonitoringController {
   def apply(service: ActorRef)(implicit dispatcher: ExecutionContext,
-                               timeout: Timeout): BaseController = {
+                               timeout: Timeout): MonitoringController = {
     new MonitoringController(service)
   }
 

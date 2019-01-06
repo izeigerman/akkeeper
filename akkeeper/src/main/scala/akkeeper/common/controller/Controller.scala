@@ -13,23 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package akkeeper.master.route
+package akkeeper.common.controller
 
 import akka.actor.ActorRef
-import akka.pattern.ask
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCode
 import akka.http.scaladsl.server.{Directives, Route}
+import akka.pattern.ask
 import akka.util.Timeout
 import akkeeper.AkkeeperException
 import akkeeper.api.CommonApiJsonProtocol
 import spray.json.RootJsonWriter
+
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
-trait BaseController extends Directives with SprayJsonSupport with CommonApiJsonProtocol {
-
+trait Controller extends Directives with SprayJsonSupport {
   def route: Route
+}
+
+trait BaseController extends Controller with CommonApiJsonProtocol {
+  protected def service: ActorRef
 
   private val handlers: mutable.ArrayBuffer[PartialFunction[Any, Route]] =
     mutable.ArrayBuffer.empty
@@ -49,10 +53,9 @@ trait BaseController extends Directives with SprayJsonSupport with CommonApiJson
     }
   }
 
-  final protected def handleRequest(service: ActorRef, msg: Any)
+  final protected def handleRequest(msg: Any)
                                    (implicit timeout: Timeout): Route = {
     val result = service ? msg
     onSuccess(result)(applyHandlers)
   }
 }
-

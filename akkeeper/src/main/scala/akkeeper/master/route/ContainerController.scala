@@ -20,11 +20,12 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import akkeeper.api._
+import akkeeper.common.controller.BaseController
 import akkeeper.common.{ContainerDefinition, ContainerDefinitionJsonProtocol}
+
 import scala.concurrent.ExecutionContext
 
-class ContainerController(service: ActorRef)(implicit dispatcher: ExecutionContext,
-                                             timeout: Timeout)
+class ContainerController(override protected val service: ActorRef)(implicit timeout: Timeout)
   extends BaseController with ContainerApiJsonProtocol with ContainerDefinitionJsonProtocol {
 
   registerHandler[ContainerGetResult](StatusCodes.OK)
@@ -40,24 +41,24 @@ class ContainerController(service: ActorRef)(implicit dispatcher: ExecutionConte
     pathPrefix("containers") {
       path(Segment) { containerName =>
         get {
-          handleRequest(service, GetContainer(containerName))
+          handleRequest(GetContainer(containerName))
         } ~
         patch {
           entity(as[ContainerDefinition]) { definition =>
-            handleRequest(service, UpdateContainer(definition))
+            handleRequest(UpdateContainer(definition))
           }
         } ~
         delete {
-          handleRequest(service, DeleteContainer(containerName))
+          handleRequest(DeleteContainer(containerName))
         }
       } ~
       (pathEnd | pathSingleSlash) {
         get {
-          handleRequest(service, GetContainers())
+          handleRequest(GetContainers())
         } ~
         post {
           entity(as[ContainerDefinition]) { definition =>
-            handleRequest(service, CreateContainer(definition))
+            handleRequest(CreateContainer(definition))
           }
         }
       }
@@ -66,7 +67,7 @@ class ContainerController(service: ActorRef)(implicit dispatcher: ExecutionConte
 
 object ContainerController {
   def apply(service: ActorRef)(implicit dispatcher: ExecutionContext,
-                               timeout: Timeout): BaseController = {
+                               timeout: Timeout): ContainerController = {
     new ContainerController(service)
   }
 }

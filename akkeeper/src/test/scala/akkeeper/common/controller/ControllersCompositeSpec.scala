@@ -13,19 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package akkeeper.master.route
+package akkeeper.common.controller
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.{Route, Directives}
+import akka.http.scaladsl.server.{Directives, Route}
 import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
+import akkeeper.master.route.RestTestUtils
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
-class ControllerCompositeSpec(testSystem: ActorSystem) extends TestKit(testSystem)
+class ControllersCompositeSpec(testSystem: ActorSystem) extends TestKit(testSystem)
   with FlatSpecLike with Matchers with ImplicitSender with RestTestUtils
   with BeforeAndAfterAll {
 
-  def this() = this(ActorSystem("ControllerCompositeSpec"))
+  def this() = this(ActorSystem("ControllerSpec"))
 
   override protected def afterAll(): Unit = {
     system.terminate()
@@ -33,8 +34,8 @@ class ControllerCompositeSpec(testSystem: ActorSystem) extends TestKit(testSyste
   }
 
   "Composite Controller" should "compose multiple controllers" in {
-    val controller1 = ControllerCompositeSpec.createTestController("test1")
-    val controller2 = ControllerCompositeSpec.createTestController("test2")
+    val controller1 = ControllersCompositeSpec.createTestController("test1", self)
+    val controller2 = ControllersCompositeSpec.createTestController("test2", self)
 
     def testRoute(name: String, restPort: Int): Unit = {
       val response = getRaw(s"/api/v1/$name", restPort)
@@ -51,9 +52,11 @@ class ControllerCompositeSpec(testSystem: ActorSystem) extends TestKit(testSyste
   }
 }
 
-object ControllerCompositeSpec extends Directives {
-  private def createTestController(name: String): BaseController = {
-    new BaseController {
+object ControllersCompositeSpec extends Directives {
+  private def createTestController(name: String, testService: ActorRef): Controller = {
+    new Controller {
+      val service = testService
+
       override val route: Route =
         path(name) {
           get {

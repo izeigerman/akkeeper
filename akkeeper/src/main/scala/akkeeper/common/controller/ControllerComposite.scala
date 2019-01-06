@@ -13,18 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package akkeeper.master.route
+package akkeeper.common.controller
 
 import akka.http.scaladsl.server.{PathMatchers, Route}
-import ControllerComposite._
 
 case class ControllerComposite(basePath: String,
-                               controllers: Seq[BaseController]) extends BaseController {
-  override val route: Route = pathPrefix(PathMatchers.separateOnSlashes(basePath)) {
-    controllers.reduceLeft((a, b) => UnitController(a.route ~ b.route)).route
+                               controllers: Seq[Controller]) extends Controller {
+  val route: Route = pathPrefix(PathMatchers.separateOnSlashes(basePath)) {
+    controllers.map {_.route} .reduce { _ ~ _}
   }
-}
-
-object ControllerComposite {
-  private case class UnitController(override val route: Route) extends BaseController
 }

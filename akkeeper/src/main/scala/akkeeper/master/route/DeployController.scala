@@ -20,10 +20,11 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import akkeeper.api._
+import akkeeper.common.controller.BaseController
+
 import scala.concurrent.ExecutionContext
 
-class DeployController(service: ActorRef)(implicit dispatcher: ExecutionContext,
-                                          timeout: Timeout)
+class DeployController(override protected val service: ActorRef)(implicit timeout: Timeout)
   extends BaseController with DeployApiJsonProtocol with ContainerApiJsonProtocol {
 
   registerHandler[SubmittedInstances](StatusCodes.Accepted)
@@ -34,7 +35,7 @@ class DeployController(service: ActorRef)(implicit dispatcher: ExecutionContext,
     path("deploy") {
       post {
         entity(as[DeployContainer]) { deploy =>
-          handleRequest(service, deploy)
+          handleRequest(deploy)
         }
       }
     }
@@ -42,7 +43,7 @@ class DeployController(service: ActorRef)(implicit dispatcher: ExecutionContext,
 
 object DeployController {
   def apply(service: ActorRef)(implicit dispatcher: ExecutionContext,
-                               timeout: Timeout): BaseController = {
+                               timeout: Timeout): DeployController = {
     new DeployController(service)
   }
 }
