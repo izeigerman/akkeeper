@@ -16,7 +16,6 @@
 package akkeeper.container.service
 
 import akka.actor._
-import akka.cluster.ClusterEvent.{InitialStateAsEvents, MemberUp}
 import akka.pattern.pipe
 import akka.cluster.Cluster
 import akkeeper.api.OperationFailed

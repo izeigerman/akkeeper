@@ -16,7 +16,6 @@
 package akkeeper.utils.yarn
 
 import java.nio.ByteBuffer
-import java.security.PrivilegedAction
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
@@ -69,7 +68,7 @@ private[akkeeper] object YarnUtils {
   }
 
   def loginFromKeytab(principal: String, keytab: String): UserGroupInformation = {
-    UserGroupInformation.setConfiguration(YarnUtils.getYarnConfiguration)
+    UserGroupInformation.setConfiguration(getYarnConfiguration)
 
     val initialUser = UserGroupInformation.getLoginUser
     val yarnTokens = initialUser.getTokens.asScala
@@ -78,7 +77,7 @@ private[akkeeper] object YarnUtils {
     UserGroupInformation.loginUserFromKeytab(principal, keytab)
 
     val loginUser = UserGroupInformation.getLoginUser
-    yarnTokens.foreach(loginUser.addToken(_))
+    yarnTokens.foreach(loginUser.addToken)
     loginUser
   }
 
