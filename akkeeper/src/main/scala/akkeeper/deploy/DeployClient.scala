@@ -27,7 +27,7 @@ private[akkeeper] trait DeployClient {
   def start(): Future[Unit]
 
   /** Stops the client. */
-  def stop(): Future[Unit]
+  def stop(): Unit
 
   /** Indicates that the client must be stopped because of the error.
     *

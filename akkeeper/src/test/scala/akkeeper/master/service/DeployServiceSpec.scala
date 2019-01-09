@@ -26,7 +26,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
   with FlatSpecLike with Matchers with ImplicitSender with MockFactory with ActorTestUtils

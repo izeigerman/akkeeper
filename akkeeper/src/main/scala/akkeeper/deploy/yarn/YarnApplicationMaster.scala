@@ -289,7 +289,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     }
   }
 
-  override def stop(): Future[Unit] = Future {
+  override def stop(): Unit = {
     if (isRunning) {
       unregisterApplicationMaster(FinalApplicationStatus.SUCCEEDED, "")
       stopClients()
