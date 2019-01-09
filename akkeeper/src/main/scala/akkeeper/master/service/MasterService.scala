@@ -22,6 +22,7 @@ import akkeeper.api._
 import akkeeper.common.InstanceInfo
 import akkeeper.common.api._
 import akkeeper.config._
+import akkeeper.config._
 import akkeeper.deploy.DeployClient
 import akkeeper.master.service.MasterService._
 import akkeeper.storage.InstanceStorage
