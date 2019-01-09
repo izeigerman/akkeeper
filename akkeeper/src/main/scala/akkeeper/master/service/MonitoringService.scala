@@ -25,6 +25,7 @@ import akkeeper.common.api._
 import akkeeper.config._
 import akkeeper.container.service.ContainerInstanceService
 import akkeeper.storage._
+
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.control.NonFatal
