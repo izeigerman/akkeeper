@@ -67,7 +67,8 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
           Thread.sleep(pollInterval)
           retry()
         case YarnApplicationState.RUNNING =>
-          val addr = Address("akka.tcp", config.akkaActorSystemName, appReport.getHost, config.akkaPort)
+          val addr = Address("akka.tcp", config.akkeeperAkka.actorSystemName, appReport.getHost,
+            config.akkeeperAkka.port)
           logger.info(s"Akkeeper Master address is $addr")
           addr
         case other =>
@@ -81,8 +82,8 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
   }
 
   private def getResource(config: Config): Resource = {
-    val cpus = config.yarnMasterCpus
-    val memory = config.yarnMasterMemory
+    val cpus = config.yarn.masterCpus
+    val memory = config.yarn.masterMemory
     Resource.newInstance(memory, cpus)
   }
 
@@ -135,7 +136,7 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
 
   private def buildCmd(appId: ApplicationId, config: Config,
                        args: LaunchArguments): List[String] = {
-    val defaulJvmArgs = config.yarnJvmArgs
+    val defaulJvmArgs = config.yarn.masterJvmArgs
     val jvmArgs = defaulJvmArgs ++ args.masterJvmArgs
 
     val userConfigArg = args.userConfig
@@ -159,7 +160,7 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
   }
 
   private def getAMContainer(config: Config, appId: ApplicationId, args: LaunchArguments): ContainerLaunchContext = {
-    val stagingDir = config.yarnStagingDirectory(yarnConf, appId.toString)
+    val stagingDir = config.yarn.stagingDirectory(yarnConf, appId.toString)
     val localResources = buildLocalResources(stagingDir, args)
     val cmd = buildCmd(appId, config, args)
     logger.debug(s"Akkeeper Master command: ${cmd.mkString(" ")}")
@@ -180,12 +181,12 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
     val appContext = application.getApplicationSubmissionContext
     val appId: ApplicationId = appContext.getApplicationId
 
-    val maxAppAttempts = getMaxAppAttempts(config.yarnMaxAttempts)
+    val maxAppAttempts = getMaxAppAttempts(config.yarn.maxAttempts)
     logger.debug(s"Akkeeper application maximum number of attempts is $maxAppAttempts")
 
     appContext.setResource(getResource(config))
     appContext.setKeepContainersAcrossApplicationAttempts(true)
-    appContext.setApplicationName(config.yarnApplicationName)
+    appContext.setApplicationName(config.yarn.applicationName)
     appContext.setMaxAppAttempts(maxAppAttempts)
     appContext.setAMContainerSpec(getAMContainer(config, appId, args))
 

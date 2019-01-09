@@ -119,7 +119,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
   }
 
   it should "deploy new container successfully" in {
-    val container = config.containers(0)
+    val container = config.akkeeper.containers(0)
     val instanceId = InstanceId(container.name)
 
     val yarnClient = mock[YarnMasterClient]
@@ -154,7 +154,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
   }
 
   it should "handle failed deployment properly" in {
-    val container = config.containers(0)
+    val container = config.akkeeper.containers(0)
     val instanceId = InstanceId(container.name)
 
     val yarnClient = mock[YarnMasterClient]

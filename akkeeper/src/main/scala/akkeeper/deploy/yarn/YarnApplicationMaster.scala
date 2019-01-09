@@ -44,9 +44,9 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   private val logger = LoggerFactory.getLogger(classOf[YarnApplicationMaster])
 
   private val executorService: ScheduledExecutorService = Executors.newScheduledThreadPool(
-    config.config.yarnClientThreads)
+    config.config.yarn.clientThreads)
 
-  private val stagingDirectory: String = config.config.yarnStagingDirectory(config.yarnConf, config.appId)
+  private val stagingDirectory: String = config.config.yarn.stagingDirectory(config.yarnConf, config.appId)
   private val localResourceManager: YarnLocalResourceManager =
     new YarnLocalResourceManager(config.yarnConf, stagingDirectory)
   private val instanceCommonResources: Map[String, LocalResource] = buildInstanceCommonResources
@@ -119,8 +119,8 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     localResources.toMap
   }
 
-  private def createActorsLaunchContextResource(containerDefinition: ContainerDefinition,
-                                                instanceId: InstanceId): LocalResource = {
+  private def createActorLaunchContextResource(containerDefinition: ContainerDefinition,
+                                               instanceId: InstanceId): LocalResource = {
     import spray.json._
     import akkeeper.common.ContainerDefinitionJsonProtocol._
     val jsonStr = containerDefinition.actors.toJson.compactPrint
@@ -131,7 +131,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   private def launchInstance(container: Container,
                              containerDefinition: ContainerDefinition,
                              instanceId: InstanceId): Unit = {
-    val actorsLaunchResource = createActorsLaunchContextResource(containerDefinition, instanceId)
+    val actorsLaunchResource = createActorLaunchContextResource(containerDefinition, instanceId)
     val instanceResources = instanceCommonResources + (
       LocalResourceNames.ActorLaunchContextsName -> actorsLaunchResource
     )

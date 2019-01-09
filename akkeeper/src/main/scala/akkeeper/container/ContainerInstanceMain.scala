@@ -34,7 +34,7 @@ import ContainerDefinitionJsonProtocol._
 import akkeeper.BuildInfo
 
 import scala.concurrent.Await
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.Duration
 
 object ContainerInstanceMain extends App {
 
@@ -79,9 +79,9 @@ object ContainerInstanceMain extends App {
 
   def run(instanceArgs: ContainerInstanceArguments): Unit = {
     val instanceConfig = createInstanceConfig(instanceArgs)
-    val actorSystem = ActorSystem(instanceConfig.akkaActorSystemName, instanceConfig)
+    val actorSystem = ActorSystem(instanceConfig.akkeeperAkka.actorSystemName, instanceConfig)
 
-    val zkConfig = actorSystem.settings.config.zookeeperClientConfig
+    val zkConfig = actorSystem.settings.config.zookeeper.clientConfig
     val instanceStorage = InstanceStorageFactory.createAsync(zkConfig.child(instanceArgs.appId))
 
     val actorsJsonStr = Source.fromFile(instanceArgs.actors).getLines().mkString("\n")
@@ -89,8 +89,8 @@ object ContainerInstanceMain extends App {
 
     ContainerInstanceService.createLocal(actorSystem, actors,
       instanceStorage, instanceArgs.instanceId, instanceArgs.masterAddress,
-      joinClusterTimeout = instanceConfig.akkaJoinClusterTimeout,
-      leaveClusterTimeout = instanceConfig.akkaLeaveClusterTimeout)
+      joinClusterTimeout = instanceConfig.akkeeperAkka.joinClusterTimeout,
+      leaveClusterTimeout = instanceConfig.akkeeperAkka.leaveClusterTimeout)
 
     Await.result(actorSystem.whenTerminated, Duration.Inf)
     sys.exit(0)

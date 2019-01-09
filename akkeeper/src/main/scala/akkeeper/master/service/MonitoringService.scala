@@ -33,7 +33,7 @@ import MonitoringService._
 private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async)
   extends RequestTrackingService with Stash {
 
-  private val instanceLaunchTimeout: FiniteDuration = context.system.settings.config.monitoringLaunchTimeout
+  private val instanceLaunchTimeout: FiniteDuration = context.system.settings.config.monitoring.launchTimeout
 
   private implicit val dispatcher = context.dispatcher
   private val cluster = Cluster(context.system)

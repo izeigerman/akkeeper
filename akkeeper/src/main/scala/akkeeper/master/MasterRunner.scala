@@ -65,7 +65,7 @@ private[master] class YarnMasterRunner extends MasterRunner {
 
   private def createInstanceStorage(actorSystem: ActorSystem,
                                     appId: String): InstanceStorage.Async = {
-    val zkConfig = actorSystem.settings.config.zookeeperClientConfig
+    val zkConfig = actorSystem.settings.config.zookeeper.clientConfig
     InstanceStorageFactory.createAsync(zkConfig.child(appId))
   }
 
@@ -87,12 +87,12 @@ private[master] class YarnMasterRunner extends MasterRunner {
 
   private def loginAndGetRenewer(config: Config, principal: String): KerberosTicketRenewer = {
     val loginUser = YarnUtils.loginFromKeytab(principal, LocalResourceNames.KeytabName)
-    new KerberosTicketRenewer(loginUser, config.kerberosTicketCheckInterval)
+    new KerberosTicketRenewer(loginUser, config.kerberos.ticketCheckInterval)
   }
 
   private def createRestHandler(config: Config, masterService: ActorRef)
                                (implicit dispatcher: ExecutionContext): Route = {
-    implicit val timeout = config.restRequestTimeout
+    implicit val timeout = config.rest.requestTimeout
 
     ControllerComposite("api/v1", Seq(
       DeployController(masterService),
@@ -130,11 +130,11 @@ private[master] class YarnMasterRunner extends MasterRunner {
     })
     ticketRenewer.foreach(_.start())
 
-    val restPort = config.restPort
-    val restPortMaxAttempts = config.restPortMaxAttempts
+    val restPort = config.rest.port
+    val restPortMaxAttempts = config.rest.portMaxAttempts
 
     val masterConfig = config.withMasterPort.withMasterRole
-    implicit val actorSystem = ActorSystem(config.akkaActorSystemName, masterConfig)
+    implicit val actorSystem = ActorSystem(config.akkeeperAkka.actorSystemName, masterConfig)
     implicit val materializer = ActorMaterializer()
     implicit val dispatcher = actorSystem.dispatcher
 

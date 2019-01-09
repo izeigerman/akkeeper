@@ -99,7 +99,7 @@ object LauncherMain extends App {
       YarnUtils.loginFromKeytab(_, launcherArgs.keytab.get.toString)
     )
 
-    val launcherTimeout = config.launcherTimeout.getOrElse(DefaultLauncherTimeout)
+    val launcherTimeout = config.launcher.timeout.getOrElse(DefaultLauncherTimeout)
 
     val launcher = Launcher.createYarnLauncher(YarnUtils.getYarnConfiguration)
     val launchResult = launcher.launch(config, launcherArgs)
