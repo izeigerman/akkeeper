@@ -159,7 +159,9 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
     Math.min(globalMaxAttempts, configMaxAttempts)
   }
 
-  private def getAMContainer(config: Config, appId: ApplicationId, args: LaunchArguments): ContainerLaunchContext = {
+  private def getAMContainer(config: Config,
+                             appId: ApplicationId,
+                             args: LaunchArguments): ContainerLaunchContext = {
     val stagingDir = config.yarn.stagingDirectory(yarnConf, appId.toString)
     val localResources = buildLocalResources(stagingDir, args)
     val cmd = buildCmd(appId, config, args)

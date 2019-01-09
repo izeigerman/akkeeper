@@ -242,9 +242,9 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   }
 
   private def scheduleAllocateResources(): Unit = {
-    executorService.scheduleAtFixedRate(
-      () => allocateResources(),
-      AMHeartbeatInterval, AMHeartbeatInterval, TimeUnit.MILLISECONDS)
+    executorService.scheduleAtFixedRate(new Runnable {
+      override def run(): Unit = allocateResources()
+    }, AMHeartbeatInterval, AMHeartbeatInterval, TimeUnit.MILLISECONDS)
   }
 
   override def start(): Unit = {
