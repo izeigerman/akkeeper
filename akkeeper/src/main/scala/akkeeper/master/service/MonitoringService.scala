@@ -21,9 +21,11 @@ import akka.cluster.ClusterEvent._
 import akka.pattern.pipe
 import akkeeper.api._
 import akkeeper.common._
+import akkeeper.common.service.RequestTrackingService
 import akkeeper.config._
 import akkeeper.container.service.ContainerInstanceService
 import akkeeper.storage._
+
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.control.NonFatal

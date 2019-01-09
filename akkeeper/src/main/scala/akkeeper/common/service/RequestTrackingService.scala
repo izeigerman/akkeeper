@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package akkeeper.master.service
+package akkeeper.common.service
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import akkeeper.api.WithRequestId
 import akkeeper.common.RequestId
 import scala.collection.mutable
 
-private[service] case class SenderContext(sender: ActorRef, context: Option[Any])
+private[akkeeper] case class SenderContext(sender: ActorRef, context: Option[Any])
 
-private[service] trait RequestTrackingService extends Actor with ActorLogging {
+private[akkeeper] trait RequestTrackingService extends Actor with ActorLogging {
 
   private val sendersById: mutable.Map[RequestId, SenderContext] = mutable.Map.empty
   private var currentServiceReceive: Option[Receive] = None
@@ -46,7 +46,7 @@ private[service] trait RequestTrackingService extends Actor with ActorLogging {
       val record = sendersById(id)
       sendersById.put(id, record.copy(context = Some(context)))
     } else {
-      throw MasterServiceException(s"Sender with ID $id was not found")
+      throw ServiceException(s"Sender with ID $id was not found")
     }
   }
 
@@ -54,13 +54,13 @@ private[service] trait RequestTrackingService extends Actor with ActorLogging {
     sendersById
       .get(id)
       .flatMap(_.context.map(_.asInstanceOf[T]))
-      .getOrElse(throw MasterServiceException(s"No context provided for sender with ID $id"))
+      .getOrElse(throw ServiceException(s"No context provided for sender with ID $id"))
   }
 
   protected def originalSender(id: RequestId): ActorRef = {
     sendersById
       .get(id).map(_.sender)
-      .getOrElse(throw MasterServiceException(s"Sender with ID $id was not found"))
+      .getOrElse(throw ServiceException(s"Sender with ID $id was not found"))
   }
 
   protected def removeOriginalSender(id: RequestId): Unit = {
