@@ -22,7 +22,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import akkeeper._
 import akkeeper.api._
 import akkeeper.common._
-import akkeeper.storage.InstanceStorage
+import akkeeper.storage.{InstanceStorage, RecordNotFoundException}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest._
 
@@ -431,9 +431,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   it should "handle cluster events" in {
     val storage = mock[InstanceStorage.Async]
 
-    val port = 12345
-    val addr = Address("akka.tcp", system.name, "localhost", port)
-    val uniqueAddr = UniqueAddress(addr, 1L)
+    val uniqueAddr = Cluster(system).selfUniqueAddress
     val member = createTestMember(uniqueAddr)
 
     val instance = createInstanceInfo("container").copy(address = Some(uniqueAddr))
@@ -564,6 +562,33 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     val address = UniqueAddress(Address("akka.tcp", "MonitoringServiceSpec", "localhost", 2), 0L)
     service ! instance1.copy(status = InstanceUp, address = Some(address))
     service ! GetInstance(instanceId1)
+    expectMsgClass(classOf[InstanceNotFound])
+
+    gracefulActorStop(service)
+  }
+
+  it should "immediately remove instances which are not members of the cluster" in {
+    val storage = mock[InstanceStorage.Async]
+
+    val port = 12345
+    val addr = Address("akka.tcp", system.name, "localhost", port)
+    val unknownUniqueAddr = UniqueAddress(addr, 1L)
+
+    val instance = createInstanceInfo("container").copy(address = Some(unknownUniqueAddr))
+    (storage.start _).expects()
+    (storage.stop _).expects()
+    (storage.getInstances _)
+      .expects()
+      .returns(Future successful Seq(instance.instanceId))
+    (storage.getInstance _)
+      .expects(instance.instanceId)
+      .returns(Future failed RecordNotFoundException(""))
+      .anyNumberOfTimes()
+
+    val service = createMonitoringService(storage)
+
+    service ! instance
+    service ! GetInstance(instance.instanceId)
     expectMsgClass(classOf[InstanceNotFound])
 
     gracefulActorStop(service)
