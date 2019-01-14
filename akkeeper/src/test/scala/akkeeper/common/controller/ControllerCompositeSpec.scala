@@ -22,7 +22,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import akkeeper.master.route.RestTestUtils
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
-class ControllersCompositeSpec(testSystem: ActorSystem) extends TestKit(testSystem)
+class ControllerCompositeSpec(testSystem: ActorSystem) extends TestKit(testSystem)
   with FlatSpecLike with Matchers with ImplicitSender with RestTestUtils
   with BeforeAndAfterAll {
 
@@ -34,8 +34,8 @@ class ControllersCompositeSpec(testSystem: ActorSystem) extends TestKit(testSyst
   }
 
   "Composite Controller" should "compose multiple controllers" in {
-    val controller1 = ControllersCompositeSpec.createTestController("test1", self)
-    val controller2 = ControllersCompositeSpec.createTestController("test2", self)
+    val controller1 = ControllerCompositeSpec.createTestController("test1", self)
+    val controller2 = ControllerCompositeSpec.createTestController("test2", self)
 
     def testRoute(name: String, restPort: Int): Unit = {
       val response = getRaw(s"/api/v1/$name", restPort)
@@ -52,7 +52,7 @@ class ControllersCompositeSpec(testSystem: ActorSystem) extends TestKit(testSyst
   }
 }
 
-object ControllersCompositeSpec extends Directives {
+object ControllerCompositeSpec extends Directives {
   private def createTestController(name: String, testService: ActorRef): Controller = {
     new Controller {
       val service = testService
