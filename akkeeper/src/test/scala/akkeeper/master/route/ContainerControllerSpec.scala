@@ -75,41 +75,6 @@ class ContainerControllerSpec(testSystem: ActorSystem) extends TestKit(testSyste
     }
   }
 
-  it should "successfully update a container" in {
-    val controller = ContainerController(self)
-    withHttpServer(controller.route) { restPort =>
-      val container = createContainerDefinition("containerName")
-      val response = patch[ContainerDefinition, ContainerUpdated](container,
-        "/containers/containerName", restPort)
-
-      val request = expectMsgClass(classOf[UpdateContainer])
-      request.container shouldBe container
-      val updated = ContainerUpdated(request.requestId, "containerName")
-      lastSender ! updated
-
-      val (code, actualResult) = await(response)
-      code shouldBe StatusCodes.OK.intValue
-      actualResult shouldBe updated
-    }
-  }
-
-  it should "successfully delete a container" in {
-    val controller = ContainerController(self)
-    withHttpServer(controller.route) { restPort =>
-      val response = delete[ContainerDeleted](
-        "/containers/containerName", restPort)
-
-      val request = expectMsgClass(classOf[DeleteContainer])
-      request.name shouldBe "containerName"
-      val deleted = ContainerDeleted(request.requestId, "containerName")
-      lastSender ! deleted
-
-      val (code, actualResult) = await(response)
-      code shouldBe StatusCodes.OK.intValue
-      actualResult shouldBe deleted
-    }
-  }
-
   it should "return all available containers" in {
     val controller = ContainerController(self)
     withHttpServer(controller.route) { restPort =>
@@ -122,42 +87,6 @@ class ContainerControllerSpec(testSystem: ActorSystem) extends TestKit(testSyste
       val (code, actualResult) = await(response)
       code shouldBe StatusCodes.OK.intValue
       actualResult shouldBe list
-    }
-  }
-
-  it should "create a new container" in {
-    val controller = ContainerController(self)
-    withHttpServer(controller.route) { restPort =>
-      val container = createContainerDefinition("containerName")
-      val response = post[ContainerDefinition, ContainerCreated](container,
-        "/containers/", restPort)
-
-      val request = expectMsgClass(classOf[CreateContainer])
-      request.container shouldBe container
-      val created = ContainerCreated(request.requestId, "containerName")
-      lastSender ! created
-
-      val (code, actualResult) = await(response)
-      code shouldBe StatusCodes.Created.intValue
-      actualResult shouldBe created
-    }
-  }
-
-  it should "return an error if container already exists" in {
-    val controller = ContainerController(self)
-    withHttpServer(controller.route) { restPort =>
-      val container = createContainerDefinition("containerName")
-      val response = post[ContainerDefinition, ContainerAlreadyExists](container,
-        "/containers/", restPort)
-
-      val request = expectMsgClass(classOf[CreateContainer])
-      request.container shouldBe container
-      val alreadyExists = ContainerAlreadyExists(request.requestId, "containerName")
-      lastSender ! alreadyExists
-
-      val (code, actualResult) = await(response)
-      code shouldBe StatusCodes.Conflict.intValue
-      actualResult shouldBe alreadyExists
     }
   }
 

@@ -20,7 +20,7 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import akkeeper.api._
-import akkeeper.common.{ContainerDefinition, ContainerDefinitionJsonProtocol}
+import akkeeper.common.ContainerDefinitionJsonProtocol
 import scala.concurrent.ExecutionContext
 
 class ContainerController(service: ActorRef)(implicit dispatcher: ExecutionContext,
@@ -29,11 +29,7 @@ class ContainerController(service: ActorRef)(implicit dispatcher: ExecutionConte
 
   registerHandler[ContainerGetResult](StatusCodes.OK)
   registerHandler[ContainersList](StatusCodes.OK)
-  registerHandler[ContainerUpdated](StatusCodes.OK)
-  registerHandler[ContainerDeleted](StatusCodes.OK)
-  registerHandler[ContainerCreated](StatusCodes.Created)
   registerHandler[ContainerNotFound](StatusCodes.NotFound)
-  registerHandler[ContainerAlreadyExists](StatusCodes.Conflict)
   registerHandler[OperationFailed](StatusCodes.InternalServerError)
 
   override val route: Route =
@@ -41,24 +37,11 @@ class ContainerController(service: ActorRef)(implicit dispatcher: ExecutionConte
       path(Segment) { containerName =>
         get {
           handleRequest(service, GetContainer(containerName))
-        } ~
-        patch {
-          entity(as[ContainerDefinition]) { definition =>
-            handleRequest(service, UpdateContainer(definition))
-          }
-        } ~
-        delete {
-          handleRequest(service, DeleteContainer(containerName))
         }
       } ~
       (pathEnd | pathSingleSlash) {
         get {
           handleRequest(service, GetContainers())
-        } ~
-        post {
-          entity(as[ContainerDefinition]) { definition =>
-            handleRequest(service, CreateContainer(definition))
-          }
         }
       }
     }
