@@ -29,11 +29,7 @@ class ContainerController(service: ActorRef)(implicit dispatcher: ExecutionConte
 
   registerHandler[ContainerGetResult](StatusCodes.OK)
   registerHandler[ContainersList](StatusCodes.OK)
-  registerHandler[ContainerUpdated](StatusCodes.OK)
-  registerHandler[ContainerDeleted](StatusCodes.OK)
-  registerHandler[ContainerCreated](StatusCodes.Created)
   registerHandler[ContainerNotFound](StatusCodes.NotFound)
-  registerHandler[ContainerAlreadyExists](StatusCodes.Conflict)
   registerHandler[OperationFailed](StatusCodes.InternalServerError)
 
   override val route: Route =
