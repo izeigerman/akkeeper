@@ -54,8 +54,7 @@ private[akkeeper] final class MasterConfig(masterConfig: Config) {
 
 private[akkeeper] final class HeartbeatConfig(heartbeatConfig: Config) {
   lazy val enabled: Boolean = heartbeatConfig.getBoolean("enabled")
-  lazy val interval: FiniteDuration = heartbeatConfig.getDuration("interval")
-  lazy val timeoutFactor: Double = heartbeatConfig.getDouble("timeout-factor")
+  lazy val timeout: FiniteDuration = heartbeatConfig.getDuration("timeout")
   lazy val missedLimit: Int = heartbeatConfig.getInt("missed-limit")
 }
 

@@ -19,7 +19,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Cancellable, 
 import akkeeper.api.{Heartbeat, TerminateMaster}
 import akkeeper.config._
 
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 import HeartbeatService._
 
 private[akkeeper] final class HeartbeatService extends Actor with ActorLogging {
@@ -27,8 +27,7 @@ private[akkeeper] final class HeartbeatService extends Actor with ActorLogging {
   private implicit val dispatcher = context.dispatcher
 
   private val heartbeatConfig: HeartbeatConfig = context.system.settings.config.master.heartbeat
-  private val timeoutTaskInterval: FiniteDuration = Duration.fromNanos(
-    (heartbeatConfig.interval * heartbeatConfig.timeoutFactor).toNanos)
+  private val timeoutTaskInterval: FiniteDuration = heartbeatConfig.timeout
 
   private var missedHeartbeatsCounter: Int = 0
   private var timeoutTaskCancellable: Option[Cancellable] = None

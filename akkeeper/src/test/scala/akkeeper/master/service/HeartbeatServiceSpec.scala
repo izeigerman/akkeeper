@@ -30,7 +30,7 @@ class HeartbeatServiceSpec(system: ActorSystem) extends TestKit(system)
   with BeforeAndAfterAll {
 
   def this() = this(ActorSystem("HeartbeatServiceSpec", ConfigFactory.load()
-    .withValue("akkeeper.master.heartbeat.interval", ConfigValueFactory.fromAnyRef("1s"))
+    .withValue("akkeeper.master.heartbeat.timeout", ConfigValueFactory.fromAnyRef("1.2s"))
     .withValue("akkeeper.master.heartbeat.missed-limit", ConfigValueFactory.fromAnyRef("2"))))
 
   override def afterAll(): Unit = {
