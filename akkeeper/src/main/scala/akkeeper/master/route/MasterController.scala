@@ -33,6 +33,12 @@ class MasterController(service: ActorRef)(implicit dispatcher: ExecutionContext,
           service ! TerminateMaster
           complete(StatusCodes.Accepted -> "")
         }
+      } ~
+      path("heartbeat") {
+        post {
+          service ! Heartbeat
+          complete(StatusCodes.OK -> "")
+        }
       }
     }
 }

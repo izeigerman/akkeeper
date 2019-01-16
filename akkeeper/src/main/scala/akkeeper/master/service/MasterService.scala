@@ -24,6 +24,7 @@ import akkeeper.config._
 import akkeeper.deploy.DeployClient
 import akkeeper.master.service.MasterService._
 import akkeeper.storage.InstanceStorage
+import com.typesafe.config.Config
 
 import scala.collection.{immutable, mutable}
 
@@ -32,12 +33,20 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
                                       instanceStorage: InstanceStorage.Async)
   extends Actor with ActorLogging with Stash {
 
-  private val numOfInstancesToJoin: Int = context.system.settings.config.akkeeperAkka.seedNodesNum
+  private val config: Config = context.system.settings.config
+  private val numOfInstancesToJoin: Int = config.akkeeperAkka.seedNodesNum
 
   private val containerService: ActorRef = ContainerService.createLocal(context)
   private val monitoringService: ActorRef = MonitoringService.createLocal(context, instanceStorage)
   private val deployService: ActorRef = DeployService.createLocal(context, deployClient,
     containerService, monitoringService)
+
+  private val heartbeatService: Option[ActorRef] =
+    if (config.master.heartbeat.enabled) {
+      Some(HeartbeatService.createLocal(context))
+    } else {
+      None
+    }
 
   private val cluster = Cluster(context.system)
 
@@ -89,6 +98,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient.Async,
     case r: DeployContainer => deployService.forward(r)
     case r: InstanceRequest => monitoringService.forward(r)
     case r: ContainerRequest => containerService.forward(r)
+    case Heartbeat => heartbeatService.foreach(_ ! Heartbeat)
     case TerminateMaster =>
       log.info("Master termination request has been received")
       Seq(containerService, monitoringService, deployService).foreach(context.stop)
