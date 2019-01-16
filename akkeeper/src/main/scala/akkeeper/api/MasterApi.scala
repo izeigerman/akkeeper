@@ -17,3 +17,5 @@ package akkeeper.api
 
 /** A command that terminates the Akkeeper Master instance. */
 case object TerminateMaster
+
+case object Heartbeat

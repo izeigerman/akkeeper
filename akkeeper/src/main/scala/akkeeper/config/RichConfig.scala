@@ -26,6 +26,7 @@ private[akkeeper] final class RichConfig(config: Config) {
   // Configs
   def akkeeper: AkkeeperConfig = new AkkeeperConfig(config.getConfig("akkeeper"))
   def akkeeperAkka: AkkeeperAkkaConfig = new AkkeeperAkkaConfig(config.getConfig("akkeeper.akka"))
+  def master: MasterConfig = new MasterConfig(config.getConfig("akkeeper.master"))
   def monitoring: MonitoringConfig = new MonitoringConfig(config.getConfig("akkeeper.monitoring"))
   def launcher: LauncherConfig = new LauncherConfig(config.getConfig("akkeeper.launcher"))
   def yarn: YarnConfig = new YarnConfig(config.getConfig("akkeeper.yarn"))

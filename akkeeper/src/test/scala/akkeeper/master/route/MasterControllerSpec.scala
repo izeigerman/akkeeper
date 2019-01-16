@@ -18,7 +18,7 @@ package akkeeper.master.route
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, StatusCodes}
 import akka.testkit.{ImplicitSender, TestKit}
-import akkeeper.api.TerminateMaster
+import akkeeper.api.{Heartbeat, TerminateMaster}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 class MasterControllerSpec(testSystem: ActorSystem) extends TestKit(testSystem)
@@ -42,6 +42,21 @@ class MasterControllerSpec(testSystem: ActorSystem) extends TestKit(testSystem)
 
       val (code, actualResult) = await(response)
       code shouldBe StatusCodes.Accepted.intValue
+      actualResult shouldBe empty
+    }
+  }
+
+  it should "send heartbeat message" in {
+    val controller = MasterController(self)
+    withHttpServer(controller.route) { restPort =>
+      val request = HttpRequest(uri = "/master/heartbeat")
+        .withMethod(HttpMethods.POST)
+      val response = sendRequest(request, restPort)
+
+      expectMsg(Heartbeat)
+
+      val (code, actualResult) = await(response)
+      code shouldBe StatusCodes.OK.intValue
       actualResult shouldBe empty
     }
   }

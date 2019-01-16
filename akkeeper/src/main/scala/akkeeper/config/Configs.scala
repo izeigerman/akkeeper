@@ -48,6 +48,17 @@ private[akkeeper] final class AkkeeperAkkaConfig(akkeeperAkkaConfig: Config) {
   lazy val leaveClusterTimeout: FiniteDuration = akkeeperAkkaConfig.getDuration("leave-cluster-timeout")
 }
 
+private[akkeeper] final class MasterConfig(masterConfig: Config) {
+  lazy val heartbeat: HeartbeatConfig = new HeartbeatConfig(masterConfig.getConfig("heartbeat"))
+}
+
+private[akkeeper] final class HeartbeatConfig(heartbeatConfig: Config) {
+  lazy val enabled: Boolean = heartbeatConfig.getBoolean("enabled")
+  lazy val interval: FiniteDuration = heartbeatConfig.getDuration("interval")
+  lazy val timeoutFactor: Double = heartbeatConfig.getDouble("timeout-factor")
+  lazy val missedLimit: Int = heartbeatConfig.getInt("missed-limit")
+}
+
 private[akkeeper] final class MonitoringConfig(monitoringConfig: Config) {
   lazy val launchTimeout: FiniteDuration = monitoringConfig.getDuration("launch-timeout")
 }
