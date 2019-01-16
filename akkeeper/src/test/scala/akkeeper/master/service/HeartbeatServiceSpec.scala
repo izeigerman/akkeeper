@@ -43,8 +43,10 @@ class HeartbeatServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   "Heartbeat Service" should "send termination message when heartbeat timeout occurs" in {
-    createHeartbeatService()
+    val service = createHeartbeatService()
     expectMsg(3 seconds, TerminateMaster)
+
+    gracefulActorStop(service)
   }
 
   it should "not terminate master if heartbeats are arriving as expected" in {
@@ -54,6 +56,7 @@ class HeartbeatServiceSpec(system: ActorSystem) extends TestKit(system)
       service ! Heartbeat
       expectNoMessage(1 second)
     }
+
     gracefulActorStop(service)
   }
 
