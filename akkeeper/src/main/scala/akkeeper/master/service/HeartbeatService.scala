@@ -36,6 +36,10 @@ private[akkeeper] final class HeartbeatService extends Actor with ActorLogging {
     scheduleHeartbeatTimeout()
   }
 
+  override def postStop(): Unit = {
+    timeoutTaskCancellable.foreach(_.cancel())
+  }
+
   override def receive: Receive = {
     case Heartbeat => onHeartbeat()
     case HeartbeatTimeout => onHeartbeatTimeout()
