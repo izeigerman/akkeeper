@@ -163,10 +163,10 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   def testByContainerAndRoles(service: ActorRef, container: Option[String],
-                              roles: Option[Set[String]],
+                              roles: Option[Set[String]], statuses: Option[Set[InstanceStatus]],
                               expected: Set[InstanceInfo]): Unit = {
     val getInstancesBy = GetInstancesBy(roles = roles.getOrElse(Set.empty),
-      containerName = container)
+      containerName = container, statuses = statuses.getOrElse(Set.empty))
     service ! getInstancesBy
 
     val instancesResponse = expectMsgClass(classOf[InstancesList])
@@ -201,7 +201,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
 
     // Testing 2 times to verify the local cache.
     for (_ <- 0 until 2) {
-      testByContainerAndRoles(service, None, Some(Set("role")), Set(instance1, instance2))
+      testByContainerAndRoles(service, None, Some(Set("role")), None, Set(instance1, instance2))
     }
 
     gracefulActorStop(service)
@@ -234,21 +234,22 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
 
     // Testing 2 times to verify the local cache.
     for (_ <- 0 until 2) {
-      testByContainerAndRoles(service, Some("container1"), None, Set(instance1))
-      testByContainerAndRoles(service, Some("container2"), None, Set(instance2))
+      testByContainerAndRoles(service, Some("container1"), None, None, Set(instance1))
+      testByContainerAndRoles(service, Some("container2"), None, None, Set(instance2))
     }
-    testByContainerAndRoles(service, Some("invalid"), None, Set.empty)
+    testByContainerAndRoles(service, Some("invalid"), None, None, Set.empty)
 
     gracefulActorStop(service)
   }
 
-  it should "retrieve instances by container and roles" in {
+  it should "retrieve instances by container, roles and statuses" in {
     val instance1 = createInstanceInfo("container1").copy(roles = Set("role11"))
     val instance2 = createInstanceInfo("container1").copy(roles = Set("role12"))
     val instance3 = createInstanceInfo("container2").copy(roles = Set("role21"))
     val instance4 = createInstanceInfo("container2").copy(roles = Set("role22"))
+    val instance5 = createInstanceInfo("container2").copy(roles = Set("role22"), status = InstanceUp)
     val ids = Seq(instance1.instanceId, instance2.instanceId,
-      instance3.instanceId, instance4.instanceId)
+      instance3.instanceId, instance4.instanceId, instance5.instanceId)
 
     val storage = mock[InstanceStorage]
     (storage.start _).expects()
@@ -260,7 +261,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
       .atLeastTwice()
     (storage.getInstancesByContainer _)
       .expects("container2")
-      .returns(Future successful Seq(instance3.instanceId, instance4.instanceId))
+      .returns(Future successful Seq(instance3.instanceId, instance4.instanceId, instance5.instanceId))
     (storage.getInstance _)
       .expects(instance1.instanceId)
       .returns(Future successful instance1)
@@ -271,22 +272,29 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
       .atLeastTwice()
     (storage.getInstance _).expects(instance3.instanceId).returns(Future successful instance3)
     (storage.getInstance _).expects(instance4.instanceId).returns(Future successful instance4)
+    (storage.getInstance _).expects(instance5.instanceId).returns(Future successful instance5)
 
     val service = createMonitoringService(storage)
 
     val getInstances = GetInstances()
     service ! getInstances
     val response = expectMsgClass(classOf[InstancesList])
-    response.instanceIds.size shouldBe 4
+    response.instanceIds.size shouldBe 5
 
     // Testing 2 times to verify the local cache.
     for (_ <- 0 until 2) {
-      testByContainerAndRoles(service, Some("container1"), Some(Set("role11")), Set(instance1))
-      testByContainerAndRoles(service, Some("container1"), Some(Set("role12")), Set(instance2))
-      testByContainerAndRoles(service, Some("container2"), Some(Set("role21")), Set(instance3))
-      testByContainerAndRoles(service, Some("container2"), Some(Set("role22")), Set(instance4))
-      testByContainerAndRoles(service, Some("container1"), None, Set(instance1, instance2))
-      testByContainerAndRoles(service, Some("container2"), None, Set(instance3, instance4))
+      // scalastyle:off line.size.limit
+      testByContainerAndRoles(service, Some("container1"), Some(Set("role11")), None, Set(instance1))
+      testByContainerAndRoles(service, Some("container1"), Some(Set("role12")), None, Set(instance2))
+      testByContainerAndRoles(service, Some("container2"), Some(Set("role21")), None, Set(instance3))
+      testByContainerAndRoles(service, Some("container2"), Some(Set("role22")), None, Set(instance4, instance5))
+      testByContainerAndRoles(service, Some("container1"), None, None, Set(instance1, instance2))
+      testByContainerAndRoles(service, Some("container2"), None, None, Set(instance3, instance4, instance5))
+      testByContainerAndRoles(service, Some("container2"), None, Some(Set(InstanceUp)), Set(instance5))
+      testByContainerAndRoles(service, Some("container2"), Some(Set("role22")), Some(Set(InstanceUp)), Set(instance5))
+      testByContainerAndRoles(service, Some("container2"), Some(Set("role22")), Some(Set(InstanceUp, InstanceDeploying)), Set(instance4, instance5))
+      testByContainerAndRoles(service, None, None, Some(Set(InstanceUp)), Set(instance5))
+      // scalastyle:on line.size.limit
     }
 
     gracefulActorStop(service)
@@ -319,7 +327,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     response.instanceIds.size shouldBe 2
 
     val getInstancesBy = GetInstancesBy(roles = Set("role"),
-      containerName = Some("container1"))
+      containerName = Some("container1"), statuses = Set(InstanceUp))
     service ! getInstancesBy
 
     expectMsgClass(classOf[OperationFailed])

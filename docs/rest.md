@@ -4,7 +4,7 @@
   * [Deploy instances](#deploy-instances)
 * [Monitoring API](#monitoring-api)
   * [Retrieve a list of all instances in a cluster](#retrieve-a-list-of-all-instances-in-a-cluster)
-  * [Get all instances by specific role or container name](#get-all-instances-by-specific-role-or-container-name)
+  * [Get all instances by specific role, container name or status](#get-all-instances-by-specific-role-container-name-or-status)
   * [Get a detailed info about the instance](#get-a-detailed-info-about-the-instance)
   * [Instance termination](#instance-termination)
 * [Container API](#container-api)
@@ -64,11 +64,11 @@ curl -X GET -H "Content-Type: application/json" http://<master_host>:5050/api/v1
 }
 ```
 
-### Get all instances by specific role or container name
+### Get all instances by specific role, container name or status
 
 **Command**
 ```bash
-curl -X GET -H "Content-Type: application/json" http://<master_host>:5050/api/v1/instances?role=ping&containerName=pingContainer
+curl -X GET -H "Content-Type: application/json" http://<master_host>:5050/api/v1/instances?role=ping&containerName=pingContainer&status=up
 ```
 **Request body**
 
@@ -190,83 +190,6 @@ curl -X GET -H "Content-Type: application/json" http://<master_host>:5050/api/v1
     "cpus": 1,
     "memory": 1024
   }
-}
-```
-
-### Create a new container
-
-**Command**
-```bash
-curl -X POST -H "Content-Type: application/json" -d "@body.json" http://<master_host>:5050/api/v1/containers
-```
-**Request body**
-```json
-{
-  "name": "myContainer",
-  "cpus": 2,
-  "memory": 2048,
-  "actors": [
-    {
-      "name": "myActor",
-      "fqn": "akkeeper.examples.PingActor"
-    }
-  ],
-  "jvmArgs": ["-Xmx2048"],
-  "jvmProperties": {},
-  "environment": {}
-}
-```
-**Response code**
-
-201 - Created
-
-**Response body**
-```json
-{
-  "requestId": "859d37fb-1d56-43e8-9cea-8e807baeca1c",
-  "name": "myContainer"
-}
-```
-
-### Update the existing container
-
-**Command**
-```bash
-curl -X PATCH -H "Content-Type: application/json" -d "@body.json" http://<master_host>:5050/api/v1/containers/myContainer
-```
-**Request body**
-
-See the container creation request body.
-
-**Response code**
-
-200 - OK
-
-**Response body**
-```json
-{
-  "requestId": "859d37fb-1d56-43e8-9cea-8e807baeca1c",
-  "name": "myContainer"
-}
-```
-
-### Delete container
-
-**Command**
-```bash
-curl -X DELETE -H "Content-Type: application/json" http://<master_host>:5050/api/v1/containers/myContainer
-```
-**Request body**
-
-**Response code**
-
-200 - OK
-
-**Response body**
-```json
-{
-  "requestId": "859d37fb-1d56-43e8-9cea-8e807baeca1c",
-  "name": "myContainer"
 }
 ```
 

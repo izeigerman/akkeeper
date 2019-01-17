@@ -59,11 +59,13 @@ case class GetInstances(requestId: RequestId = RequestId()) extends InstanceRequ
   * @param containerName the name of the container the requested instance
   *                      must belong to. If not specified instance with any
   *                      container will match.
+  * @param statuses the list of desired statuses.
   * @param requestId the optional request ID. If not specified a random
   *                  ID will be generated.
   */
 case class GetInstancesBy(roles: Set[String],
                           containerName: Option[String],
+                          statuses: Set[InstanceStatus],
                           requestId: RequestId = RequestId()) extends InstanceRequest
 
 /** A request to terminate a running instance.
@@ -124,7 +126,7 @@ trait MonitoringApiJsonProtocol extends DefaultJsonProtocol
 
   implicit val getInstanceFormat = AutoRequestIdFormat(jsonFormat2(GetInstance))
   implicit val getInstancesFormat = AutoRequestIdFormat(jsonFormat1(GetInstances))
-  implicit val getInstancesByFormat = AutoRequestIdFormat(jsonFormat3(GetInstancesBy))
+  implicit val getInstancesByFormat = AutoRequestIdFormat(jsonFormat4(GetInstancesBy))
   implicit val terminateInstancesFormat = AutoRequestIdFormat(jsonFormat2(TerminateInstance))
 
   implicit val instanceInfoResponseFormat = jsonFormat2(InstanceInfoResponse)

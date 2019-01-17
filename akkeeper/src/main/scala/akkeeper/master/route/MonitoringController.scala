@@ -22,7 +22,8 @@ import akka.http.scaladsl.server.PathMatcher._
 import akka.http.scaladsl.server.{PathMatcher1, Route}
 import akka.util.Timeout
 import akkeeper.api._
-import akkeeper.common.InstanceId
+import akkeeper.common.{InstanceId, InstanceStatus}
+
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 import MonitoringController._
@@ -46,15 +47,16 @@ class MonitoringController(service: ActorRef)(implicit dispatcher: ExecutionCont
           handleRequest(service, TerminateInstance(instanceId))
         }
       } ~
-      path(Segment) { segment =>
+      path(Segment) { _ =>
         complete(StatusCodes.BadRequest -> "Invalid instance ID")
       } ~
       (pathEnd | pathSingleSlash) {
-        parameters('role.*, 'containerName.?) { (role, containerName) =>
+        parameters('role.*, 'containerName.?, 'status.*) { (role, containerName, status) =>
           if (role.isEmpty && containerName.isEmpty) {
             handleRequest(service, GetInstances())
           } else {
-            handleRequest(service, GetInstancesBy(role.toSet, containerName))
+            val statuses = status.map(InstanceStatus.fromStringOption).flatten.toSet
+            handleRequest(service, GetInstancesBy(role.toSet, containerName, statuses))
           }
         }
       }

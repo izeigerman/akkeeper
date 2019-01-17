@@ -205,43 +205,40 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
   }
 
   private def localGetInstancesBy(requestId: RequestId, roles: Set[String],
-                                  containerName: String): Unit = {
+                                  containerName: String, statuses: Set[InstanceStatus]): Unit = {
     log.debug(s"Accessing the local cache to get instances (roles=$roles, containerName=$containerName)")
-    val defaultFilter = (s: InstanceInfo) => true
-    val containerFilter =
-      if (containerName.nonEmpty) {
-        s: InstanceInfo => s.containerName == containerName
-      } else {
-        defaultFilter
-      }
-    val roleFilter =
-      if (roles.nonEmpty) {
-        s: InstanceInfo => roles.intersect(s.roles).nonEmpty
-      } else {
-        defaultFilter
-      }
+    val containerFilter: InstanceInfo => Boolean =
+      if (containerName.nonEmpty) i => i.containerName == containerName else DefaultInstancesFilter
+    val roleFilter: InstanceInfo => Boolean =
+      if (roles.nonEmpty) i => roles.intersect(i.roles).nonEmpty else DefaultInstancesFilter
+    val statusFilter: InstanceInfo => Boolean =
+      if (statuses.nonEmpty) i => statuses.contains(i.status) else DefaultInstancesFilter
 
     val searchResult = instances.collect {
-      case (id, Some(info)) if containerFilter(info) && roleFilter(info) => id
+      case (id, Some(info)) if containerFilter(info) && roleFilter(info) && statusFilter(info) => id
     }.toSeq
     sender() ! InstancesList(requestId, searchResult)
   }
 
   private def storageGetInstancesBy(requestId: RequestId, roles: Set[String],
-                                    containerName: String): Unit = {
+                                    containerName: String, statuses: Set[InstanceStatus]): Unit = {
     log.debug(s"Accessing the remote storage to get instances (roles=$roles, containerName=$containerName)")
     val localSelf = self
     val localSender = sender()
 
     val instancesFuture = instanceStorage.getInstancesByContainer(containerName)
-    if (roles.nonEmpty) {
+    if (roles.nonEmpty || statuses.nonEmpty) {
       instancesFuture.foreach(ids => {
         val infosFuture = Future.sequence(ids.map(id => instanceStorage.getInstance(id)))
         infosFuture.map(InstancesUpdate).pipeTo(localSelf)
 
         val response = infosFuture.map(infos => {
-          val infoByRoles = infos.filter(s => roles.intersect(s.roles).nonEmpty)
-          InstancesList(requestId, infoByRoles.map(_.instanceId))
+          val roleFilter: InstanceInfo => Boolean =
+            if (roles.nonEmpty) i => roles.intersect(i.roles).nonEmpty else DefaultInstancesFilter
+          val statusFilter: InstanceInfo => Boolean =
+            if (statuses.nonEmpty) i => statuses.contains(i.status) else DefaultInstancesFilter
+          val filteredInfos = infos.withFilter(roleFilter).withFilter(statusFilter)
+          InstancesList(requestId, filteredInfos.map(_.instanceId))
         })
         response
           .recover { case NonFatal(e) => OperationFailed(requestId, e) }
@@ -256,13 +253,14 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
     val requestId = request.requestId
     val roles = request.roles
     val containerName = request.containerName.getOrElse("")
+    val statuses = request.statuses
 
     if (instances.exists(_._2 eq None)) {
       // If we are missing information about at least one instance
       // we can't perform a proper local search.
-      storageGetInstancesBy(requestId, roles, containerName)
+      storageGetInstancesBy(requestId, roles, containerName, statuses)
     } else {
-      localGetInstancesBy(requestId, roles, containerName)
+      localGetInstancesBy(requestId, roles, containerName, statuses)
     }
   }
 
@@ -362,6 +360,8 @@ object MonitoringService extends RemoteServiceFactory {
   private case class InstanceTerminationFailed(instanceId: InstanceId, originalMsg: WithRequestId)
   private[akkeeper] case class InstancesUpdate(updates: Seq[InstanceInfo])
   private[akkeeper] case class InstanceLaunchTimeout(instanceId: InstanceId)
+
+  private val DefaultInstancesFilter = (_: InstanceInfo) => true
 
   override val actorName = "monitoringService"
 
