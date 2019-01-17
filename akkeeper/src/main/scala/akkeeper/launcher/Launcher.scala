@@ -26,7 +26,7 @@ import scala.concurrent.{ExecutionContext, Future}
 final case class LaunchResult(appId: String, masterAddress: Address)
 
 /** Launcher for the Akkeeper application. */
-trait Launcher[F[_]] {
+trait Launcher {
 
   /** Launches the Akkeeper application and returns a launch result.
     *
@@ -36,19 +36,17 @@ trait Launcher[F[_]] {
     *         submitted application and the address of the node where
     *         Akkeeper Master is running.
     */
-  def launch(config: Config, args: LaunchArguments): F[LaunchResult]
+  def launch(config: Config, args: LaunchArguments): Future[LaunchResult]
 }
 
 object Launcher {
-  def apply[F[_]](implicit l: Launcher[F]): Launcher[F] = l
-
   def createYarnLauncher(yarnConfig: YarnConfiguration)
-                        (implicit context: ExecutionContext): Launcher[Future] = {
+                        (implicit context: ExecutionContext): Launcher = {
     new YarnLauncher(yarnConfig, () => new YarnLauncherClient)
   }
 
   def createYarnLauncher(yarnConfig: Configuration)
-                        (implicit context: ExecutionContext): Launcher[Future] = {
+                        (implicit context: ExecutionContext): Launcher = {
     createYarnLauncher(new YarnConfiguration(yarnConfig))
   }
 }

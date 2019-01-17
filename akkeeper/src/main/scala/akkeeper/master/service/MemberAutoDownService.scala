@@ -39,7 +39,7 @@ import MemberAutoDownService._
   */
 class MemberAutoDownService(targetAddress: UniqueAddress,
                             targetInstanceId: InstanceId,
-                            instanceStorage: InstanceStorage.Async,
+                            instanceStorage: InstanceStorage,
                             pollInterval: FiniteDuration)
   extends Actor with ActorLogging {
 
@@ -103,7 +103,7 @@ object MemberAutoDownService {
   private[akkeeper] def createLocal(factory: ActorRefFactory,
                                     targetAddress: UniqueAddress,
                                     targetInstanceId: InstanceId,
-                                    instanceStorage: InstanceStorage.Async,
+                                    instanceStorage: InstanceStorage,
                                     pollInterval: FiniteDuration = DefaultPollInterval): ActorRef = {
     factory.actorOf(Props(classOf[MemberAutoDownService], targetAddress,
       targetInstanceId, instanceStorage, pollInterval), s"autoDown-$targetInstanceId")

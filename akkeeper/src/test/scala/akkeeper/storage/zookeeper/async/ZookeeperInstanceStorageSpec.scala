@@ -27,13 +27,13 @@ import org.scalatest.{FlatSpec, Matchers}
 class ZookeeperInstanceStorageSpec extends FlatSpec
   with Matchers with AwaitMixin with ZookeeperBaseSpec {
 
-  private def withStorage[T](f: InstanceStorage.Async => T): T = {
+  private def withStorage[T](f: InstanceStorage => T): T = {
     val zookeeper = new ZookeeperServer()
     val connectionInterval = 1000
     val clientConfig = ZookeeperClientConfig(zookeeper.getConnectString, connectionInterval,
       1, None, "akkeeper")
     val storage = new ZookeeperInstanceStorage(clientConfig)
-    withStorage[InstanceStorage.Async, T](storage, zookeeper)(f)
+    withStorage[InstanceStorage, T](storage, zookeeper)(f)
   }
 
   private def createInstanceStatus(container: String): InstanceInfo = {

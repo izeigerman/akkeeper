@@ -65,14 +65,14 @@ private[master] class YarnMasterRunner extends MasterRunner {
   private val logger = LoggerFactory.getLogger(classOf[YarnMasterRunner])
 
   private def createInstanceStorage(actorSystem: ActorSystem,
-                                    appId: String): InstanceStorage.Async = {
+                                    appId: String): InstanceStorage = {
     val zkConfig = actorSystem.settings.config.zookeeper.clientConfig
-    InstanceStorageFactory.createAsync(zkConfig.child(appId))
+    InstanceStorageFactory(zkConfig.child(appId))
   }
 
   private def createDeployClient(actorSystem: ActorSystem,
                                  masterArgs: MasterArguments,
-                                 restApiPort: Int): DeployClient.Async = {
+                                 restApiPort: Int): DeployClient = {
     val yarnConf = YarnUtils.getYarnConfiguration
     val config = actorSystem.settings.config
     val selfAddr = Cluster(actorSystem).selfAddress
@@ -83,7 +83,7 @@ private[master] class YarnMasterRunner extends MasterRunner {
       config = config, yarnConf = yarnConf,
       appId = masterArgs.appId, selfAddress = selfAddr, trackingUrl = trackingUrl,
       principal = principal)
-    DeployClientFactory.createAsync(yarnConfig)
+    DeployClientFactory(yarnConfig)
   }
 
   private def loginAndGetRenewer(config: Config, principal: String): KerberosTicketRenewer = {

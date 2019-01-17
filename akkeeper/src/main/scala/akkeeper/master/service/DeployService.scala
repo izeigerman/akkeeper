@@ -22,7 +22,7 @@ import akkeeper.common._
 import akkeeper.deploy._
 import MonitoringService._
 
-private[akkeeper] class DeployService(deployClient: DeployClient.Async,
+private[akkeeper] class DeployService(deployClient: DeployClient,
                                       containerService: ActorRef,
                                       monitoringService: ActorRef) extends RequestTrackingService {
 
@@ -92,7 +92,7 @@ object DeployService extends RemoteServiceFactory {
   override val actorName = "deployService"
 
   private[akkeeper] def createLocal(factory: ActorRefFactory,
-                                    deployClient: DeployClient.Async,
+                                    deployClient: DeployClient,
                                     containerService: ActorRef,
                                     monitoringService: ActorRef): ActorRef = {
     factory.actorOf(Props(classOf[DeployService], deployClient,

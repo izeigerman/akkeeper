@@ -27,7 +27,7 @@ import scala.util.control.NonFatal
 import ContainerInstanceService._
 
 class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
-                               instanceStorage: InstanceStorage.Async,
+                               instanceStorage: InstanceStorage,
                                instanceId: InstanceId,
                                masterAddress: Address,
                                registrationRetryInterval: FiniteDuration,
@@ -173,7 +173,7 @@ object ContainerInstanceService {
 
   def createLocal(factory: ActorRefFactory,
                   userActors: Seq[ActorLaunchContext],
-                  instanceStorage: InstanceStorage.Async,
+                  instanceStorage: InstanceStorage,
                   instanceId: InstanceId,
                   masterAddress: Address,
                   registrationRetryInterval: FiniteDuration = DefaultRegistrationRetryInterval,
