@@ -15,21 +15,20 @@
  */
 package akkeeper.master
 
-import java.util.concurrent.TimeUnit
-
 import akka.actor._
 import akka.cluster.Cluster
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
-import akkeeper.config._
+import akkeeper.common.config._
 import akkeeper.deploy.{DeployClient, DeployClientFactory}
 import akkeeper.deploy.yarn.YarnApplicationMasterConfig
 import akkeeper.master.route._
 import akkeeper.master.service.MasterService
+import akkeeper.storage.zookeeper.ZookeeperClientConfig
 import akkeeper.storage.{InstanceStorage, InstanceStorageFactory}
-import akkeeper.utils.yarn._
+import akkeeper.yarn._
 import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
 
@@ -66,7 +65,7 @@ private[master] class YarnMasterRunner extends MasterRunner {
 
   private def createInstanceStorage(actorSystem: ActorSystem,
                                     appId: String): InstanceStorage = {
-    val zkConfig = actorSystem.settings.config.zookeeper.clientConfig
+    val zkConfig = ZookeeperClientConfig.fromConfig(actorSystem.settings.config.zookeeper)
     InstanceStorageFactory(zkConfig.child(appId))
   }
 
@@ -93,7 +92,7 @@ private[master] class YarnMasterRunner extends MasterRunner {
 
   private def createRestHandler(config: Config, masterService: ActorRef)
                                (implicit dispatcher: ExecutionContext): Route = {
-    implicit val timeout = config.rest.requestTimeout
+    implicit val timeout = Timeout(config.rest.requestTimeout)
 
     ControllerComposite("api/v1", Seq(
       DeployController(masterService),

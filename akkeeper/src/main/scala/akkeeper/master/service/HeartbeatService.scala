@@ -17,7 +17,7 @@ package akkeeper.master.service
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Cancellable, Props}
 import akkeeper.api.{Heartbeat, TerminateMaster}
-import akkeeper.config._
+import akkeeper.common.config._
 
 import scala.concurrent.duration.FiniteDuration
 import HeartbeatService._

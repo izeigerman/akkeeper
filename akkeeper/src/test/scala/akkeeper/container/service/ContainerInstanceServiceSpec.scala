@@ -18,9 +18,11 @@ package akkeeper.container.service
 import akka.actor._
 import akka.cluster.{Cluster, UniqueAddress}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
-import akkeeper.{ActorTestUtils, AkkeeperException}
-import akkeeper.common._
-import akkeeper.config._
+import akkeeper.ActorTestUtils
+import akkeeper.address._
+import akkeeper.api._
+import akkeeper.common.AkkeeperException
+import akkeeper.common.config._
 import akkeeper.master.service._
 import akkeeper.storage.InstanceStorage
 import com.typesafe.config.ConfigFactory

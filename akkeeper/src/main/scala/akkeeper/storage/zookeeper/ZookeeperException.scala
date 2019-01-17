@@ -15,6 +15,6 @@
  */
 package akkeeper.storage.zookeeper
 
-import akkeeper.AkkeeperException
+import akkeeper.common.AkkeeperException
 
 case class ZookeeperException(msg: String, returnCode: Int) extends AkkeeperException(msg)

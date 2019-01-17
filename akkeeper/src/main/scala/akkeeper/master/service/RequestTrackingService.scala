@@ -16,8 +16,8 @@
 package akkeeper.master.service
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
-import akkeeper.api.WithRequestId
-import akkeeper.common.RequestId
+import akkeeper.api.{RequestId, WithRequestId}
+
 import scala.collection.mutable
 
 private[service] case class SenderContext(sender: ActorRef, context: Option[Any])

@@ -15,6 +15,6 @@
  */
 package akkeeper.deploy.yarn
 
-import akkeeper.AkkeeperException
+import akkeeper.common.AkkeeperException
 
 case class YarnMasterException(msg: String) extends AkkeeperException(msg)

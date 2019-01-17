@@ -20,7 +20,8 @@ import akka.cluster.Cluster
 import akka.testkit.{ImplicitSender, TestKit}
 import akkeeper._
 import akkeeper.api._
-import akkeeper.common.InstanceId
+import akkeeper.address._
+import akkeeper.common.AkkeeperException
 import akkeeper.deploy.{DeployClient, DeploySuccessful}
 import akkeeper.storage.InstanceStorage
 import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}

@@ -19,8 +19,8 @@ import akka.actor._
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent.{InitialStateAsEvents, MemberUp}
 import akkeeper.api._
-import akkeeper.common.InstanceInfo
-import akkeeper.config._
+import akkeeper.address._
+import akkeeper.common.config._
 import akkeeper.deploy.DeployClient
 import akkeeper.master.service.MasterService._
 import akkeeper.storage.InstanceStorage
@@ -137,7 +137,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
         "more needed to proceed")
       if (seedInstances.size >= numOfRequiredInstances) {
         val seedAddrs = immutable.Seq(seedInstances.map(_.address.get.address).toSeq: _*)
-        joinCluster(cluster.selfAddress +: seedAddrs)
+        joinCluster(cluster.selfAddress +: seedAddrs.map(toAkkaAddress))
       }
 
     case other @ (_: InstanceResponse | _: OperationFailed) =>

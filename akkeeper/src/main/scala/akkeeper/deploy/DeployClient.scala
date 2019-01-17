@@ -15,8 +15,11 @@
  */
 package akkeeper.deploy
 
-import akkeeper.common._
+import akkeeper.api.InstanceId
+import akkeeper.api.ContainerDefinition
 import akkeeper.deploy.yarn._
+import akkeeper.yarn.client.YarnMasterClient
+
 import scala.concurrent.Future
 
 /** A client that is responsible for deploying new container instances. */

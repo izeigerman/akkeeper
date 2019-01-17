@@ -15,13 +15,15 @@
  */
 package akkeeper.storage.zookeeper.async
 
-import akkeeper.common._
+import akkeeper.api._
+import akkeeper.api.InstanceInfoJsonProtocol._
 import akkeeper.storage._
 import akkeeper.storage.zookeeper.ZookeeperClientConfig
 import org.apache.zookeeper.CreateMode
+
 import scala.concurrent.Future
 import ZookeeperInstanceStorage._
-import InstanceStatusJsonProtocol._
+import akkeeper.api.InstanceId
 
 private[akkeeper] class ZookeeperInstanceStorage(config: ZookeeperClientConfig)
   extends BaseZookeeperStorage with InstanceStorage {

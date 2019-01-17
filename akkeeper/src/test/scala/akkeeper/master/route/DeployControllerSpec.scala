@@ -21,9 +21,8 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
-import akkeeper.AkkeeperException
 import akkeeper.api._
-import akkeeper.common.InstanceId
+import akkeeper.common.AkkeeperException
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 class DeployControllerSpec(testSystem: ActorSystem) extends TestKit(testSystem)

@@ -21,6 +21,7 @@ import akka.cluster.{Cluster, MemberStatus, UniqueAddress}
 import akka.testkit.{ImplicitSender, TestKit}
 import akkeeper._
 import akkeeper.api._
+import akkeeper.address._
 import akkeeper.common._
 import akkeeper.storage.{InstanceStorage, RecordNotFoundException}
 import org.scalamock.scalatest.MockFactory
@@ -442,7 +443,8 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     val uniqueAddr = Cluster(system).selfUniqueAddress
     val member = createTestMember(uniqueAddr)
 
-    val instance = createInstanceInfo("container").copy(address = Some(uniqueAddr))
+    val instance = createInstanceInfo("container").copy(
+      address = Some(uniqueAddr), status = InstanceUp)
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _)

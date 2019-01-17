@@ -15,9 +15,10 @@
  */
 package akkeeper.storage
 
-import akkeeper.common._
+import akkeeper.api._
 import akkeeper.storage.zookeeper.ZookeeperClientConfig
 import akkeeper.storage.zookeeper.async.ZookeeperInstanceStorage
+
 import scala.concurrent.Future
 
 /** A persistent storage that stores information about existing instances. */

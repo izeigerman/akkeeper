@@ -22,7 +22,6 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import akkeeper.api._
-import akkeeper.common.ContainerDefinition
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 class ContainerControllerSpec(testSystem: ActorSystem) extends TestKit(testSystem)

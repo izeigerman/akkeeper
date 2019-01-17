@@ -17,9 +17,9 @@ package akkeeper.master.service
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit}
-import akkeeper.{ActorTestUtils, AkkeeperException}
+import akkeeper.ActorTestUtils
 import akkeeper.api._
-import akkeeper.common.ActorLaunchContext
+import akkeeper.common.AkkeeperException
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 
