@@ -18,7 +18,7 @@ package akkeeper.deploy
 import akkeeper.api.InstanceId
 import akkeeper.api.ContainerDefinition
 import akkeeper.deploy.yarn._
-import akkeeper.yarn.YarnMasterClient
+import akkeeper.yarn.client.YarnMasterClient
 
 import scala.concurrent.Future
 

@@ -36,6 +36,7 @@ import scala.util._
 import scala.util.control.NonFatal
 import scala.collection.JavaConverters._
 import YarnApplicationMaster._
+import akkeeper.yarn.client.YarnMasterClient
 
 private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfig,
                                               yarnClient: YarnMasterClient)

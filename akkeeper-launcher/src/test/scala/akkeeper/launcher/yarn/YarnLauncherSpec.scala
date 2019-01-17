@@ -39,7 +39,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.Try
 import YarnLauncherSpec._
-import akkeeper.yarn.YarnLauncherClient
+import akkeeper.yarn.client.YarnLauncherClient
 
 class YarnLauncherSpec extends FlatSpec with Matchers with MockFactory with BeforeAndAfterAll {
 

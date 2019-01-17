@@ -19,11 +19,11 @@ import java.io.ByteArrayInputStream
 import java.net.URI
 import java.util
 
-import akkeeper.api.InstanceAddress
 import akkeeper.common.CliArguments._
 import akkeeper.common.config._
 import akkeeper.launcher._
 import akkeeper.yarn._
+import akkeeper.yarn.client.YarnLauncherClient
 import com.typesafe.config.{Config, ConfigRenderOptions}
 import org.apache.commons.io.FilenameUtils
 import org.apache.hadoop.yarn.api.records._

@@ -23,7 +23,8 @@ import akkeeper.AwaitMixin
 import akkeeper.api.InstanceId
 import akkeeper.common.AkkeeperException
 import akkeeper.common.config._
-import akkeeper.yarn.{LocalResourceNames, YarnMasterClient}
+import akkeeper.yarn.LocalResourceNames
+import akkeeper.yarn.client.YarnMasterClient
 import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}

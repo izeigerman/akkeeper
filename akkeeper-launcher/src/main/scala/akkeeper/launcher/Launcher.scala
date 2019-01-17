@@ -16,7 +16,7 @@
 package akkeeper.launcher
 
 import akkeeper.launcher.yarn.YarnLauncher
-import akkeeper.yarn.YarnLauncherClient
+import akkeeper.yarn.client.YarnLauncherClient
 import com.typesafe.config.Config
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.yarn.conf.YarnConfiguration
