@@ -31,15 +31,19 @@ case object InstanceLaunching extends InstanceStatus { val value = "LAUNCHING" }
 case object InstanceUp extends InstanceStatus { val value = "UP" }
 case object InstanceUnreachable extends InstanceStatus { val value = "UNREACHABLE" }
 object InstanceStatus {
-  def fromString(status: String): InstanceStatus = {
-    status match {
-      case InstanceDeploying.value => InstanceDeploying
-      case InstanceDeployFailed.value => InstanceDeployFailed
-      case InstanceLaunching.value => InstanceLaunching
-      case InstanceUp.value => InstanceUp
-      case InstanceUnreachable.value => InstanceUnreachable
-      case other => throw new AkkeeperException(s"Unexpected instance status $other")
+  def fromStringOption(status: String): Option[InstanceStatus] = {
+    status.toUpperCase match {
+      case InstanceDeploying.value => Some(InstanceDeploying)
+      case InstanceDeployFailed.value => Some(InstanceDeployFailed)
+      case InstanceLaunching.value => Some(InstanceLaunching)
+      case InstanceUp.value => Some(InstanceUp)
+      case InstanceUnreachable.value => Some(InstanceUnreachable)
+      case other => None
     }
+  }
+
+  def fromString(status: String): InstanceStatus = {
+    fromStringOption(status).getOrElse(throw new AkkeeperException(s"Unexpected instance status $status"))
   }
 }
 

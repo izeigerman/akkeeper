@@ -29,15 +29,17 @@ class JsonApiSpec extends FlatSpec with Matchers with ApiJsonProtocol {
   }
 
   "JSON API" should "(de)serialize Monitoring API" in {
+    // scalastyle:off line.size.limit
     testJson(GetInstance(InstanceId("container")))
     testJson(GetInstances())
-    testJson(GetInstancesBy(roles = Set("role"), containerName = Some("container")))
-    testJson(GetInstancesBy(roles = Set.empty, containerName = None))
+    testJson(GetInstancesBy(roles = Set("role"), containerName = Some("container"), statuses = Set(InstanceUp)))
+    testJson(GetInstancesBy(roles = Set.empty, containerName = None, statuses = Set.empty))
     testJson(TerminateInstance(InstanceId("container")))
     testJson(InstanceInfoResponse(RequestId(), InstanceInfo.deploying(InstanceId("container"))))
     testJson(InstancesList(RequestId(), Seq(InstanceId("container"))))
     testJson(InstanceNotFound(RequestId(), InstanceId("container")))
     testJson(InstanceTerminated(RequestId(), InstanceId("container")))
+    // scalastyle:on line.size.limit
   }
 
   it should "(de)serialize Deploy API" in {

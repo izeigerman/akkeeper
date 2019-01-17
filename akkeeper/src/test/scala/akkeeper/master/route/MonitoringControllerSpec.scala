@@ -22,8 +22,9 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import akkeeper.api._
-import akkeeper.common.{InstanceId, InstanceInfo}
+import akkeeper.common.{InstanceId, InstanceInfo, InstanceUp}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+
 import scala.concurrent.duration._
 
 class MonitoringControllerSpec(testSystem: ActorSystem) extends TestKit(testSystem)
@@ -116,17 +117,18 @@ class MonitoringControllerSpec(testSystem: ActorSystem) extends TestKit(testSyst
     }
   }
 
-  it should "return all available instances with specified roles and container" in {
+  it should "return all available instances with specified roles, container and statuses" in {
     val controller = MonitoringController(self)
     withHttpServer(controller.route) { restPort =>
       val instanceId = InstanceId("container")
       val response = get[InstancesList](
-        "/instances?role=role1&role=role2&containerName=container1",
+        "/instances?role=role1&role=role2&containerName=container1&status=up&status=invalid",
         restPort)
 
       val request = expectMsgClass(classOf[GetInstancesBy])
       request.containerName shouldBe Some("container1")
       request.roles shouldBe Set("role1", "role2")
+      request.statuses shouldBe Set(InstanceUp)
       val instancesList = InstancesList(request.requestId, Seq(instanceId))
       lastSender ! instancesList
 
