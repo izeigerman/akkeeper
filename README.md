@@ -138,7 +138,7 @@ val monitoringService = MonitoringService.createRemote(actorSystem)
   case OperationFailed(requestId, reason) => // fetching process failed.
 }
 ```
-[Here](https://github.com/akkeeper-project/akkeeper/blob/master/akkeeper/src/main/scala/akkeeper/api/MonitoringApi.scala) is the list of all messages supported by the Monitoring Service.
+[Here](https://github.com/akkeeper-project/akkeeper/blob/master/akkeeper-api/src/main/scala/akkeeper/api/MonitoringApi.scala) is the list of all messages supported by the Monitoring Service.
 
 #### Container API
 Use this API to fetch, create, update or delete container definitions.
@@ -155,5 +155,5 @@ val containerService = ContainerService.createRemote(actorSystem)
   case OperationFailed(requestId, reason) => // fetching process failed.
 }
 ```
-[Here](https://github.com/akkeeper-project/akkeeper/blob/master/akkeeper/src/main/scala/akkeeper/api/ContainerApi.scala) is the list of all messages supported by the Container Service.
+[Here](https://github.com/akkeeper-project/akkeeper/blob/master/akkeeper-api/src/main/scala/akkeeper/api/ContainerApi.scala) is the list of all messages supported by the Container Service.
 
