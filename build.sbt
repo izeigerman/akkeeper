@@ -81,8 +81,7 @@ val PublishSettings = Seq(
 val NoPublishSettings = Seq(
   publishArtifact := false,
   publish := {},
-  skip in publish := true,
-  coverageEnabled := false
+  skip in publish := true
 )
 
 val BuildInfoSettings = Seq(
@@ -168,6 +167,7 @@ val AkkeeperLauncherSettings = CommonSettings ++ PublishSettings ++ BuildInfoSet
 lazy val akkeeperRoot = Project(id = "akkeeper", base = file("."))
   .settings(CommonSettings: _*)
   .settings(NoPublishSettings: _*)
+  .settings(coverageEnabled := false)
   .aggregate(akkeeperApi, akkeeperCommon, akkeeperYarn, akkeeperLauncher, akkeeperApp, akkeeperExamples)
   .disablePlugins(sbtassembly.AssemblyPlugin, JavaAppPackaging)
 
@@ -204,5 +204,6 @@ lazy val akkeeperApp = Project(id = "akkeeper-app", base = file("akkeeper"))
 lazy val akkeeperExamples = Project(id = "akkeeper-examples", base = file("akkeeper-examples"))
   .settings(CommonSettings: _*)
   .settings(NoPublishSettings: _*)
+  .settings(coverageEnabled := false)
   .dependsOn(akkeeperApp)
   .disablePlugins(sbtassembly.AssemblyPlugin, JavaAppPackaging)
