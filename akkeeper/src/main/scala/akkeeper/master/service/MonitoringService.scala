@@ -20,10 +20,12 @@ import akka.cluster.{Cluster, MemberStatus, UniqueAddress}
 import akka.cluster.ClusterEvent._
 import akka.pattern.pipe
 import akkeeper.api._
+import akkeeper.address._
 import akkeeper.common._
-import akkeeper.config._
+import akkeeper.common.config._
 import akkeeper.container.service.ContainerInstanceService
 import akkeeper.storage._
+
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.control.NonFatal
@@ -88,7 +90,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
 
   private def findInstanceByAddr(addr: UniqueAddress): Option[InstanceInfo] = {
     instances.collectFirst {
-      case (_, Some(info)) if info.address.exists(_ == addr) => info
+      case (_, Some(info)) if info.address.exists(_ == toInstanceUniqueAddress(addr)) => info
     }
   }
 

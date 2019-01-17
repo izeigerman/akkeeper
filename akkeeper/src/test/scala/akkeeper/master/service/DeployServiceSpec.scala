@@ -17,7 +17,7 @@ package akkeeper.master.service
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit}
-import akkeeper.{ActorTestUtils, AkkeeperException}
+import akkeeper._
 import akkeeper.api._
 import akkeeper.common._
 import akkeeper.deploy._

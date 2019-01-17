@@ -15,6 +15,6 @@
  */
 package akkeeper.master.service
 
-import akkeeper.AkkeeperException
+import akkeeper.common.AkkeeperException
 
 case class MasterServiceException(msg: String) extends AkkeeperException(msg)

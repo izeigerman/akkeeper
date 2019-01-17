@@ -19,24 +19,25 @@ import java.io.File
 
 import akka.actor.{ActorSystem, AddressFromURIString}
 import akkeeper.common._
-import akkeeper.config._
+import akkeeper.common.config._
 import akkeeper.container.service.ContainerInstanceService
 import akkeeper.storage.InstanceStorageFactory
-import akkeeper.utils.CliArguments._
-import akkeeper.utils.yarn.LocalResourceNames
+import CliArguments._
+import akkeeper.yarn.LocalResourceNames
 import com.typesafe.config.{Config, ConfigFactory}
 import scopt.OptionParser
 
 import scala.io.Source
 import scala.util.control.NonFatal
 import spray.json._
-import ContainerDefinitionJsonProtocol._
 import akkeeper.BuildInfo
+import akkeeper.api.{ActorLaunchContext, ContainerDefinitionJsonProtocol, InstanceId}
+import akkeeper.storage.zookeeper.ZookeeperClientConfig
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
-object ContainerInstanceMain extends App {
+object ContainerInstanceMain extends App with ContainerDefinitionJsonProtocol {
 
   private val appName: String = s"${BuildInfo.name}-instance"
 
@@ -81,7 +82,7 @@ object ContainerInstanceMain extends App {
     val instanceConfig = createInstanceConfig(instanceArgs)
     val actorSystem = ActorSystem(instanceConfig.akkeeperAkka.actorSystemName, instanceConfig)
 
-    val zkConfig = actorSystem.settings.config.zookeeper.clientConfig
+    val zkConfig = ZookeeperClientConfig.fromConfig(actorSystem.settings.config.zookeeper)
     val instanceStorage = InstanceStorageFactory(zkConfig.child(instanceArgs.appId))
 
     val actorsJsonStr = Source.fromFile(instanceArgs.actors).getLines().mkString("\n")

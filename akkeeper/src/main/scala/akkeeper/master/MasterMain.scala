@@ -18,7 +18,7 @@ package akkeeper.master
 import java.io.File
 
 import akkeeper.BuildInfo
-import akkeeper.utils.CliArguments._
+import akkeeper.common.CliArguments._
 import scopt.OptionParser
 
 import scala.util.control.NonFatal

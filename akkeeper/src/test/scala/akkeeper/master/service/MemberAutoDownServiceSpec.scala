@@ -20,7 +20,7 @@ import akka.cluster.ClusterEvent.{MemberRemoved, ReachableMember}
 import akka.cluster.{MemberStatus, UniqueAddress}
 import akka.testkit.{ImplicitSender, TestKit}
 import akkeeper.ActorTestUtils
-import akkeeper.common.{InstanceId, InstanceInfo, InstanceUp}
+import akkeeper.api._
 import akkeeper.storage.{InstanceStorage, RecordNotFoundException}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}

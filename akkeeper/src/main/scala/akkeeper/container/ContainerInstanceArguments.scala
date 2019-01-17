@@ -18,7 +18,7 @@ package akkeeper.container
 import java.io.File
 
 import akka.actor.Address
-import akkeeper.common.InstanceId
+import akkeeper.api.InstanceId
 import com.typesafe.config.Config
 
 

@@ -18,10 +18,12 @@ package akkeeper.container.service
 import akka.actor._
 import akka.pattern.pipe
 import akka.cluster.Cluster
-import akkeeper.api.OperationFailed
+import akkeeper.address._
+import akkeeper.api._
 import akkeeper.common._
 import akkeeper.master.service.MonitoringService
 import akkeeper.storage.InstanceStorage
+
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import ContainerInstanceService._

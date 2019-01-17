@@ -18,7 +18,8 @@ package akkeeper.storage.zookeeper.async
 import akka.actor.Address
 import akka.cluster.UniqueAddress
 import akkeeper.AwaitMixin
-import akkeeper.common._
+import akkeeper.address._
+import akkeeper.api._
 import akkeeper.storage._
 import akkeeper.storage.zookeeper.ZookeeperClientConfig
 import org.apache.curator.test.{TestingServer => ZookeeperServer}

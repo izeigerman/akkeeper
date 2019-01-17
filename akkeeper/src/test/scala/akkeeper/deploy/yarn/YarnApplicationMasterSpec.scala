@@ -19,11 +19,12 @@ import java.util.UUID
 
 import akka.actor.Address
 import akkeeper.deploy.{DeployFailed, DeploySuccessful}
-import akkeeper.{AwaitMixin, AkkeeperException}
-import akkeeper.common.InstanceId
-import akkeeper.config._
-import akkeeper.utils.yarn.LocalResourceNames
-import com.typesafe.config.{ConfigValueFactory, Config, ConfigFactory}
+import akkeeper.AwaitMixin
+import akkeeper.api.InstanceId
+import akkeeper.common.AkkeeperException
+import akkeeper.common.config._
+import akkeeper.yarn.{LocalResourceNames, YarnMasterClient}
+import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse
@@ -31,6 +32,7 @@ import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+
 import scala.collection.JavaConverters._
 
 class YarnApplicationMasterSpec extends FlatSpec with Matchers

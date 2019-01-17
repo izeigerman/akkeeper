@@ -15,7 +15,7 @@
  */
 package akkeeper.storage
 
-import akkeeper.AkkeeperException
+import akkeeper.common.AkkeeperException
 
 /** The exception that is thrown when the requested record is not found. */
 case class RecordNotFoundException(msg: String) extends AkkeeperException(msg)

@@ -19,12 +19,12 @@ import java.io.{ByteArrayInputStream, FileNotFoundException}
 import java.util
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 
-import akkeeper.common.{ContainerDefinition, InstanceId}
-import akkeeper.config._
+import akkeeper.api.{ContainerDefinition, InstanceId}
+import akkeeper.common.config._
 import akkeeper.container.ContainerInstanceMain
 import akkeeper.deploy._
-import akkeeper.utils.CliArguments._
-import akkeeper.utils.yarn._
+import akkeeper.common.CliArguments._
+import akkeeper.yarn._
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest
@@ -47,10 +47,11 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     config.config.yarn.clientThreads)
   private implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executorService)
 
-  private val stagingDirectory: String = config.config.yarn.stagingDirectory(config.yarnConf, config.appId)
-  private val localResourceManager: YarnLocalResourceManager =
+  private lazy val stagingDirectory: String = YarnUtils.appStagingDirectory(
+    config.yarnConf, config.config.yarn.stagingDirectory, config.appId)
+  private lazy val localResourceManager: YarnLocalResourceManager =
     new YarnLocalResourceManager(config.yarnConf, stagingDirectory)
-  private val instanceCommonResources: Map[String, LocalResource] = buildInstanceCommonResources
+  private lazy val instanceCommonResources: Map[String, LocalResource] = buildInstanceCommonResources
 
   private var priorityCounter: Int = 0
   private val pendingResults: mutable.Map[InstanceId, Promise[DeployResult]] =
@@ -123,7 +124,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   private def buildActorLaunchContextResource(containerDefinition: ContainerDefinition,
                                               instanceId: InstanceId): LocalResource = {
     import spray.json._
-    import akkeeper.common.ContainerDefinitionJsonProtocol._
+    import akkeeper.api.ContainerDefinitionJsonProtocol._
     val jsonStr = containerDefinition.actors.toJson.compactPrint
     localResourceManager.createLocalResource(new ByteArrayInputStream(jsonStr.getBytes("UTF-8")),
       s"actors_$instanceId.json")

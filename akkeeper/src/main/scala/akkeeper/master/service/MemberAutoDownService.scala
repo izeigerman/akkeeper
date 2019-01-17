@@ -19,7 +19,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Props, Status
 import akka.pattern.pipe
 import akka.cluster.{Cluster, Member, UniqueAddress}
 import akka.cluster.ClusterEvent.{InitialStateAsEvents, MemberRemoved, ReachableMember}
-import akkeeper.common.{InstanceId, InstanceInfo}
+import akkeeper.api.{InstanceId, InstanceInfo}
 import akkeeper.storage.{InstanceStorage, RecordNotFoundException}
 
 import scala.concurrent.duration._

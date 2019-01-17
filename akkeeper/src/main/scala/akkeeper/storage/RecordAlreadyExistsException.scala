@@ -15,7 +15,7 @@
  */
 package akkeeper.storage
 
-import akkeeper.AkkeeperException
+import akkeeper.common.AkkeeperException
 
 /** The exception that is thrown on creation attempt if the same record
   * already exists.
