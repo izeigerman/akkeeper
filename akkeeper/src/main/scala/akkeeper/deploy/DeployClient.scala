@@ -20,7 +20,7 @@ import akkeeper.deploy.yarn._
 import scala.concurrent.Future
 
 /** A client that is responsible for deploying new container instances. */
-private[akkeeper] trait DeployClient[F[_]] {
+private[akkeeper] trait DeployClient {
 
   /** Starts the client. */
   def start(): Unit
@@ -44,11 +44,7 @@ private[akkeeper] trait DeployClient[F[_]] {
     *         Each item in this list represents a result for a one particular instance.
     *         See [[DeployResult]].
     */
-  def deploy(container: ContainerDefinition, instances: Seq[InstanceId]): Seq[F[DeployResult]]
-}
-
-private[akkeeper] object DeployClient {
-  type Async = DeployClient[Future]
+  def deploy(container: ContainerDefinition, instances: Seq[InstanceId]): Seq[Future[DeployResult]]
 }
 
 /** A result of the deployment operation. Contains the ID of the instance to which this
@@ -65,20 +61,19 @@ private[akkeeper] case class DeploySuccessful(instanceId: InstanceId) extends De
 private[akkeeper] case class DeployFailed(instanceId: InstanceId,
                                           e: Throwable) extends DeployResult
 
-private[akkeeper] trait DeployClientFactory[F[_], T] extends (T => DeployClient[F])
+private[akkeeper] trait DeployClientFactory[T] extends (T => DeployClient)
 
 private[akkeeper] object DeployClientFactory {
-  type AsyncDeployClientFactory[T] = DeployClientFactory[Future, T]
 
   implicit object YarnDeployClientFactory
-    extends AsyncDeployClientFactory[YarnApplicationMasterConfig] {
+    extends DeployClientFactory[YarnApplicationMasterConfig] {
 
-    override def apply(config: YarnApplicationMasterConfig): DeployClient.Async = {
+    override def apply(config: YarnApplicationMasterConfig): DeployClient = {
       new YarnApplicationMaster(config, new YarnMasterClient)
     }
   }
 
-  def createAsync[T: AsyncDeployClientFactory](config: T): DeployClient.Async = {
+  def apply[T: DeployClientFactory](config: T): DeployClient = {
     implicitly[T](config)
   }
 }

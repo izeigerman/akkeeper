@@ -31,7 +31,7 @@ import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util._
 import scala.util.control.NonFatal
 import scala.collection.JavaConverters._
@@ -39,12 +39,13 @@ import YarnApplicationMaster._
 
 private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfig,
                                               yarnClient: YarnMasterClient)
-  extends DeployClient.Async {
+  extends DeployClient {
 
   private val logger = LoggerFactory.getLogger(classOf[YarnApplicationMaster])
 
   private val executorService: ScheduledExecutorService = Executors.newScheduledThreadPool(
     config.config.yarn.clientThreads)
+  private implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executorService)
 
   private val stagingDirectory: String = config.config.yarn.stagingDirectory(config.yarnConf, config.appId)
   private val localResourceManager: YarnLocalResourceManager =
@@ -227,8 +228,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
       val request = buildContainerRequest(container)
       pendingInstances.put(request.getPriority.getPriority, container -> id)
 
-      yarnClient.addContainerRequest(request)
-      promise.future
+      Future(yarnClient.addContainerRequest(request)).flatMap(_ => promise.future)
     })
   }
 

@@ -37,12 +37,12 @@ import MonitoringServiceSpec._
 class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
 
   "A Master Service" should "initialize successfully and create a new cluster" in {
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq.empty)
 
-    val deployClient = mock[DeployClient.Async]
+    val deployClient = mock[DeployClient]
     (deployClient.start _).expects()
     (deployClient.stop _).expects()
 
@@ -62,12 +62,12 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
   }
 
   ignore should "deploy initial instances" in {
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq.empty)
 
-    val deployClient = mock[DeployClient.Async]
+    val deployClient = mock[DeployClient]
     (deployClient.start _).expects()
     (deployClient.stop _).expects()
     (deployClient.deploy _)
@@ -116,13 +116,13 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
       override def test(): Unit = {
         val selfAddr = Cluster(system).selfUniqueAddress
         val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
-        val storage = mock[InstanceStorage.Async]
+        val storage = mock[InstanceStorage]
         (storage.start _).expects()
         (storage.stop _).expects()
         (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId))
         (storage.getInstance _).expects(instance.instanceId).returns(Future successful instance)
 
-        val deployClient = mock[DeployClient.Async]
+        val deployClient = mock[DeployClient]
         (deployClient.start _).expects()
         (deployClient.stop _).expects()
 
@@ -140,14 +140,14 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
   }
 
   it should "proxy deploy and container requests" in {
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq.empty)
 
     val instanceIds = (0 until 2).map(_ => InstanceId("container1"))
     val deployFutures = instanceIds.map(id => Future successful DeploySuccessful(id))
-    val deployClient = mock[DeployClient.Async]
+    val deployClient = mock[DeployClient]
     (deployClient.start _).expects()
     (deployClient.stop _).expects()
     (deployClient.deploy _)
@@ -182,7 +182,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
       override def test(): Unit = {
         val selfAddr = Cluster(system).selfUniqueAddress
         val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
-        val storage = mock[InstanceStorage.Async]
+        val storage = mock[InstanceStorage]
         (storage.start _).expects()
         (storage.stop _).expects()
         (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId))
@@ -190,7 +190,7 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
           .expects(instance.instanceId)
           .returns(Future failed new AkkeeperException(""))
 
-        val deployClient = mock[DeployClient.Async]
+        val deployClient = mock[DeployClient]
         (deployClient.start _).expects()
         (deployClient.stop _).expects()
         (deployClient.stopWithError _).expects(*)
@@ -205,12 +205,12 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
   it should "shutdown the Actor system if the termination request has been received" in {
     new MasterServiceTestRunner() {
       override def test(): Unit = {
-        val storage = mock[InstanceStorage.Async]
+        val storage = mock[InstanceStorage]
         (storage.start _).expects()
         (storage.stop _).expects()
         (storage.getInstances _).expects().returns(Future successful Seq.empty)
 
-        val deployClient = mock[DeployClient.Async]
+        val deployClient = mock[DeployClient]
         (deployClient.start _).expects()
         (deployClient.stop _).expects()
 

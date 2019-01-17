@@ -24,7 +24,7 @@ import ZookeeperInstanceStorage._
 import InstanceStatusJsonProtocol._
 
 private[akkeeper] class ZookeeperInstanceStorage(config: ZookeeperClientConfig)
-  extends BaseZookeeperStorage with InstanceStorage.Async {
+  extends BaseZookeeperStorage with InstanceStorage {
 
   protected override val zookeeperClient =
     new AsyncZookeeperClient(config, CreateMode.EPHEMERAL)

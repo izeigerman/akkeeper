@@ -30,7 +30,7 @@ import scala.util.control.NonFatal
 import scala.concurrent.duration.FiniteDuration
 import MonitoringService._
 
-private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage.Async)
+private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
   extends RequestTrackingService with Stash {
 
   private val instanceLaunchTimeout: FiniteDuration = context.system.settings.config.monitoring.launchTimeout
@@ -366,7 +366,7 @@ object MonitoringService extends RemoteServiceFactory {
   override val actorName = "monitoringService"
 
   private[akkeeper] def createLocal(factory: ActorRefFactory,
-                                    instanceStorage: InstanceStorage.Async): ActorRef = {
+                                    instanceStorage: InstanceStorage): ActorRef = {
     factory.actorOf(Props(classOf[MonitoringService], instanceStorage), actorName)
   }
 }

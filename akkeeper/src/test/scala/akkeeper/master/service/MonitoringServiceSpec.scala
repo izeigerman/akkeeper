@@ -43,7 +43,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     super.afterAll()
   }
 
-  private def createMonitoringService(instanceStorage: InstanceStorage.Async): ActorRef = {
+  private def createMonitoringService(instanceStorage: InstanceStorage): ActorRef = {
     childActorOf(Props(classOf[MonitoringService], instanceStorage), MonitoringService.actorName)
   }
 
@@ -54,7 +54,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
       Thread.sleep(sleepMs)
       throw new AkkeeperException("")
     }
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(delayedResponse)
@@ -68,7 +68,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "become initialized successfully when there is no active instances" in {
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq.empty)
@@ -86,7 +86,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
 
   it should "become initialized successfully and return the instance info" in {
     val instance = createInstanceInfo()
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId))
@@ -113,7 +113,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
 
   it should "respond properly if the instance is not found" in {
     val instance = createInstanceInfo()
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId))
@@ -137,7 +137,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
 
   it should "respond properly if the remote storage error occurs" in {
     val instance = createInstanceInfo()
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId))
@@ -184,7 +184,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     val instance2 = createInstanceInfo()
     val ids = Seq(instance1.instanceId, instance2.instanceId)
 
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful ids)
@@ -212,7 +212,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     val instance2 = createInstanceInfo("container2")
     val ids = Seq(instance1.instanceId, instance2.instanceId)
 
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful ids)
@@ -250,7 +250,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     val ids = Seq(instance1.instanceId, instance2.instanceId,
       instance3.instanceId, instance4.instanceId)
 
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful ids)
@@ -297,7 +297,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     val instance2 = createInstanceInfo("container1")
     val ids = Seq(instance1.instanceId, instance2.instanceId)
 
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful ids)
@@ -330,7 +330,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   it should "terminate instance successfully (instance from storage)" in {
     val selfAddr = Cluster(system).selfUniqueAddress
     val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId))
@@ -352,7 +352,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   it should "fail to terminate the instance (instance from local cache)" in {
     val selfAddr = Cluster(system).selfUniqueAddress
     val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId))
@@ -378,7 +378,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   it should "fail to terminate the instance" in {
     val selfAddr = Cluster(system).selfUniqueAddress
     val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     val exception = new AkkeeperException("fail")
     (storage.start _).expects()
     (storage.stop _).expects()
@@ -399,7 +399,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "update instance's info" in {
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     val instanceId1 = InstanceId("container")
     val instance1 = InstanceInfo.deploying(instanceId1)
     val instanceId2 = InstanceId("container")
@@ -429,7 +429,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "handle cluster events" in {
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
 
     val uniqueAddr = Cluster(system).selfUniqueAddress
     val member = createTestMember(uniqueAddr)
@@ -468,7 +468,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "stop with an error" in {
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq.empty)
@@ -484,7 +484,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "remove instances which hasn't been transitioned from the launching state" in {
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     val instanceId1 = InstanceId("container")
     val instance1 = InstanceInfo.launching(instanceId1)
     val instanceId2 = InstanceId("container")
@@ -516,7 +516,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "remove instances whose deployment has failed" in {
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     val instanceId1 = InstanceId("container")
     val instance1 = InstanceInfo.deploying(instanceId1)
     (storage.start _).expects()
@@ -539,7 +539,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "terminate instance that has been considered dead previously" in {
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     val instanceId1 = InstanceId("container")
     val instance1 = InstanceInfo.launching(instanceId1)
     (storage.start _).expects()
@@ -568,7 +568,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   it should "immediately remove instances which are not members of the cluster" in {
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
 
     val port = 12345
     val addr = Address("akka.tcp", system.name, "localhost", port)

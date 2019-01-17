@@ -21,7 +21,7 @@ import akkeeper.storage.zookeeper.async.ZookeeperInstanceStorage
 import scala.concurrent.Future
 
 /** A persistent storage that stores information about existing instances. */
-private[akkeeper] trait InstanceStorage[F[_]] extends Storage {
+private[akkeeper] trait InstanceStorage extends Storage {
 
   /** Registers a new instance. Same instance can't be registered
     * more than once. The instance record must be removed automatically
@@ -31,7 +31,7 @@ private[akkeeper] trait InstanceStorage[F[_]] extends Storage {
     * @param info the instance info. See [[InstanceInfo]].
     * @return a container object with the registered instance ID.
     */
-  def registerInstance(info: InstanceInfo): F[InstanceId]
+  def registerInstance(info: InstanceInfo): Future[InstanceId]
 
   /** Retrieves the information about the instance by its ID.
     *
@@ -39,7 +39,7 @@ private[akkeeper] trait InstanceStorage[F[_]] extends Storage {
     * @return a container object with the instance's information.
     *         See [[InstanceInfo]].
     */
-  def getInstance(instanceId: InstanceId): F[InstanceInfo]
+  def getInstance(instanceId: InstanceId): Future[InstanceInfo]
 
   /** Retrieves all instances that belong to the specified
     * container.
@@ -47,33 +47,28 @@ private[akkeeper] trait InstanceStorage[F[_]] extends Storage {
     * @param containerName the name of the container.
     * @return a container object with the list of instance IDs.
     */
-  def getInstancesByContainer(containerName: String): F[Seq[InstanceId]]
+  def getInstancesByContainer(containerName: String): Future[Seq[InstanceId]]
 
   /** Retrieves all existing instances.
     *
     * @return a container object with the list of instance IDs.
     */
-  def getInstances: F[Seq[InstanceId]]
+  def getInstances: Future[Seq[InstanceId]]
 }
 
-private[akkeeper] object InstanceStorage {
-  type Async = InstanceStorage[Future]
-}
-
-private[akkeeper] trait InstanceStorageFactory[F[_], T] extends (T => InstanceStorage[F])
+private[akkeeper] trait InstanceStorageFactory[T] extends (T => InstanceStorage)
 
 private[akkeeper] object InstanceStorageFactory {
-  type AsyncInstanceStorageFactory[T] = InstanceStorageFactory[Future, T]
 
   implicit object ZookeeperInstanceStorageFactory
-    extends AsyncInstanceStorageFactory[ZookeeperClientConfig] {
+    extends InstanceStorageFactory[ZookeeperClientConfig] {
 
-    override def apply(config: ZookeeperClientConfig): InstanceStorage.Async = {
+    override def apply(config: ZookeeperClientConfig): InstanceStorage = {
       new ZookeeperInstanceStorage(config.child("instances"))
     }
   }
 
-  def createAsync[T: AsyncInstanceStorageFactory](config: T): InstanceStorage.Async = {
+  def apply[T: InstanceStorageFactory](config: T): InstanceStorage = {
     implicitly[T](config)
   }
 }

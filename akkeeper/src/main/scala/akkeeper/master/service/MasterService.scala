@@ -29,8 +29,8 @@ import com.typesafe.config.Config
 import scala.collection.{immutable, mutable}
 
 
-private[akkeeper] class MasterService(deployClient: DeployClient.Async,
-                                      instanceStorage: InstanceStorage.Async)
+private[akkeeper] class MasterService(deployClient: DeployClient,
+                                      instanceStorage: InstanceStorage)
   extends Actor with ActorLogging with Stash {
 
   private val config: Config = context.system.settings.config
@@ -168,8 +168,8 @@ object MasterService extends RemoteServiceFactory {
 
   override val actorName = MasterServiceName
 
-  private[akkeeper] def createLocal(factory: ActorRefFactory, deployClient: DeployClient.Async,
-                                    instanceStorage: InstanceStorage.Async): ActorRef = {
+  private[akkeeper] def createLocal(factory: ActorRefFactory, deployClient: DeployClient,
+                                    instanceStorage: InstanceStorage): ActorRef = {
     factory.actorOf(Props(classOf[MasterService], deployClient, instanceStorage), actorName)
   }
 }

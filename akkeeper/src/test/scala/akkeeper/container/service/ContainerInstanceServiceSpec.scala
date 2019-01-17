@@ -64,7 +64,7 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   private def createContainerInstanceService(userActors: Seq[ActorLaunchContext],
-                                             instanceStorage: InstanceStorage.Async,
+                                             instanceStorage: InstanceStorage,
                                              instanceId: InstanceId,
                                              masterAddress: Address,
                                              retryInterval: FiniteDuration = DefaultRegistrationRetryInterval,
@@ -81,7 +81,7 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
     val instanceId = InstanceId("container")
     val expectedInstanceInfo = createExpectedInstanceInfo(instanceId, selfAddr)
 
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.registerInstance _)
@@ -108,7 +108,7 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
     val instanceId = InstanceId("container")
     val expectedInstanceInfo = createExpectedInstanceInfo(instanceId, selfAddr)
 
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     val numberOfAttempts = 3
@@ -133,7 +133,7 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
     val newSystem = ActorSystem("ContainerInstanceServiceSpecTemp")
     val instanceId = InstanceId("container")
 
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
 
@@ -155,7 +155,7 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
     val expectedInstanceInfo = createExpectedInstanceInfo(instanceId,
       newCluster.selfUniqueAddress, actorPath = "/user/akkeeperInstance/testActor")
 
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.registerInstance _)

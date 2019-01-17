@@ -41,7 +41,7 @@ class MemberAutoDownServiceSpec(system: ActorSystem) extends TestKit(system)
 
   private def createMemberAutdownService(targetAddress: UniqueAddress,
                                          targetInstanceId: InstanceId,
-                                         instanceStorage: InstanceStorage.Async,
+                                         instanceStorage: InstanceStorage,
                                          pollInterval: FiniteDuration = 30 seconds): ActorRef = {
     childActorOf(Props(classOf[MemberAutoDownService], targetAddress,
       targetInstanceId, instanceStorage, pollInterval), s"autoDown-$targetInstanceId")
@@ -52,7 +52,7 @@ class MemberAutoDownServiceSpec(system: ActorSystem) extends TestKit(system)
     val address = UniqueAddress(Address("akka.tcp", "MemberAutoDownServiceSpec", "localhost", port), 1L)
     val instanceId = InstanceId("container")
 
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.getInstance _).expects(instanceId).returns(Future failed RecordNotFoundException(""))
 
     val service = createMemberAutdownService(address, instanceId, storage)
@@ -68,7 +68,7 @@ class MemberAutoDownServiceSpec(system: ActorSystem) extends TestKit(system)
     val instanceId = InstanceId("container")
     val info = InstanceInfo(instanceId, InstanceUp, "", Set.empty, None, Set.empty)
 
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.getInstance _).expects(instanceId).returns(Future successful info).atLeastTwice()
 
     val service = createMemberAutdownService(address, instanceId, storage, 1 second)
@@ -86,7 +86,7 @@ class MemberAutoDownServiceSpec(system: ActorSystem) extends TestKit(system)
     val instanceId = InstanceId("container")
     val info = InstanceInfo(instanceId, InstanceUp, "", Set.empty, None, Set.empty)
 
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.getInstance _).expects(instanceId).returns(Future successful info)
 
     val service = createMemberAutdownService(address, instanceId, storage)
@@ -104,7 +104,7 @@ class MemberAutoDownServiceSpec(system: ActorSystem) extends TestKit(system)
     val instanceId = InstanceId("container")
     val info = InstanceInfo(instanceId, InstanceUp, "", Set.empty, None, Set.empty)
 
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.getInstance _).expects(instanceId).returns(Future successful info)
 
     val service = createMemberAutdownService(address, instanceId, storage)
@@ -120,7 +120,7 @@ class MemberAutoDownServiceSpec(system: ActorSystem) extends TestKit(system)
     val address = UniqueAddress(Address("akka.tcp", "MemberAutoDownServiceSpec", "localhost", port), 1L)
     val instanceId = InstanceId("container")
 
-    val storage = mock[InstanceStorage.Async]
+    val storage = mock[InstanceStorage]
     (storage.getInstance _).expects(instanceId).returns(Future failed new Exception("")).atLeastTwice()
 
     val service = createMemberAutdownService(address, instanceId, storage, 1 second)
