@@ -25,6 +25,7 @@ import akkeeper.container.ContainerInstanceMain
 import akkeeper.deploy._
 import akkeeper.common.CliArguments._
 import akkeeper.yarn._
+import akkeeper.yarn.client.YarnMasterClient
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest
@@ -36,7 +37,6 @@ import scala.util._
 import scala.util.control.NonFatal
 import scala.collection.JavaConverters._
 import YarnApplicationMaster._
-import akkeeper.yarn.client.YarnMasterClient
 
 private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfig,
                                               yarnClient: YarnMasterClient)
