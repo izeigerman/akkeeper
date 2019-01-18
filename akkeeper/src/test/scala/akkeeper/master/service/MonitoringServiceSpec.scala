@@ -295,6 +295,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
       testByContainerAndRoles(service, Some("container2"), Some(Set("role22")), Some(Set(InstanceUp)), Set(instance5))
       testByContainerAndRoles(service, Some("container2"), Some(Set("role22")), Some(Set(InstanceUp, InstanceDeploying)), Set(instance4, instance5))
       testByContainerAndRoles(service, None, None, Some(Set(InstanceUp)), Set(instance5))
+      testByContainerAndRoles(service, None, None, Some(Set(InstanceUnreachable)), Set.empty)
       // scalastyle:on line.size.limit
     }
 

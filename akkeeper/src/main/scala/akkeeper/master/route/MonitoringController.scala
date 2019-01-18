@@ -51,10 +51,10 @@ class MonitoringController(service: ActorRef)(implicit dispatcher: ExecutionCont
       } ~
       (pathEnd | pathSingleSlash) {
         parameters('role.*, 'containerName.?, 'status.*) { (role, containerName, status) =>
-          if (role.isEmpty && containerName.isEmpty) {
+          val statuses = status.map(InstanceStatus.fromStringOption).flatten.toSet
+          if (role.isEmpty && containerName.isEmpty && statuses.isEmpty) {
             handleRequest(service, GetInstances())
           } else {
-            val statuses = status.map(InstanceStatus.fromStringOption).flatten.toSet
             handleRequest(service, GetInstancesBy(role.toSet, containerName, statuses))
           }
         }
