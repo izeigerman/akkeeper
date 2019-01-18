@@ -210,7 +210,13 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
         logger.debug(s"Launching container ${container.getId} for instance $instanceId")
         containerToInstance.put(container.getId, instanceId)
         executorService.submit(new Runnable {
-          override def run(): Unit = launchInstance(container, containerDef, instanceId)
+          override def run(): Unit = {
+            try {
+              launchInstance(container, containerDef, instanceId)
+            } catch {
+              case NonFatal(e) => logger.error(s"Failed to launch instance $instanceId", e)
+            }
+          }
         })
       } else {
         logger.debug(s"Unknown container allocation ${container.getId}. Realesing container")
