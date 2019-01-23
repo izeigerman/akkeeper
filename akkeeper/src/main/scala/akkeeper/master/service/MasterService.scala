@@ -18,6 +18,8 @@ package akkeeper.master.service
 import akka.actor._
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent.{InitialStateAsEvents, MemberUp}
+import akka.pattern.{ask, pipe}
+import akka.util.Timeout
 import akkeeper.api._
 import akkeeper.address._
 import akkeeper.common.config._
@@ -35,6 +37,9 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
 
   private val config: Config = context.system.settings.config
   private val numOfInstancesToJoin: Int = config.akkeeperAkka.seedNodesNum
+
+  private implicit val dispatcher = context.dispatcher
+  private implicit val instanceListTimeout: Timeout = Timeout(config.master.instanceListTimeout)
 
   private val containerService: ActorRef = ContainerService.createLocal(context)
   private val monitoringService: ActorRef = MonitoringService.createLocal(context, instanceStorage)
@@ -57,8 +62,13 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
     context.watch(containerService)
     context.watch(monitoringService)
     context.watch(deployService)
-    monitoringService ! GetInstances()
-    super.preStart()
+
+    val getInstancesMsg = GetInstances()
+    (monitoringService ? getInstancesMsg)
+      .recover {
+        case error => OperationFailed(getInstancesMsg.requestId, error)
+      }
+      .pipeTo(self)
   }
 
   private def stopServicesWithError(): Unit = {

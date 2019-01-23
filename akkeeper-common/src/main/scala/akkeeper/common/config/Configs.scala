@@ -46,6 +46,8 @@ private[akkeeper] final class AkkeeperAkkaConfig(akkeeperAkkaConfig: Config) {
 
 private[akkeeper] final class MasterConfig(masterConfig: Config) {
   lazy val heartbeat: HeartbeatConfig = new HeartbeatConfig(masterConfig.getConfig("heartbeat"))
+  lazy val instanceListTimeout: FiniteDuration =
+    masterConfig.getDuration("instance-list-timeout")
 }
 
 private[akkeeper] final class HeartbeatConfig(heartbeatConfig: Config) {
