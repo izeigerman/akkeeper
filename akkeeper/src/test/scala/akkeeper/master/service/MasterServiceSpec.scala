@@ -32,6 +32,7 @@ import org.scalatest._
 import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 import MasterServiceSpec._
 import MonitoringServiceSpec._
 
@@ -229,6 +230,29 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
       }
     }.run()
   }
+
+  it should "terminate with error after instance list timeout occurs" in {
+    val storage = mock[InstanceStorage]
+    (storage.start _).expects()
+    (storage.stop _).expects()
+    (storage.getInstances _).expects().returns(Future { Thread.sleep((5 seconds).toMillis); Seq.empty })
+
+    val deployClient = mock[DeployClient]
+    (deployClient.start _).expects()
+    (deployClient.stopWithError _).expects(*)
+
+    val config = ConfigFactory
+      .parseString("akkeeper.master.instance-list-timeout=1s")
+      .withFallback(ConfigFactory.load("application-container-test.conf"))
+
+    new MasterServiceTestRunner(config) {
+      override def test(): Unit = {
+        MasterService.createLocal(system, deployClient, storage)
+        Await.result(system.whenTerminated, 3 seconds)
+      }
+    }.run()
+  }
+
 }
 
 object MasterServiceSpec {
@@ -241,7 +265,7 @@ object MasterServiceSpec {
   }
 
   /** A custom test runner that produces a new Actor System for each test
-    * in order isolate tests from each other.
+    * in order to isolate tests from each other.
     */
   abstract class MasterServiceTestRunner(system: ActorSystem)
     extends TestKit(system) with ImplicitSender with ActorTestUtils {
