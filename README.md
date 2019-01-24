@@ -60,7 +60,7 @@ In order to use the Scala API the following dependency must be added to `build.s
 ```
 libraryDependencies += "com.github.izeigerman" %% "akkeeper-api" % "0.4.0"
 ```
-In case if you need to launch Akkeeper from you code the following dependency must be introduced:
+In case if you need to launch Akkeeper from your code the following dependency must be introduced:
 ```
 libraryDependencies += "com.github.izeigerman" %% "akkeeper-launcher" % "0.4.0"
 ```
