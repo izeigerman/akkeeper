@@ -128,7 +128,7 @@ val AkkeeperAppSettings = CommonSettings ++ NoPublishSettings ++ BuildInfoSettin
     "akkeeper_" + scalaVer.substring(0, scalaVer.lastIndexOf('.')) + "-" + version.value
   },
 
-  topLevelDirectory in Universal := Some(name.value + "-" + version.value),
+  topLevelDirectory in Universal := Some("akkeeper-" + version.value),
 
   mappings in Universal := {
     val fatJar = (assembly in Compile).value
