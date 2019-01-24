@@ -147,14 +147,14 @@ val AkkeeperApiSettings = CommonSettings ++ PublishSettings ++ Seq(
   )
 )
 
-val AkkeeperCommonSettings = CommonSettings ++ NoPublishSettings ++ Seq(
+val AkkeeperCommonSettings = CommonSettings ++ PublishSettings ++ Seq(
   libraryDependencies ++= Seq(
     "io.spray" %% "spray-json" % SprayJsonVersion,
     "com.typesafe" % "config" % TypesafeConfigVersion
   )
 )
 
-val AkkeeperYarnSettings = CommonSettings ++ NoPublishSettings ++ Seq(
+val AkkeeperYarnSettings = CommonSettings ++ PublishSettings ++ Seq(
   libraryDependencies ++= HadoopDependencies ++ TestDependencies
 )
 
