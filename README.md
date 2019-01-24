@@ -53,12 +53,16 @@ Instance is an execution unit in Akkeeper. Instance is just a running process wi
 
 ## How to use
 Download and unpack the latest Akkeeper package:
-- Scala 2.11: [ZIP](https://bintray.com/izeigerman/akkeeper/download_file?file_path=akkeeper_2.11-0.3.3.zip) / [TGZ](https://bintray.com/izeigerman/akkeeper/download_file?file_path=akkeeper_2.11-0.3.3.tgz)
-- Scala 2.12: [ZIP](https://bintray.com/izeigerman/akkeeper/download_file?file_path=akkeeper_2.12-0.3.3.zip) / [TGZ](https://bintray.com/izeigerman/akkeeper/download_file?file_path=akkeeper_2.12-0.3.3.tgz)
+- Scala 2.11: [ZIP](https://bintray.com/izeigerman/akkeeper/download_file?file_path=akkeeper_2.11-0.4.0.zip) / [TGZ](https://bintray.com/izeigerman/akkeeper/download_file?file_path=akkeeper_2.11-0.4.0.tgz)
+- Scala 2.12: [ZIP](https://bintray.com/izeigerman/akkeeper/download_file?file_path=akkeeper_2.12-0.4.0.zip) / [TGZ](https://bintray.com/izeigerman/akkeeper/download_file?file_path=akkeeper_2.12-0.4.0.tgz)
 
 In order to use the Scala API the following dependency must be added to `build.sbt`:
 ```
-libraryDependencies += "com.github.izeigerman" %% "akkeeper" % "0.3.3" % "provided"
+libraryDependencies += "com.github.izeigerman" %% "akkeeper-api" % "0.4.0"
+```
+In case if you need to launch Akkeeper from you code the following dependency must be introduced:
+```
+libraryDependencies += "com.github.izeigerman" %% "akkeeper-launcher" % "0.4.0"
 ```
 The easiest way to start using Akkeeper is through the configuration file. Here is a quick start configuration file example:
 ```
