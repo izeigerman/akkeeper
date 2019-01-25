@@ -205,7 +205,10 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
   }
 
   it should "shutdown the Actor system if the termination request has been received" in {
-    new MasterServiceTestRunner() {
+    val config = ConfigFactory
+      .parseString("akkeeper.master.heartbeat.enabled=true")
+      .withFallback(ConfigFactory.load("application-container-test.conf"))
+    new MasterServiceTestRunner(config) {
       override def test(): Unit = {
         val storage = mock[InstanceStorage]
         (storage.start _).expects()
