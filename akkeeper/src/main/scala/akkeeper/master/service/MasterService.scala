@@ -62,6 +62,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
     context.watch(containerService)
     context.watch(monitoringService)
     context.watch(deployService)
+    heartbeatService.foreach(context.watch)
 
     val getInstancesMsg = GetInstances()
     (monitoringService ? getInstancesMsg)
@@ -92,14 +93,16 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
   private def serviceTerminatedReceive: Receive = {
     case Terminated(actor) =>
       if (actor == containerService) {
-        log.error("Container Service has been terminated")
+        log.info("Container Service has been terminated")
       } else if (actor == monitoringService) {
-        log.error("Monitoring Service has been terminated")
-      } else {
-        log.error("Deploy Service has been terminated.")
+        log.info("Monitoring Service has been terminated")
+      } else if (actor == deployService) {
+        log.info("Deploy Service has been terminated.")
+      } else if (heartbeatService.exists(_ == actor)) {
+        log.info("Heartbeat Service has been terminated.")
       }
       if (context.children.isEmpty) {
-        log.error("All services have been terminated. Shutting down the master")
+        log.info("All services have been terminated. Shutting down the master")
         context.system.terminate()
       }
   }
@@ -112,6 +115,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
     case TerminateMaster =>
       log.info("Master termination request has been received")
       Seq(containerService, monitoringService, deployService).foreach(context.stop)
+      heartbeatService.foreach(context.stop)
   }
 
   private def clusterEventReceive: Receive = {
