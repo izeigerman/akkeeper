@@ -33,8 +33,7 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
                                instanceId: InstanceId,
                                masterAddress: Address,
                                registrationRetryInterval: FiniteDuration,
-                               joinClusterTimeout: FiniteDuration,
-                               leaveClusterTimeout: FiniteDuration)
+                               joinClusterTimeout: FiniteDuration)
   extends Actor with ActorLogging {
 
   private implicit val dispatcher = context.dispatcher
@@ -96,10 +95,7 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
 
   private def terminateThisInstance(): Unit = {
     cluster.leave(cluster.selfAddress)
-    cluster.registerOnMemberRemoved(context.system.terminate())
-    // Scheduling a timeout command.
-    context.become(leavingClusterReceive)
-    context.system.scheduler.scheduleOnce(leaveClusterTimeout, self, LeaveClusterTimeout)
+    CoordinatedShutdown(cluster.system).run(CoordinatedShutdown.ClusterLeavingReason)
   }
 
   private def initializedReceive: Receive = {
@@ -129,13 +125,6 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
       // Safely ignore the timeout command.
   }
 
-  private def leavingClusterReceive: Receive = {
-    case LeaveClusterTimeout =>
-      log.warning(s"Couldn't leave the cluster after ${leaveClusterTimeout.toSeconds} seconds. " +
-        "Terminating this instance...")
-      context.system.terminate()
-  }
-
   private def joiningClusterReceive: Receive = {
     case InstanceJoinedCluster =>
       log.debug("Successfully joined the cluster")
@@ -145,7 +134,7 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
     case JoinClusterTimeout =>
       log.error(s"Couldn't join the cluster during ${joinClusterTimeout.toSeconds} seconds. " +
         "Terminating this instance...")
-      context.system.terminate()
+      terminateThisInstance()
   }
 
   private def waitingForJoinCommandReceive: Receive = {
@@ -165,7 +154,6 @@ object ContainerInstanceService {
   private case object JoinCluster
   private case object RetryRegistration
   private case object JoinClusterTimeout
-  private case object LeaveClusterTimeout
   private case object InstanceJoinedCluster
   private[akkeeper] val DefaultRegistrationRetryInterval = 30 seconds
   private[akkeeper] val DefaultJoinClusterTimeout = 90 seconds
@@ -179,10 +167,9 @@ object ContainerInstanceService {
                   instanceId: InstanceId,
                   masterAddress: Address,
                   registrationRetryInterval: FiniteDuration = DefaultRegistrationRetryInterval,
-                  joinClusterTimeout: FiniteDuration = DefaultJoinClusterTimeout,
-                  leaveClusterTimeout: FiniteDuration = DefaultLeaveClusterTimeout): ActorRef = {
+                  joinClusterTimeout: FiniteDuration = DefaultJoinClusterTimeout): ActorRef = {
     val props = Props(classOf[ContainerInstanceService], userActors, instanceStorage,
-      instanceId, masterAddress, registrationRetryInterval, joinClusterTimeout, leaveClusterTimeout)
+      instanceId, masterAddress, registrationRetryInterval, joinClusterTimeout)
     factory.actorOf(props, ActorName)
   }
 }

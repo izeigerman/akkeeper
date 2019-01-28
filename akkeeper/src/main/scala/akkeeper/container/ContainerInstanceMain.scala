@@ -90,8 +90,7 @@ object ContainerInstanceMain extends App with ContainerDefinitionJsonProtocol {
 
     ContainerInstanceService.createLocal(actorSystem, actors,
       instanceStorage, instanceArgs.instanceId, instanceArgs.masterAddress,
-      joinClusterTimeout = instanceConfig.akkeeperAkka.joinClusterTimeout,
-      leaveClusterTimeout = instanceConfig.akkeeperAkka.leaveClusterTimeout)
+      joinClusterTimeout = instanceConfig.akkeeperAkka.joinClusterTimeout)
 
     Await.result(actorSystem.whenTerminated, Duration.Inf)
     sys.exit(0)
