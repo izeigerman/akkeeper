@@ -25,8 +25,10 @@ import akkeeper.master.service.MonitoringService
 import akkeeper.storage.InstanceStorage
 
 import scala.concurrent.duration._
+import scala.collection.immutable
 import scala.util.control.NonFatal
 import ContainerInstanceService._
+import akka.cluster.ClusterEvent.{InitialStateAsEvents, MemberUp, MemberWeaklyUp}
 
 class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
                                instanceStorage: InstanceStorage,
@@ -126,23 +128,39 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
   }
 
   private def joiningClusterReceive: Receive = {
-    case InstanceJoinedCluster =>
-      log.debug("Successfully joined the cluster")
-      launchUserActors()
-      context.become(initializedReceive)
-      registerThisInstance()
+    case MemberUp(m) if m.uniqueAddress == cluster.selfUniqueAddress =>
+      onClusterJoined(false)
+    case MemberWeaklyUp(m) if m.uniqueAddress == cluster.selfUniqueAddress =>
+      onClusterJoined(true)
     case JoinClusterTimeout =>
-      log.error(s"Couldn't join the cluster during ${joinClusterTimeout.toSeconds} seconds. " +
-        "Terminating this instance...")
-      terminateThisInstance()
+      onClusterJoinTimeout()
+  }
+
+  private def onClusterJoined(isWeakly: Boolean): Unit = {
+    if (log.isInfoEnabled) {
+      val weaklyMsg = if (isWeakly) " (weakly)" else ""
+      log.info("Successfully joined the cluster" + weaklyMsg)
+    }
+    cluster.unsubscribe(self)
+    launchUserActors()
+    context.become(initializedReceive)
+    registerThisInstance()
+  }
+
+  private def onClusterJoinTimeout(): Unit = {
+    log.error(s"Couldn't join the cluster during ${joinClusterTimeout.toSeconds} seconds. " +
+      "Terminating this instance...")
+    cluster.unsubscribe(self)
+    terminateThisInstance()
   }
 
   private def waitingForJoinCommandReceive: Receive = {
     case JoinCluster =>
       context.become(joiningClusterReceive)
       log.debug(s"Joining the cluster (master: $masterAddress)")
-      cluster.join(masterAddress)
-      cluster.registerOnMemberUp(self ! InstanceJoinedCluster)
+      cluster.joinSeedNodes(immutable.Seq(masterAddress))
+      cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
+        classOf[MemberUp], classOf[MemberWeaklyUp])
       // Scheduling a timeout command.
       context.system.scheduler.scheduleOnce(joinClusterTimeout, self, JoinClusterTimeout)
   }
