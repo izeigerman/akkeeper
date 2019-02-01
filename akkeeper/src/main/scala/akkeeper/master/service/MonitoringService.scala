@@ -286,13 +286,6 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
       log.warning(s"Instance $instanceId termination failed: $original")
       pendingTermination.remove(instanceId)
       sendAndRemoveOriginalSender(original)
-    case RefreshInstancesList(latestInstances) =>
-      log.info("Refreshing the list of instances")
-      instances.clear()
-      latestInstances.foreach(instances.put(_, None))
-    case RefreshInstancesListFailed(e) =>
-      log.error(e, "Failed to refresh the list of instances. Retrying...")
-      after(10 seconds, context.system.scheduler)(refreshInstancesList()).pipeTo(self)
     case Status.Failure(e) =>
       log.error(e, "Monitoring service unexpected error")
     case StopWithError(_) =>
@@ -305,6 +298,22 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
         deadInstances.add(instanceId)
       }
       launchTimeoutTasks.remove(instanceId)
+  }
+
+  private def refreshInstancesListReceive: Receive = {
+    case RefreshInstancesList(latestInstances) =>
+      log.info("Refreshing the list of instances")
+      instances.clear()
+      latestInstances.foreach(instances.put(_, None))
+      val membersSize = cluster.state.members.size
+      if (instances.size != membersSize - 1) {
+        log.info(s"The list of cluster members ($membersSize) doesn't match the list of " +
+          s"instances in the storage (${instances.size}). Additional refreshment is required")
+        after(RefreshInstancesRetryInterval, context.system.scheduler)(refreshInstancesList()).pipeTo(self)
+      }
+    case RefreshInstancesListFailed(e) =>
+      log.error(e, "Failed to refresh the list of instances. Retrying...")
+      after(RefreshInstancesRetryInterval, context.system.scheduler)(refreshInstancesList()).pipeTo(self)
   }
 
   private def clusterEventReceive: Receive = {
@@ -379,7 +388,8 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
   }
 
   private def initializedReceive: Receive = {
-    apiCommandReceive orElse internalEventReceive orElse clusterEventReceive
+    apiCommandReceive orElse internalEventReceive orElse
+      refreshInstancesListReceive orElse clusterEventReceive
   }
 
   override def serviceReceive: Receive = {
@@ -397,6 +407,8 @@ object MonitoringService extends RemoteServiceFactory {
   private[akkeeper] case class InstanceLaunchTimeout(instanceId: InstanceId)
 
   private val DefaultInstancesFilter = (_: InstanceInfo) => true
+
+  private val RefreshInstancesRetryInterval: FiniteDuration = 10 seconds
 
   override val actorName = "monitoringService"
 
