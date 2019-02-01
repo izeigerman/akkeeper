@@ -604,6 +604,35 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
 
     gracefulActorStop(service)
   }
+
+  it should "refresh instances list after joining the cluster" in {
+    val storage = mock[InstanceStorage]
+
+    val uniqueAddr = Cluster(system).selfUniqueAddress
+    val member = createTestMember(uniqueAddr)
+
+    val instanceId1 = InstanceId("container")
+    val instanceId2 = InstanceId("container")
+    (storage.start _).expects()
+    (storage.stop _).expects()
+    (storage.getInstances _).expects().returns(Future successful Seq(instanceId1))
+    (storage.getInstances _).expects().returns(Future successful Seq(instanceId2))
+
+    val service = createMonitoringService(storage)
+
+    service ! GetInstances()
+    expectMsgClass(classOf[InstancesList]).instanceIds should contain only (instanceId1)
+
+    service ! MemberUp(member)
+
+    val sleepMs = 500
+    Thread.sleep(sleepMs)
+
+    service ! GetInstances()
+    expectMsgClass(classOf[InstancesList]).instanceIds should contain only (instanceId2)
+
+    gracefulActorStop(service)
+  }
 }
 
 object MonitoringServiceSpec {

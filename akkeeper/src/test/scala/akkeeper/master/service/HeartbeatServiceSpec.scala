@@ -15,6 +15,8 @@
  */
 package akkeeper.master.service
 
+import java.util.UUID
+
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit}
 import akkeeper.ActorTestUtils
@@ -39,7 +41,7 @@ class HeartbeatServiceSpec(system: ActorSystem) extends TestKit(system)
   }
 
   private def createHeartbeatService(): ActorRef = {
-    childActorOf(Props(classOf[HeartbeatService]), HeartbeatService.HeartbeatServiceName)
+    childActorOf(Props(classOf[HeartbeatService]), UUID.randomUUID().toString)
   }
 
   "Heartbeat Service" should "send termination message when heartbeat timeout occurs" in {

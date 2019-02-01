@@ -16,9 +16,9 @@
 package akkeeper.master.service
 
 import akka.actor._
-import akka.cluster.{Cluster, MemberStatus, UniqueAddress}
+import akka.cluster.{Cluster, Member, MemberStatus, UniqueAddress}
 import akka.cluster.ClusterEvent._
-import akka.pattern.pipe
+import akka.pattern.{after, pipe}
 import akkeeper.api._
 import akkeeper.address._
 import akkeeper.common._
@@ -29,7 +29,7 @@ import akkeeper.storage._
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.control.NonFatal
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 import MonitoringService._
 
 private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
@@ -202,7 +202,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
 
   private def onGetInstances(request: GetInstances): Unit = {
     val requestId = request.requestId
-    val instanceIds = instances.keys.toSeq
+    val instanceIds = instances.keySet.toSeq
     sender() ! InstancesList(requestId, instanceIds)
   }
 
@@ -300,43 +300,83 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
       launchTimeoutTasks.remove(instanceId)
   }
 
-  private def clusterEventReceive: Receive = {
-    case UnreachableMember(member) =>
-      if (member.status != MemberStatus.Exiting) {
-        findInstanceByAddr(member.uniqueAddress) match {
-          case Some(i) =>
-            // Update the instance's status and launch an actor which will automatically
-            // eliminate an unreachable member from the cluster.
-            instances.put(i.instanceId, Some(i.copy(status = InstanceUnreachable)))
-            memberAutoDown(i.instanceId, member.uniqueAddress)
-          case None =>
-            log.warning(s"Unknown unreachable cluster member ${member.address}. " +
-              "Removing it from the cluster")
-            cluster.down(member.address)
-        }
-      } else {
-        // Receiving the UNREACHABLE event for exiting members - is an expected behavior.
-        cluster.down(member.address)
+  private def refreshInstancesListReceive: Receive = {
+    case RefreshInstancesList(latestInstances) =>
+      log.info("Refreshing the list of instances")
+      instances.clear()
+      latestInstances.foreach(instances.put(_, None))
+      val membersSize = cluster.state.members.size
+      if (instances.size != membersSize - 1) {
+        log.info(s"The list of cluster members ($membersSize) doesn't match the list of " +
+          s"instances in the storage (${instances.size}). Additional refreshment is required")
+        after(RefreshInstancesRetryInterval, context.system.scheduler)(refreshInstancesList()).pipeTo(self)
       }
-    case ReachableMember(member) =>
+    case RefreshInstancesListFailed(e) =>
+      log.error(e, "Failed to refresh the list of instances. Retrying...")
+      after(RefreshInstancesRetryInterval, context.system.scheduler)(refreshInstancesList()).pipeTo(self)
+  }
+
+  private def clusterEventReceive: Receive = {
+    case UnreachableMember(member) => onUnreachableMember(member)
+    case ReachableMember(member) => onReachableMember(member)
+    case MemberUp(member) => onMemberUp(member)
+    case MemberRemoved(member, _) => onMemberRemoved(member)
+  }
+
+  private def onMemberUp(member: Member): Unit = {
+    if (member.uniqueAddress == cluster.selfUniqueAddress) {
+      // Master could have missed some cluster events while trying to join the cluster,
+      // so we need to bring the current list of instances in sync with ZooKeeper.
+      refreshInstancesList().pipeTo(self)
+    } else {
       updateInstanceStatusByAddr(member.uniqueAddress, InstanceUp)
-    case MemberUp(member) =>
-      updateInstanceStatusByAddr(member.uniqueAddress, InstanceUp)
-    case MemberRemoved(member, _) =>
+    }
+  }
+
+  private def onMemberRemoved(member: Member): Unit = {
+    findInstanceByAddr(member.uniqueAddress) match {
+      case Some(i) =>
+        log.info(s"Removing instance ${i.instanceId} (${member.address}) from the cluster")
+        removeInstance(i.instanceId)
+      case None =>
+        log.warning(s"Unknown cluster member ${member.address} has been removed")
+    }
+  }
+
+  private def onReachableMember(member: Member): Unit = {
+    updateInstanceStatusByAddr(member.uniqueAddress, InstanceUp)
+  }
+
+  private def onUnreachableMember(member: Member): Unit = {
+    if (member.status != MemberStatus.Exiting) {
       findInstanceByAddr(member.uniqueAddress) match {
         case Some(i) =>
-          log.info(s"Removing instance ${i.instanceId} (${member.address}) from the cluster")
-          removeInstance(i.instanceId)
+          // Update the instance's status and launch an actor which will automatically
+          // eliminate an unreachable member from the cluster.
+          instances.put(i.instanceId, Some(i.copy(status = InstanceUnreachable)))
+          memberAutoDown(i.instanceId, member.uniqueAddress)
         case None =>
-          log.warning(s"Unknown cluster member ${member.address} has been removed")
+          log.warning(s"Unknown unreachable cluster member ${member.address}. " +
+            "Removing it from the cluster")
+          cluster.down(member.address)
       }
+    } else {
+      // Receiving the UNREACHABLE event for exiting members - is an expected behavior.
+      cluster.down(member.address)
+    }
+  }
+
+  private def refreshInstancesList(): Future[Any] = {
+    instanceStorage.getInstances
+      .map(RefreshInstancesList(_))
+      .recover { case NonFatal(e) => RefreshInstancesListFailed(e) }
   }
 
   private def uninitializedReceive: Receive = {
     case InitSuccessful(knownInstances) =>
       knownInstances.foreach(instances.put(_, None))
       cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
-        classOf[MemberRemoved], classOf[UnreachableMember], classOf[ReachableMember])
+        classOf[MemberUp], classOf[MemberRemoved], classOf[UnreachableMember], classOf[ReachableMember])
       log.info("Monitoring service successfully initialized")
       become(initializedReceive)
       unstashAll()
@@ -348,7 +388,8 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
   }
 
   private def initializedReceive: Receive = {
-    apiCommandReceive orElse internalEventReceive orElse clusterEventReceive
+    apiCommandReceive orElse internalEventReceive orElse
+      refreshInstancesListReceive orElse clusterEventReceive
   }
 
   override def serviceReceive: Receive = {
@@ -357,6 +398,8 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
 }
 
 object MonitoringService extends RemoteServiceFactory {
+  private case class RefreshInstancesList(instances: Seq[InstanceId])
+  private case class RefreshInstancesListFailed(e: Throwable)
   private case class InitSuccessful(knownInstances: Seq[InstanceId])
   private case class InitFailed(reason: Throwable)
   private case class InstanceTerminationFailed(instanceId: InstanceId, originalMsg: WithRequestId)
@@ -364,6 +407,8 @@ object MonitoringService extends RemoteServiceFactory {
   private[akkeeper] case class InstanceLaunchTimeout(instanceId: InstanceId)
 
   private val DefaultInstancesFilter = (_: InstanceInfo) => true
+
+  private val RefreshInstancesRetryInterval: FiniteDuration = 10 seconds
 
   override val actorName = "monitoringService"
 
