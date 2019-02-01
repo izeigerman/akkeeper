@@ -376,7 +376,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
     case InitSuccessful(knownInstances) =>
       knownInstances.foreach(instances.put(_, None))
       cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
-        classOf[MemberRemoved], classOf[UnreachableMember], classOf[ReachableMember])
+        classOf[MemberUp], classOf[MemberRemoved], classOf[UnreachableMember], classOf[ReachableMember])
       log.info("Monitoring service successfully initialized")
       become(initializedReceive)
       unstashAll()
