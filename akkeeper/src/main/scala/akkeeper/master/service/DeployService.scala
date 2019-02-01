@@ -28,6 +28,8 @@ private[akkeeper] class DeployService(deployClient: DeployClient,
   private implicit val dispatcher = context.dispatcher
   override protected val trackedMessages: Set[Class[_]] = Set(classOf[DeployContainer])
 
+  private var stopReason: Option[Throwable] = None
+
   private def deployInstances(request: DeployContainer,
                               container: ContainerDefinition): SubmittedInstances = {
     val ids = (0 until request.quantity).map(_ => InstanceId(container.name))
@@ -60,7 +62,10 @@ private[akkeeper] class DeployService(deployClient: DeployClient,
   }
 
   override def postStop(): Unit = {
-    deployClient.stop()
+    stopReason match {
+      case Some(e) => deployClient.stopWithError(e)
+      case None => deployClient.stop()
+    }
     super.postStop()
   }
 
@@ -82,7 +87,7 @@ private[akkeeper] class DeployService(deployClient: DeployClient,
       sendAndRemoveOriginalSender(other)
     case StopWithError(e) =>
       log.error("Stopping the Deploy service because of external error")
-      deployClient.stopWithError(e)
+      stopReason = Some(e)
       context.stop(self)
   }
 }

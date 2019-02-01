@@ -189,7 +189,6 @@ class DeployServiceSpec(system: ActorSystem) extends TestKit(system)
     val exception = new AkkeeperException("fail")
     val deployClient = mock[DeployClient]
     (deployClient.start _).expects()
-    (deployClient.stop _).expects()
     (deployClient.stopWithError _).expects(exception)
 
     val service = createDeployService(deployClient, self, self)

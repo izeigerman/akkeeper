@@ -194,7 +194,6 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
 
         val deployClient = mock[DeployClient]
         (deployClient.start _).expects()
-        (deployClient.stop _).expects()
         (deployClient.stopWithError _).expects(*)
 
         MasterService.createLocal(system, deployClient, storage)

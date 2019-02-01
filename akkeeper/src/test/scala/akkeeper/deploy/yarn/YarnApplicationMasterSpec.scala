@@ -175,6 +175,7 @@ class YarnApplicationMasterSpec extends FlatSpec with Matchers
       .expects(*)
       .returns(createAllocateResponse(Seq(0)))
       .atLeastOnce()
+    (yarnClient.releaseAssignedContainer _).expects(*)
 
     val masterConfig = createStagingAppMasterConfig
     val master = new YarnApplicationMaster(masterConfig, yarnClient)
