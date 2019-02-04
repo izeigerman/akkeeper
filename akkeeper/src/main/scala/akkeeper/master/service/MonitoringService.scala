@@ -303,12 +303,12 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
   private def refreshInstancesListReceive: Receive = {
     case RefreshInstancesList(latestInstances) =>
       log.info("Refreshing the list of instances")
+      val oldInstanceIds = Set.empty ++ instances.keySet
       instances.clear()
       latestInstances.foreach(instances.put(_, None))
-      val membersSize = cluster.state.members.size
-      if (instances.size != membersSize - 1) {
-        log.info(s"The list of cluster members ($membersSize) doesn't match the list of " +
-          s"instances in the storage (${instances.size}). Additional refreshment is required")
+      if (oldInstanceIds != instances.keySet) {
+        log.info("There is still a discrepancy between the local list of instances and one in the storage. " +
+          "Additional refreshment is required")
         after(RefreshInstancesRetryInterval, context.system.scheduler)(refreshInstancesList()).pipeTo(self)
       }
     case RefreshInstancesListFailed(e) =>
