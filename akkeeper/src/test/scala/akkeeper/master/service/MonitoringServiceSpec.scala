@@ -37,7 +37,8 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   with BeforeAndAfterAll {
 
   def this() = this(ActorSystem("MonitoringServiceSpec", ConfigFactory.load()
-    .withValue("akkeeper.monitoring.launch-timeout", ConfigValueFactory.fromAnyRef("2s"))))
+    .withValue("akkeeper.monitoring.launch-timeout", ConfigValueFactory.fromAnyRef("2s"))
+    .withValue("akkeeper.monitoring.instance-list-refresh-interval", ConfigValueFactory.fromAnyRef("1ms"))))
 
   override def afterAll(): Unit = {
     system.terminate()
@@ -616,7 +617,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq(instanceId1))
-    (storage.getInstances _).expects().returns(Future successful Seq(instanceId2))
+    (storage.getInstances _).expects().returns(Future successful Seq(instanceId2)).twice()
 
     val service = createMonitoringService(storage)
 

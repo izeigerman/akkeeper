@@ -15,5 +15,8 @@
  */
 package akkeeper.master.service
 
+import akkeeper.api.InstanceId
 
-private[service] case class StopWithError(reason: Throwable)
+
+private[service] final case class StopWithError(reason: Throwable)
+private[service] final case class RefreshInstancesList(instances: Seq[InstanceId])

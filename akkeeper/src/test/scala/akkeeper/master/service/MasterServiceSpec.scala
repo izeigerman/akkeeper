@@ -179,26 +179,37 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
     }.run()
   }
 
-  it should "shutdown the Actor system if the init process fails" in {
-    new MasterServiceTestRunner() {
+  it should "create a new cluster if the join timeout occurs" in {
+    val config = ConfigFactory
+      .parseString("akkeeper.akka.join-cluster-timeout=500ms\n" +
+        "akkeeper.monitoring.instance-list-refresh-interval=1ms")
+      .withFallback(ConfigFactory.load("application-container-test.conf"))
+    new MasterServiceTestRunner(config) {
       override def test(): Unit = {
-        val selfAddr = Cluster(system).selfUniqueAddress
-        val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
+        val instanceId = InstanceId("container")
         val storage = mock[InstanceStorage]
         (storage.start _).expects()
         (storage.stop _).expects()
-        (storage.getInstances _).expects().returns(Future successful Seq(instance.instanceId)).atLeastOnce()
+        (storage.getInstances _).expects().returns(Future successful Seq(instanceId))
+        (storage.getInstances _).expects().returns(Future successful Seq.empty).anyNumberOfTimes()
         (storage.getInstance _)
-          .expects(instance.instanceId)
+          .expects(instanceId)
           .returns(Future failed new AkkeeperException(""))
 
         val deployClient = mock[DeployClient]
         (deployClient.start _).expects()
-        (deployClient.stopWithError _).expects(*)
+        (deployClient.stop _).expects()
 
-        MasterService.createLocal(system, deployClient, storage)
+        val service = MasterService.createLocal(system, deployClient, storage)
 
-        Await.result(system.whenTerminated, 3 seconds)
+        Thread.sleep((2 seconds).toMillis)
+
+        val getInstances = GetInstances()
+        service ! getInstances
+        val response = expectMsgClass(classOf[InstancesList])
+        response.instanceIds.size shouldBe 0
+
+        gracefulActorStop(service)
       }
     }.run()
   }
@@ -237,7 +248,11 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
     val storage = mock[InstanceStorage]
     (storage.start _).expects()
     (storage.stop _).expects()
-    (storage.getInstances _).expects().returns(Future { Thread.sleep((5 seconds).toMillis); Seq.empty })
+    (storage.getInstances _).expects()
+      .returns(Future {
+        Thread.sleep((1 minute).toMillis)
+        Seq.empty
+      })
       .atLeastOnce()
 
     val deployClient = mock[DeployClient]
@@ -255,7 +270,6 @@ class MasterServiceSpec extends FlatSpecLike with Matchers with MockFactory {
       }
     }.run()
   }
-
 }
 
 object MasterServiceSpec {

@@ -15,8 +15,10 @@
  */
 package akkeeper.container.service
 
+import java.util.concurrent.TimeoutException
+
 import akka.actor._
-import akka.cluster.{Cluster, UniqueAddress}
+import akka.cluster.{Cluster, MemberStatus, UniqueAddress}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import akkeeper.ActorTestUtils
 import akkeeper.address._
@@ -34,6 +36,7 @@ import scala.concurrent.duration._
 import ContainerInstanceService._
 import ContainerInstanceServiceSpec._
 import TestUserActor._
+import akka.cluster.ClusterEvent.{ReachableMember, UnreachableMember}
 
 class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
   with FlatSpecLike with Matchers with ImplicitSender with MockFactory with ActorTestUtils
@@ -188,6 +191,86 @@ class ContainerInstanceServiceSpec(system: ActorSystem) extends TestKit(system)
     await(leavePromise.future)
 
     await(newSystem.whenTerminated)
+  }
+
+  it should "terminate if the Akkeeper Master is unavailable" in {
+    val newSystem = ActorSystem("ContainerInstanceServiceSpecTemp",
+      ConfigFactory.load().withMasterPort.withMasterRole)
+    val newCluster = Cluster(newSystem)
+    val instanceId = InstanceId("container")
+
+    val storage = mock[InstanceStorage]
+    (storage.start _).expects()
+    (storage.stop _).expects()
+    (storage.registerInstance _).expects(*).returns(Future successful instanceId)
+
+    val actors = Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName))
+
+    val service = ContainerInstanceService.createLocal(newSystem, actors, storage, instanceId,
+      newCluster.selfAddress, joinClusterTimeout = 500 millis)
+
+    // Verify that the user actor was actually launched.
+    val testProbe = TestProbe()(newSystem)
+    val userActor = newSystem.actorSelection("/user/akkeeperInstance/testActor")
+
+    val joinPromise = Promise[Unit]
+    newCluster.registerOnMemberUp(joinPromise.success(()))
+    await(joinPromise.future)
+    val waitTimeoutMs = 1000
+    Thread.sleep(waitTimeoutMs)
+
+    userActor.tell(TestPing, testProbe.ref)
+    testProbe.expectMsg(TestPong)
+
+    val akkeeperMasterMember = createTestMember(newCluster.selfUniqueAddress,
+      MemberStatus.up, Set("akkeeperMaster"))
+
+    testProbe.send(service, UnreachableMember(akkeeperMasterMember))
+
+    await(newSystem.whenTerminated)
+  }
+
+  it should "detect that Akkeeper Master has become available again" in {
+    val newSystem = ActorSystem("ContainerInstanceServiceSpecTemp",
+      ConfigFactory.load().withMasterPort.withMasterRole)
+    val newCluster = Cluster(newSystem)
+    val instanceId = InstanceId("container")
+
+    val storage = mock[InstanceStorage]
+    (storage.start _).expects()
+    (storage.stop _).expects()
+    (storage.registerInstance _).expects(*).returns(Future successful instanceId)
+
+    val actors = Seq(ActorLaunchContext("testActor", classOf[TestUserActor].getName))
+
+    val service = ContainerInstanceService.createLocal(newSystem, actors, storage, instanceId,
+      newCluster.selfAddress, joinClusterTimeout = 500 millis)
+
+    // Verify that the user actor was actually launched.
+    val testProbe = TestProbe()(newSystem)
+    val userActor = newSystem.actorSelection("/user/akkeeperInstance/testActor")
+
+    val joinPromise = Promise[Unit]
+    newCluster.registerOnMemberUp(joinPromise.success(()))
+    await(joinPromise.future)
+    val waitTimeoutMs = 1000
+    Thread.sleep(waitTimeoutMs)
+
+    userActor.tell(TestPing, testProbe.ref)
+    testProbe.expectMsg(TestPong)
+
+    val akkeeperMasterMember = createTestMember(newCluster.selfUniqueAddress,
+      MemberStatus.up, Set("akkeeperMaster"))
+
+    testProbe.send(service, UnreachableMember(akkeeperMasterMember))
+    testProbe.send(service, ReachableMember(akkeeperMasterMember))
+
+    intercept[TimeoutException] {
+      await(newSystem.whenTerminated)(3 seconds)
+    }
+
+    gracefulActorStop(service)
+    newSystem.terminate()
   }
 }
 
