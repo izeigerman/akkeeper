@@ -37,7 +37,8 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
   with BeforeAndAfterAll {
 
   def this() = this(ActorSystem("MonitoringServiceSpec", ConfigFactory.load()
-    .withValue("akkeeper.monitoring.launch-timeout", ConfigValueFactory.fromAnyRef("2s"))))
+    .withValue("akkeeper.monitoring.launch-timeout", ConfigValueFactory.fromAnyRef("2s"))
+    .withValue("akkeeper.monitoring.instance-list-refresh-interval", ConfigValueFactory.fromAnyRef("1ms"))))
 
   override def afterAll(): Unit = {
     system.terminate()
@@ -578,33 +579,6 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     gracefulActorStop(service)
   }
 
-  it should "immediately remove instances which are not members of the cluster" in {
-    val storage = mock[InstanceStorage]
-
-    val port = 12345
-    val addr = Address("akka.tcp", system.name, "localhost", port)
-    val unknownUniqueAddr = UniqueAddress(addr, 1L)
-
-    val instance = createInstanceInfo("container").copy(address = Some(unknownUniqueAddr))
-    (storage.start _).expects()
-    (storage.stop _).expects()
-    (storage.getInstances _)
-      .expects()
-      .returns(Future successful Seq(instance.instanceId))
-    (storage.getInstance _)
-      .expects(instance.instanceId)
-      .returns(Future failed RecordNotFoundException(""))
-      .anyNumberOfTimes()
-
-    val service = createMonitoringService(storage)
-
-    service ! instance
-    service ! GetInstance(instance.instanceId)
-    expectMsgClass(classOf[InstanceNotFound])
-
-    gracefulActorStop(service)
-  }
-
   it should "refresh instances list after joining the cluster" in {
     val storage = mock[InstanceStorage]
 
@@ -616,7 +590,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     (storage.start _).expects()
     (storage.stop _).expects()
     (storage.getInstances _).expects().returns(Future successful Seq(instanceId1))
-    (storage.getInstances _).expects().returns(Future successful Seq(instanceId2))
+    (storage.getInstances _).expects().returns(Future successful Seq(instanceId2)).twice()
 
     val service = createMonitoringService(storage)
 

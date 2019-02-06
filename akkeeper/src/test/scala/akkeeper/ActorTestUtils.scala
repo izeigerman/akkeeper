@@ -34,8 +34,12 @@ trait ActorTestUtils extends AwaitMixin {
   }
 
   protected def createTestMember(addr: UniqueAddress, status: MemberStatus): Member = {
+    createTestMember(addr, status, Set.empty)
+  }
+
+  protected def createTestMember(addr: UniqueAddress, status: MemberStatus, roles: Set[String]): Member = {
     val ctr = classOf[Member].getDeclaredConstructor(classOf[UniqueAddress], classOf[Int],
       classOf[MemberStatus], classOf[Set[String]])
-    ctr.newInstance(addr, new Integer(1), status, Set("dc-default"))
+    ctr.newInstance(addr, new Integer(1), status, roles + "dc-default")
   }
 }

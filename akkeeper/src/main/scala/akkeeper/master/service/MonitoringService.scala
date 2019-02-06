@@ -29,13 +29,12 @@ import akkeeper.storage._
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.control.NonFatal
-import scala.concurrent.duration._
 import MonitoringService._
 
 private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
   extends RequestTrackingService with Stash {
 
-  private val instanceLaunchTimeout: FiniteDuration = context.system.settings.config.monitoring.launchTimeout
+  private val monitoringConfig: MonitoringConfig = context.system.settings.config.monitoring
 
   private implicit val dispatcher = context.dispatcher
   private val cluster = Cluster(context.system)
@@ -70,10 +69,6 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
     instances.remove(instanceId)
     launchTimeoutTasks.remove(instanceId)
     pendingTermination.remove(instanceId)
-  }
-
-  private def isKnownAddress(address: UniqueAddress): Boolean = {
-    address == cluster.selfUniqueAddress || cluster.state.members.exists(_.uniqueAddress == address)
   }
 
   private def memberAutoDown(instanceId: InstanceId, instanceAddr: UniqueAddress): Unit = {
@@ -138,12 +133,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
   }
 
   private def onInstanceInfoUpdate(info: InstanceInfo): Unit = {
-    val address = info.address
-    if (address.isDefined && !isKnownAddress(address.get)) {
-      log.error(s"Received update from the instance ${info.instanceId} (${address.get.address}) " +
-        "that doesn't belong to the cluster. Removing it from the local storage")
-      removeInstance(info.instanceId)
-    } else if (deadInstances.contains(info.instanceId)) {
+    if (deadInstances.contains(info.instanceId)) {
       log.warning(s"Received update from the dead instance ${info.instanceId}. " +
         "Attempting to terminate this instance")
       if (info.address.nonEmpty) {
@@ -157,7 +147,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
         instances.remove(info.instanceId)
       } else if (info.status == InstanceLaunching) {
         val timeoutTask = context.system.scheduler.scheduleOnce(
-          instanceLaunchTimeout, self,
+          monitoringConfig.launchTimeout, self,
           InstanceLaunchTimeout(info.instanceId))
         launchTimeoutTasks.put(info.instanceId, timeoutTask)
       } else if (info.status != InstanceDeploying) {
@@ -266,7 +256,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
     }
   }
 
-  private def apiCommandReceive: Receive = {
+  private lazy val apiCommandReceive: Receive = {
     case request: GetInstance =>
       onGetInstance(request)
     case request: GetInstances =>
@@ -277,7 +267,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
       onTerminateInstance(request)
   }
 
-  private def internalEventReceive: Receive = {
+  private lazy val internalEventReceive: Receive = {
     case InstancesUpdate(update) =>
       update.foreach(onInstanceInfoUpdate)
     case info: InstanceInfo =>
@@ -300,20 +290,22 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
       launchTimeoutTasks.remove(instanceId)
   }
 
-  private def refreshInstancesListReceive: Receive = {
-    case RefreshInstancesList(latestInstances) =>
+  private lazy val refreshInstancesListReceive: Receive = {
+    case RefreshInstancesList(latestInstances) if instances.nonEmpty =>
       log.info("Refreshing the list of instances")
       val oldInstanceIds = Set.empty ++ instances.keySet
       instances.clear()
       latestInstances.foreach(instances.put(_, None))
-      if (oldInstanceIds != instances.keySet) {
-        log.info("There is still a discrepancy between the local list of instances and one in the storage. " +
+      if (oldInstanceIds != instances.keySet && instances.nonEmpty) {
+        log.info("There is a discrepancy between the local list of instances and one in the storage. " +
           "Additional refreshment is required")
-        after(RefreshInstancesRetryInterval, context.system.scheduler)(refreshInstancesList()).pipeTo(self)
+        scheduleRefreshInstanceList()
       }
     case RefreshInstancesListFailed(e) =>
       log.error(e, "Failed to refresh the list of instances. Retrying...")
-      after(RefreshInstancesRetryInterval, context.system.scheduler)(refreshInstancesList()).pipeTo(self)
+      scheduleRefreshInstanceList()
+    case _: RefreshInstancesList =>
+      log.info("Ignoring the instance list refreshment command")
   }
 
   private def clusterEventReceive: Receive = {
@@ -325,9 +317,11 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
 
   private def onMemberUp(member: Member): Unit = {
     if (member.uniqueAddress == cluster.selfUniqueAddress) {
-      // Master could have missed some cluster events while trying to join the cluster,
-      // so we need to bring the current list of instances in sync with ZooKeeper.
-      refreshInstancesList().pipeTo(self)
+      if (instances.nonEmpty) {
+        // Master could have missed some cluster events while trying to join the cluster,
+        // so we need to bring the current list of instances in sync with ZooKeeper.
+        scheduleRefreshInstanceList()
+      }
     } else {
       updateInstanceStatusByAddr(member.uniqueAddress, InstanceUp)
     }
@@ -366,13 +360,18 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
     }
   }
 
+  private def scheduleRefreshInstanceList(): Unit = {
+    after(monitoringConfig.instanceListRefreshInterval,
+      context.system.scheduler)(refreshInstancesList()).pipeTo(self)
+  }
+
   private def refreshInstancesList(): Future[Any] = {
     instanceStorage.getInstances
       .map(RefreshInstancesList(_))
       .recover { case NonFatal(e) => RefreshInstancesListFailed(e) }
   }
 
-  private def uninitializedReceive: Receive = {
+  private lazy val uninitializedReceive: Receive = {
     case InitSuccessful(knownInstances) =>
       knownInstances.foreach(instances.put(_, None))
       cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
@@ -387,18 +386,17 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
       stash()
   }
 
-  private def initializedReceive: Receive = {
+  private lazy val initializedReceive: Receive = {
     apiCommandReceive orElse internalEventReceive orElse
       refreshInstancesListReceive orElse clusterEventReceive
   }
 
-  override def serviceReceive: Receive = {
+  override lazy val serviceReceive: Receive = {
     uninitializedReceive orElse internalEventReceive
   }
 }
 
 object MonitoringService extends RemoteServiceFactory {
-  private case class RefreshInstancesList(instances: Seq[InstanceId])
   private case class RefreshInstancesListFailed(e: Throwable)
   private case class InitSuccessful(knownInstances: Seq[InstanceId])
   private case class InitFailed(reason: Throwable)
@@ -407,8 +405,6 @@ object MonitoringService extends RemoteServiceFactory {
   private[akkeeper] case class InstanceLaunchTimeout(instanceId: InstanceId)
 
   private val DefaultInstancesFilter = (_: InstanceInfo) => true
-
-  private val RefreshInstancesRetryInterval: FiniteDuration = 10 seconds
 
   override val actorName = "monitoringService"
 

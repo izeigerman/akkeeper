@@ -16,8 +16,8 @@
 package akkeeper.master.service
 
 import akka.actor._
-import akka.cluster.Cluster
-import akka.cluster.ClusterEvent.{InitialStateAsEvents, MemberUp}
+import akka.cluster.{Cluster, Member}
+import akka.cluster.ClusterEvent.{InitialStateAsEvents, MemberUp, MemberWeaklyUp}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import akkeeper.api._
@@ -36,10 +36,9 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
   extends Actor with ActorLogging with Stash {
 
   private val config: Config = context.system.settings.config
-  private val numOfInstancesToJoin: Int = config.akkeeperAkka.seedNodesNum
+  private val akkeeperAkkaConfig: AkkeeperAkkaConfig = config.akkeeperAkka
 
   private implicit val dispatcher = context.dispatcher
-  private implicit val instanceListTimeout: Timeout = Timeout(config.master.instanceListTimeout)
 
   private val containerService: ActorRef = ContainerService.createLocal(context)
   private val monitoringService: ActorRef = MonitoringService.createLocal(context, instanceStorage)
@@ -56,7 +55,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
   private val cluster = Cluster(context.system)
 
   private val seedInstances: mutable.Set[InstanceInfo] = mutable.Set.empty
-  private var numOfRequiredInstances: Int = numOfInstancesToJoin
+  private var numOfRequiredInstances: Int = akkeeperAkkaConfig.seedNodesNum
 
   override def preStart(): Unit = {
     context.watch(containerService)
@@ -64,16 +63,21 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
     context.watch(deployService)
     heartbeatService.foreach(context.watch)
 
-    val getInstancesMsg = GetInstances()
-    (monitoringService ? getInstancesMsg)
+    implicit val instanceListTimeout: Timeout = Timeout(config.master.instanceListTimeout)
+    (monitoringService ? GetInstances())
+      .map {
+        case OperationFailed(_, error) => StopWithError(error)
+        case other => other
+      }
       .recover {
-        case error => OperationFailed(getInstancesMsg.requestId, error)
+        case error => StopWithError(error)
       }
       .pipeTo(self)
   }
 
-  private def stopServicesWithError(): Unit = {
-    val error = MasterServiceException("Akkeeper Master Service fatal error")
+  private def stopServicesWithError(e: Throwable): Unit = {
+    log.error(e, "Terminating Akkeeper Master due to fatal error")
+    val error = MasterServiceException(s"Akkeeper Master Service fatal error: ${e.getMessage}")
     context.children.foreach(_ ! StopWithError(error))
   }
 
@@ -87,10 +91,23 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
   private def joinCluster(seedNodes: immutable.Seq[Address]): Unit = {
     cluster.joinSeedNodes(seedNodes)
     context.become(joinClusterReceive)
-    cluster.subscribe(self, initialStateMode = InitialStateAsEvents, classOf[MemberUp])
+    cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
+      classOf[MemberUp], classOf[MemberWeaklyUp])
   }
 
-  private def serviceTerminatedReceive: Receive = {
+  private def onMemberUp(member: Member): Unit = {
+    if (member.address == cluster.selfAddress) {
+      log.info("Master service successfully joined the cluster")
+      cluster.unsubscribe(self)
+      finishInit()
+    }
+  }
+
+  private def scheduleClusterJoinTimeout(): Unit = {
+    context.system.scheduler.scheduleOnce(akkeeperAkkaConfig.joinClusterTimeout, self, ClusterJoinTimeout)
+  }
+
+  private lazy val serviceTerminatedReceive: Receive = {
     case Terminated(actor) =>
       if (actor == containerService) {
         log.info("Container Service has been terminated")
@@ -107,7 +124,7 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
       }
   }
 
-  private def apiReceive: Receive = {
+  private lazy val apiReceive: Receive = {
     case r: DeployContainer => deployService.forward(r)
     case r: InstanceRequest => monitoringService.forward(r)
     case r: ContainerRequest => containerService.forward(r)
@@ -118,20 +135,27 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
       heartbeatService.foreach(context.stop)
   }
 
-  private def clusterEventReceive: Receive = {
-    case MemberUp(member) =>
-      if (member.address == cluster.selfAddress) {
-        log.debug("Master service successfully joined the cluster")
-        cluster.unsubscribe(self)
-        finishInit()
-      }
+  private lazy val clusterEventReceive: Receive = {
+    case MemberUp(member) => onMemberUp(member)
+    case MemberWeaklyUp(member) => onMemberUp(member)
   }
 
-  private def apiStashReceive: Receive = {
+  private lazy val clusterJoinTimeoutReceive: Receive = {
+    case ClusterJoinTimeout =>
+      log.error("Failed to join the existing cluster during " +
+        s"${akkeeperAkkaConfig.joinClusterTimeout.toSeconds} seconds. Creating a new cluster")
+
+      // We've just created a new cluster so we must reset the list of known instances.
+      monitoringService ! RefreshInstancesList(Seq.empty)
+
+      joinCluster(immutable.Seq(cluster.selfAddress))
+  }
+
+  private lazy val apiStashReceive: Receive = {
     case _: WithRequestId => stash()
   }
 
-  private def fetchInstancesListReceive: Receive = {
+  private lazy val fetchInstancesListReceive: Receive = {
     case InstancesList(_, instanceIds) =>
       val nonMasterInstanceIds = instanceIds.filter(_.containerName != MasterServiceName)
       if (nonMasterInstanceIds.isEmpty) {
@@ -139,10 +163,9 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
         joinCluster(immutable.Seq(cluster.selfAddress))
       } else {
         log.info(s"Found ${nonMasterInstanceIds.size} running instances. Joining the existing Akka cluster")
-        // Choose N random instances to join.
-        val seedNodeIds = scala.util.Random.shuffle(nonMasterInstanceIds).take(numOfInstancesToJoin)
-        numOfRequiredInstances = seedNodeIds.size
-        seedNodeIds.foreach(monitoringService ! GetInstance(_))
+        numOfRequiredInstances = Math.min(nonMasterInstanceIds.size, numOfRequiredInstances)
+        nonMasterInstanceIds.foreach(monitoringService ! GetInstance(_))
+        scheduleClusterJoinTimeout()
       }
 
     case InstanceInfoResponse(_, info) =>
@@ -151,27 +174,36 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
         "more needed to proceed")
       if (seedInstances.size >= numOfRequiredInstances) {
         val seedAddrs = immutable.Seq(seedInstances.map(_.address.get.address).toSeq: _*)
-        joinCluster(cluster.selfAddress +: seedAddrs.map(toAkkaAddress))
+        joinCluster(seedAddrs.map(toAkkaAddress))
       }
 
     case other @ (_: InstanceResponse | _: OperationFailed) =>
-      log.error(s"Failed to retrieve information about instances. Initialization failed: $other")
-      stopServicesWithError()
+      log.error(s"Failed to retrieve information about instance ($other)")
+
+    case StopWithError(e) =>
+      stopServicesWithError(e)
   }
 
   // Initial state. Used to receive messages from MonitoringService to join the cluster.
-  private def uninitializedReceive: Receive = {
-    fetchInstancesListReceive orElse serviceTerminatedReceive orElse apiStashReceive
+  private lazy val uninitializedReceive: Receive = {
+    fetchInstancesListReceive orElse serviceTerminatedReceive orElse
+      apiStashReceive orElse clusterJoinTimeoutReceive
   }
 
   // Temporary state. Used while awaiting MemberUp event generated by a cluster leader.
-  private def joinClusterReceive: Receive = {
-    clusterEventReceive orElse serviceTerminatedReceive orElse apiStashReceive
+  private lazy val joinClusterReceive: Receive = {
+    clusterEventReceive orElse serviceTerminatedReceive orElse
+      apiStashReceive orElse clusterJoinTimeoutReceive
   }
 
   // Actual "working" state. Forwards messages to corresponding actors.
-  private def initializedReceive: Receive = {
-    apiReceive orElse serviceTerminatedReceive
+  private lazy val initializedReceive: Receive = {
+    apiReceive orElse serviceTerminatedReceive orElse ignoredInitEventsReceive
+  }
+
+  private lazy val ignoredInitEventsReceive: Receive = {
+    case ClusterJoinTimeout =>
+    case _: InstanceInfoResponse =>
   }
 
   override def receive: Receive = uninitializedReceive
@@ -186,4 +218,6 @@ object MasterService extends RemoteServiceFactory {
                                     instanceStorage: InstanceStorage): ActorRef = {
     factory.actorOf(Props(classOf[MasterService], deployClient, instanceStorage), actorName)
   }
+
+  private case object ClusterJoinTimeout
 }

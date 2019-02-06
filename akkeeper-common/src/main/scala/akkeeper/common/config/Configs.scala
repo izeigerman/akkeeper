@@ -57,6 +57,8 @@ private[akkeeper] final class HeartbeatConfig(heartbeatConfig: Config) {
 
 private[akkeeper] final class MonitoringConfig(monitoringConfig: Config) {
   lazy val launchTimeout: FiniteDuration = monitoringConfig.getDuration("launch-timeout")
+  lazy val instanceListRefreshInterval: FiniteDuration =
+    monitoringConfig.getDuration("instance-list-refresh-interval")
 }
 
 private[akkeeper] final class LauncherConfig(launcherConfig: Config) {
