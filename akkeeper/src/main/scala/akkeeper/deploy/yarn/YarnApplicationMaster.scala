@@ -214,12 +214,14 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
             try {
               launchInstance(container, containerDef, instanceId)
             } catch {
-              case NonFatal(e) => logger.error(s"Failed to launch instance $instanceId", e)
+              case NonFatal(e) =>
+                logger.error(s"Failed to launch instance $instanceId", e)
+                onStartContainerError(container.getId, e)
             }
           }
         })
       } else {
-        logger.debug(s"Unknown container allocation ${container.getId}. Realesing container")
+        logger.debug(s"Unknown container allocation ${container.getId}. Releasing container")
         yarnClient.releaseAssignedContainer(container.getId)
       }
     }
