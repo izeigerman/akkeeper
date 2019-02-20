@@ -15,6 +15,8 @@
  */
 package akkeeper.master.service
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Props, Status}
 import akka.pattern.pipe
 import akka.cluster.{Cluster, Member, UniqueAddress}
@@ -100,12 +102,15 @@ object MemberAutoDownService {
 
   private val DefaultPollInterval = 30 seconds
 
+  private val serviceCounter: AtomicInteger = new AtomicInteger(0)
+
   private[akkeeper] def createLocal(factory: ActorRefFactory,
                                     targetAddress: UniqueAddress,
                                     targetInstanceId: InstanceId,
                                     instanceStorage: InstanceStorage,
                                     pollInterval: FiniteDuration = DefaultPollInterval): ActorRef = {
+    val counter = serviceCounter.getAndIncrement()
     factory.actorOf(Props(classOf[MemberAutoDownService], targetAddress,
-      targetInstanceId, instanceStorage, pollInterval), s"autoDown-$targetInstanceId")
+      targetInstanceId, instanceStorage, pollInterval), s"autoDown-$targetInstanceId-$counter")
   }
 }
