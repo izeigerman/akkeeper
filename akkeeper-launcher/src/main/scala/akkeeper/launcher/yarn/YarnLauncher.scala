@@ -24,7 +24,7 @@ import akkeeper.common.config._
 import akkeeper.launcher._
 import akkeeper.yarn._
 import akkeeper.yarn.client.YarnLauncherClient
-import com.typesafe.config.{Config, ConfigRenderOptions}
+import com.typesafe.config.{Config, ConfigRenderOptions, ConfigValueFactory}
 import org.apache.commons.io.FilenameUtils
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.conf.YarnConfiguration
@@ -94,7 +94,8 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
   }
 
   private def buildLocalResources(stagingDir: String,
-                                  args: LaunchArguments): util.HashMap[String, LocalResource] = {
+                                  args: LaunchArguments,
+                                  userConfig: Option[Config]): util.HashMap[String, LocalResource] = {
     val resourceManger = new YarnLocalResourceManager(yarnConf, stagingDir)
     val localResources = new util.HashMap[String, LocalResource]()
 
@@ -121,7 +122,7 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
       localResources.put(LocalResourceNames.KeytabName, keytabResource)
     })
 
-    args.userConfig.foreach(config => {
+    userConfig.foreach(config => {
       val userConfigString = config.root().render(ConfigRenderOptions.concise())
       val configResource = resourceManger.createLocalResource(
         new ByteArrayInputStream(userConfigString.getBytes("UTF-8")),
@@ -150,6 +151,10 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
     YarnUtils.buildCmd(mainClass, jvmArgs = jvmArgs, appArgs = appArgs)
   }
 
+  private def addStagingDirToUserConfig(config: Config, stagingDir: String): Config = {
+    config.withValue("akkeeper.yarn.staging-directory", ConfigValueFactory.fromAnyRef(stagingDir))
+  }
+
   private def launchWithClient(yarnClient: YarnLauncherClient,
                                config: Config,
                                args: LaunchArguments): Future[LaunchResult] = {
@@ -170,8 +175,10 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
 
     appContext.setResource(getResource(config))
 
-    val stagingDir = YarnUtils.appStagingDirectory(yarnConf, config.yarn.stagingDirectory, appId.toString)
-    val localResources = buildLocalResources(stagingDir, args)
+    val baseStagingDir = config.yarn.stagingDirectory.getOrElse(YarnUtils.defaultStagingDirectory(yarnConf))
+    val stagingDir = YarnUtils.appStagingDirectory(yarnConf, Some(baseStagingDir), appId.toString)
+    val updatedUserConfig = args.userConfig.map(addStagingDirToUserConfig(_, baseStagingDir))
+    val localResources = buildLocalResources(stagingDir, args, updatedUserConfig)
     val cmd = buildCmd(appId, config, args)
     logger.debug(s"Akkeeper Master command: ${cmd.mkString(" ")}")
 
