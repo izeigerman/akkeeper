@@ -35,7 +35,8 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
                                instanceId: InstanceId,
                                masterAddress: Address,
                                registrationRetryInterval: FiniteDuration,
-                               joinClusterTimeout: FiniteDuration)
+                               joinClusterTimeout: FiniteDuration,
+                               useAkkaCluster: Boolean)
   extends Actor with ActorLogging {
 
   private implicit val dispatcher = context.dispatcher
@@ -46,7 +47,11 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
 
   override def preStart(): Unit = {
     instanceStorage.start()
-    self ! JoinCluster
+    if (useAkkaCluster) {
+      self ! JoinCluster
+    } else {
+      finishInit()
+    }
   }
 
   override def postStop(): Unit = {
@@ -65,7 +70,11 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
   private def notifyMonitoringService(): Unit = {
     try {
       thisInstance.foreach(info => {
-        val monitoringService = MonitoringService.createRemote(context.system)
+        val monitoringServicePath = RootActorPath(masterAddress) /
+          "user" /
+          MasterService.MasterServiceName /
+          MonitoringService.actorName
+        val monitoringService = context.actorSelection(monitoringServicePath)
         monitoringService ! info
         log.debug("Successfully reported to the Monitoring service")
       })
@@ -167,16 +176,20 @@ class ContainerInstanceService(userActors: Seq[ActorLaunchContext],
       onClusterJoinTimeout()
   }
 
+  private def finishInit(): Unit = {
+    log.info("Container instance successfully initialized")
+    launchUserActors()
+    context.become(initializedReceive)
+    registerThisInstance()
+  }
+
   private def onClusterJoined(isWeakly: Boolean): Unit = {
     if (log.isInfoEnabled) {
       val weaklyMsg = if (isWeakly) " (weakly)" else ""
       log.info("Successfully joined the cluster" + weaklyMsg)
     }
     cluster.unsubscribe(self)
-    launchUserActors()
-    context.become(initializedReceive)
-    registerThisInstance()
-
+    finishInit()
     // Subscribe for cluster events to detect when Akkeeper Master becomes unavailable.
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[UnreachableMember], classOf[MemberRemoved],
@@ -220,9 +233,10 @@ object ContainerInstanceService {
                   instanceId: InstanceId,
                   masterAddress: Address,
                   registrationRetryInterval: FiniteDuration = DefaultRegistrationRetryInterval,
-                  joinClusterTimeout: FiniteDuration = DefaultJoinClusterTimeout): ActorRef = {
+                  joinClusterTimeout: FiniteDuration = DefaultJoinClusterTimeout,
+                  useAkkaCluster: Boolean = true): ActorRef = {
     val props = Props(classOf[ContainerInstanceService], userActors, instanceStorage,
-      instanceId, masterAddress, registrationRetryInterval, joinClusterTimeout)
+      instanceId, masterAddress, registrationRetryInterval, joinClusterTimeout, useAkkaCluster)
     factory.actorOf(props, ActorName)
   }
 }

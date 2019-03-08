@@ -25,6 +25,7 @@ import akkeeper.common._
 import akkeeper.common.config._
 import akkeeper.container.service.ContainerInstanceService
 import akkeeper.storage._
+import com.typesafe.config.Config
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -34,7 +35,9 @@ import MonitoringService._
 private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
   extends RequestTrackingService with Stash {
 
-  private val monitoringConfig: MonitoringConfig = context.system.settings.config.monitoring
+  private val config: Config = context.system.settings.config
+  private val monitoringConfig: MonitoringConfig = config.monitoring
+  private val akkeeperAkkaConfig: AkkeeperAkkaConfig = config.akkeeperAkka
 
   private implicit val dispatcher = context.dispatcher
   private val cluster = Cluster(context.system)
@@ -48,7 +51,11 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
   override def preStart(): Unit = {
     log.debug("Initializing Monitoring service")
     instanceStorage.start()
-    initInstanceList()
+    if (akkeeperAkkaConfig.useAkkaCluster) {
+      initInstanceList()
+    } else {
+      finishInit()
+    }
     super.preStart()
   }
 
@@ -153,6 +160,16 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
       } else if (info.status != InstanceDeploying) {
         launchTimeoutTasks.get(info.instanceId).foreach(_.cancel())
         launchTimeoutTasks.remove(info.instanceId)
+        if (info.status == InstanceUp && !akkeeperAkkaConfig.useAkkaCluster) {
+          // When Akka Cluster is disabled there is no way for us to receive events about
+          // unavailability of launched members. This means that we can no longer rely
+          // on the local registry. By removing launched instances from the local registry
+          // we ensure that all API requests will be forced to access the remote storage
+          // which always contains an up to date information.
+          log.info(s"Instance ${info.instanceId} is up and running. Removing it from the local " +
+            "storage due to inaccessibility of Akka Cluster")
+          instances.remove(info.instanceId)
+        }
       }
     }
     if (pendingTermination.contains(info.instanceId)) {
@@ -168,7 +185,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
   private def onGetInstance(request: GetInstance): Unit = {
     val instanceId = request.instanceId
     val requestId = request.requestId
-    if (instances.contains(instanceId)) {
+    if (instances.contains(instanceId) || !akkeeperAkkaConfig.useAkkaCluster) {
       instances.get(instanceId).flatten match {
         case Some(info) =>
           log.debug(s"Accessing the local cache to get the instance $instanceId")
@@ -192,12 +209,20 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
 
   private def onGetInstances(request: GetInstances): Unit = {
     val requestId = request.requestId
-    val instanceIds = instances.keySet.toSeq
-    sender() ! InstancesList(requestId, instanceIds)
+    if (akkeeperAkkaConfig.useAkkaCluster) {
+      val instanceIds = instances.keySet.toSeq
+      sender() ! InstancesList(requestId, instanceIds)
+    } else {
+      val localInstances = instances.values.flatten.map(_.instanceId).toSet
+      instanceStorage.getInstances
+        .map(remoteInstances => InstancesList(requestId, (localInstances ++ remoteInstances).toSeq))
+        .pipeTo(sender())
+    }
   }
 
-  private def localGetInstancesBy(requestId: RequestId, roles: Set[String],
-                                  containerName: String, statuses: Set[InstanceStatus]): Unit = {
+  private def localGetInstancesBy(roles: Set[String],
+                                  containerName: String,
+                                  statuses: Set[InstanceStatus]): Future[Seq[InstanceId]] = {
     log.debug(s"Accessing the local cache to get instances (roles=$roles, containerName=$containerName)")
     val containerFilter: InstanceInfo => Boolean =
       if (containerName.nonEmpty) i => i.containerName == containerName else DefaultInstancesFilter
@@ -209,35 +234,32 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
     val searchResult = instances.collect {
       case (id, Some(info)) if containerFilter(info) && roleFilter(info) && statusFilter(info) => id
     }.toSeq
-    sender() ! InstancesList(requestId, searchResult)
+    Future.successful(searchResult)
   }
 
-  private def storageGetInstancesBy(requestId: RequestId, roles: Set[String],
-                                    containerName: String, statuses: Set[InstanceStatus]): Unit = {
+  private def storageGetInstancesBy(roles: Set[String],
+                                    containerName: String,
+                                    statuses: Set[InstanceStatus]): Future[Seq[InstanceId]] = {
     log.debug(s"Accessing the remote storage to get instances (roles=$roles, containerName=$containerName)")
     val localSelf = self
-    val localSender = sender()
 
     val instancesFuture = instanceStorage.getInstancesByContainer(containerName)
     if (roles.nonEmpty || statuses.nonEmpty) {
-      instancesFuture.foreach(ids => {
+      instancesFuture.flatMap(ids => {
         val infosFuture = Future.sequence(ids.map(id => instanceStorage.getInstance(id)))
         infosFuture.map(InstancesUpdate).pipeTo(localSelf)
 
-        val response = infosFuture.map(infos => {
+        infosFuture.map(infos => {
           val roleFilter: InstanceInfo => Boolean =
             if (roles.nonEmpty) i => roles.intersect(i.roles).nonEmpty else DefaultInstancesFilter
           val statusFilter: InstanceInfo => Boolean =
             if (statuses.nonEmpty) i => statuses.contains(i.status) else DefaultInstancesFilter
           val filteredInfos = infos.withFilter(roleFilter).withFilter(statusFilter)
-          InstancesList(requestId, filteredInfos.map(_.instanceId))
+          filteredInfos.map(_.instanceId)
         })
-        response
-          .recover { case NonFatal(e) => OperationFailed(requestId, e) }
-          .pipeTo(localSender)
       })
     } else {
-      instancesFuture.map(InstancesList(requestId, _)).pipeTo(localSender)
+      instancesFuture
     }
   }
 
@@ -247,13 +269,23 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
     val containerName = request.containerName.getOrElse("")
     val statuses = request.statuses
 
-    if (instances.exists(_._2 eq None)) {
-      // If we are missing information about at least one instance
-      // we can't perform a proper local search.
-      storageGetInstancesBy(requestId, roles, containerName, statuses)
-    } else {
-      localGetInstancesBy(requestId, roles, containerName, statuses)
-    }
+    val response =
+      if (instances.exists(_._2 eq None) || !akkeeperAkkaConfig.useAkkaCluster) {
+        // If we are missing information about at least one instance
+        // we can't perform a purely local search.
+        val localInstances = localGetInstancesBy(roles, containerName, statuses)
+        val remoteInstances = storageGetInstancesBy(roles, containerName, statuses)
+        for {
+          local <- localInstances
+          remote <- remoteInstances
+        } yield (local.toSet ++ remote).toSeq
+      } else {
+        localGetInstancesBy(roles, containerName, statuses)
+      }
+    response
+      .map(InstancesList(requestId, _))
+      .recover { case NonFatal(e) => OperationFailed(requestId, e) }
+      .pipeTo(sender())
   }
 
   private lazy val apiCommandReceive: Receive = {
@@ -264,7 +296,12 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
     case request: GetInstancesBy =>
       onGetInstancesBy(request)
     case request: TerminateInstance =>
-      onTerminateInstance(request)
+      if (akkeeperAkkaConfig.useAkkaCluster) {
+        onTerminateInstance(request)
+      } else {
+        sender() ! OperationFailed(request.requestId, MasterServiceException(
+          "Termination is not supported when Akka Cluster is disabled"))
+      }
   }
 
   private lazy val internalEventReceive: Receive = {
@@ -360,6 +397,12 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
     }
   }
 
+  private def finishInit(): Unit = {
+    log.info("Monitoring service successfully initialized")
+    become(initializedReceive)
+    unstashAll()
+  }
+
   private def scheduleRefreshInstanceList(): Unit = {
     after(monitoringConfig.instanceListRefreshInterval,
       context.system.scheduler)(refreshInstancesList()).pipeTo(self)
@@ -376,9 +419,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
       knownInstances.foreach(instances.put(_, None))
       cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
         classOf[MemberUp], classOf[MemberRemoved], classOf[UnreachableMember], classOf[ReachableMember])
-      log.info("Monitoring service successfully initialized")
-      become(initializedReceive)
-      unstashAll()
+      finishInit()
     case InitFailed(reason) =>
       log.error(reason, "Monitoring service initialization failed")
       context.stop(self)

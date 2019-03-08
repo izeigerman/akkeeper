@@ -63,16 +63,20 @@ private[akkeeper] class MasterService(deployClient: DeployClient,
     context.watch(deployService)
     heartbeatService.foreach(context.watch)
 
-    implicit val instanceListTimeout: Timeout = Timeout(config.master.instanceListTimeout)
-    (monitoringService ? GetInstances())
-      .map {
-        case OperationFailed(_, error) => StopWithError(error)
-        case other => other
-      }
-      .recover {
-        case error => StopWithError(error)
-      }
-      .pipeTo(self)
+    if (akkeeperAkkaConfig.useAkkaCluster) {
+      implicit val instanceListTimeout: Timeout = Timeout(config.master.instanceListTimeout)
+      (monitoringService ? GetInstances())
+        .map {
+          case OperationFailed(_, error) => StopWithError(error)
+          case other => other
+        }
+        .recover {
+          case error => StopWithError(error)
+        }
+        .pipeTo(self)
+    } else {
+      finishInit()
+    }
   }
 
   private def stopServicesWithError(e: Throwable): Unit = {
