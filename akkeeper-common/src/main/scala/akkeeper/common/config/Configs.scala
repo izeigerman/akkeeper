@@ -41,6 +41,7 @@ private[akkeeper] final class AkkeeperAkkaConfig(akkeeperAkkaConfig: Config) {
   lazy val port: Int = akkeeperAkkaConfig.getInt("port")
   lazy val seedNodesNum: Int = akkeeperAkkaConfig.getInt("seed-nodes-num")
   lazy val joinClusterTimeout: FiniteDuration = akkeeperAkkaConfig.getDuration("join-cluster-timeout")
+  lazy val useAkkaCluster: Boolean = akkeeperAkkaConfig.getBoolean("use-akka-cluster")
 }
 
 private[akkeeper] final class MasterConfig(masterConfig: Config) {
