@@ -194,7 +194,6 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
     yarnClient.submitApplication(appContext)
     logger.info(s"Launched Akkeeper Cluster $appId")
 
-
     val masterHostFuture = retrieveMasterHost(yarnClient, config, appId, args.pollInterval)
     masterHostFuture.map(LaunchResult(appId.toString, _))
   }
