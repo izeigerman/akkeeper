@@ -6,9 +6,9 @@ script:
 
 matrix:
   include:
-    - jdk: oraclejdk9
+    - jdk: openjdk8
       scala: 2.11.11
-    - jdk: oraclejdk9
+    - jdk: openjdk8
       scala: 2.12.6
 
 before_cache:
