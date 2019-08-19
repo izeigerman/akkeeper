@@ -108,27 +108,32 @@ class YarnLauncherSpec extends FlatSpec with Matchers with MockFactory with Befo
   }
 
   "A YARN Launcher" should "launch application master successfully" in {
-    val yarnConfig = new YarnConfiguration()
-    val yarnClient = mock[YarnLauncherClient]
-    (yarnClient.init _).expects(yarnConfig)
-    (yarnClient.start _).expects()
-    (yarnClient.stop _).expects()
-
     val yarnClientApp = createYarnClientApplication(1)
     val appContext = yarnClientApp.getApplicationSubmissionContext
     val appId = appContext.getApplicationId
-    (yarnClient.createApplication _).expects().returns(yarnClientApp)
-    (yarnClient.submitApplication _).expects(appContext).returns(appId)
 
     val reportGenerator = new ReportGeneratorBuilder(appId)
       .reportState(YarnApplicationState.ACCEPTED, 1)
       .reportState(YarnApplicationState.SUBMITTED, 1)
       .reportState(YarnApplicationState.RUNNING, 1)
       .build
-    (yarnClient.getApplicationReport _)
-      .expects(appId)
-      .onCall((_: ApplicationId) => reportGenerator.getNextReport())
-      .repeated(3)
+
+    val yarnConfig = new YarnConfiguration()
+    val yarnClient = mock[YarnLauncherClient]
+    inSequence {
+      (yarnClient.init _).expects(yarnConfig)
+      (yarnClient.start _).expects()
+
+      (yarnClient.createApplication _).expects().returns(yarnClientApp)
+      (yarnClient.submitApplication _).expects(appContext).returns(appId)
+
+      (yarnClient.getApplicationReport _)
+        .expects(appId)
+        .onCall((_: ApplicationId) => reportGenerator.getNextReport())
+        .repeated(3)
+
+      (yarnClient.stop _).expects()
+    }
 
     val launcher = new YarnLauncher(yarnConfig, () => yarnClient)
     val launchArgs = createTestLaunchArguments
