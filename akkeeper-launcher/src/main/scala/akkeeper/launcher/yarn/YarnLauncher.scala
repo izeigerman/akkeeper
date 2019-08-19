@@ -41,15 +41,14 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
 
   private val logger = LoggerFactory.getLogger(classOf[YarnLauncher])
 
-  private def withYarnClient[T](f: YarnLauncherClient => T): T = {
+  private def withYarnClient[T](f: YarnLauncherClient => Future[T]): Future[T] = {
     val yarnClient = yarnClientCreator()
-    try {
+    val yarnClientStarted = Future {
       yarnClient.init(yarnConf)
       yarnClient.start()
-      f(yarnClient)
-    } finally {
-      yarnClient.stop()
     }
+    val result = yarnClientStarted.flatMap(_ => f(yarnClient))
+    result.andThen { case _ => yarnClient.stop() }
   }
 
   private def retrieveMasterHost(yarnClient: YarnLauncherClient,
@@ -195,15 +194,14 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
     yarnClient.submitApplication(appContext)
     logger.info(s"Launched Akkeeper Cluster $appId")
 
+
     val masterHostFuture = retrieveMasterHost(yarnClient, config, appId, args.pollInterval)
     masterHostFuture.map(LaunchResult(appId.toString, _))
   }
 
   override def launch(config: Config, args: LaunchArguments): Future[LaunchResult] = {
-    Future {
-      withYarnClient { yarnClient =>
-        launchWithClient(yarnClient, config, args)
-      }
-    }.flatMap(identity) // There is no Future.flatten method in Scala 2.11.
+    withYarnClient { yarnClient =>
+      launchWithClient(yarnClient, config, args)
+    }
   }
 }
