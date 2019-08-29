@@ -114,26 +114,23 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
     log.info(s"Terminating instance ${request.instanceId}")
     val instanceId = request.instanceId
     val requestId = request.requestId
-    if (instances.contains(instanceId)) {
-      val instance = instances(instanceId)
-      if (instance.exists(_.address.isDefined)) {
-        // If the address is present we can use the local storage to retrieve
-        // the information about this instance.
-        instance.foreach(terminateInstance)
-        sendAndRemoveOriginalSender(InstanceTerminated(requestId, instanceId))
-      } else {
-        // Redirecting the information about the instance to ourselves
-        // to terminate the instance later.
-        pendingTermination.put(instanceId, requestId)
-        instanceStorage.getInstance(instanceId)
-          .recover {
-            case _: RecordNotFoundException =>
-              InstanceTerminationFailed(instanceId, InstanceNotFound(requestId, instanceId))
-            case NonFatal(e) =>
-              InstanceTerminationFailed(instanceId, OperationFailed(requestId, e))
-          }
-          .pipeTo(self)
-      }
+    if (instances.get(instanceId).flatten.exists(_.address.isDefined)) {
+      // If the address is present we can use the local storage to retrieve
+      // the information about this instance.
+      instances(instanceId).foreach(terminateInstance)
+      sendAndRemoveOriginalSender(InstanceTerminated(requestId, instanceId))
+    } else if (instances.contains(instanceId) || !akkeeperAkkaConfig.useAkkaCluster) {
+      // Redirecting the information about the instance to ourselves
+      // to terminate the instance later.
+      pendingTermination.put(instanceId, requestId)
+      instanceStorage.getInstance(instanceId)
+        .recover {
+          case _: RecordNotFoundException =>
+            InstanceTerminationFailed(instanceId, InstanceNotFound(requestId, instanceId))
+          case NonFatal(e) =>
+            InstanceTerminationFailed(instanceId, OperationFailed(requestId, e))
+        }
+        .pipeTo(self)
     } else {
       onInstanceNotFound(requestId, instanceId)
     }
@@ -296,12 +293,7 @@ private[akkeeper] class MonitoringService(instanceStorage: InstanceStorage)
     case request: GetInstancesBy =>
       onGetInstancesBy(request)
     case request: TerminateInstance =>
-      if (akkeeperAkkaConfig.useAkkaCluster) {
-        onTerminateInstance(request)
-      } else {
-        sender() ! OperationFailed(request.requestId, MasterServiceException(
-          "Termination is not supported when Akka Cluster is disabled"))
-      }
+      onTerminateInstance(request)
   }
 
   private lazy val internalEventReceive: Receive = {
