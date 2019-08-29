@@ -360,7 +360,7 @@ class MonitoringServiceSpec(system: ActorSystem) extends TestKit(system)
     gracefulActorStop(service)
   }
 
-  it should "fail to terminate the instance (instance from local cache)" in {
+  it should "terminate the instance (instance from local cache)" in {
     val selfAddr = Cluster(system).selfUniqueAddress
     val instance = createInstanceInfo("container").copy(address = Some(selfAddr))
     val storage = mock[InstanceStorage]
