@@ -119,7 +119,17 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     // Retrieve a content of the resources/ directory.
     addExistingResources(LocalResourceNames.ResourcesDirName)
 
+    localResources ++= getAkkeeperGlobalResources()
     localResources.toMap
+  }
+
+  private def getAkkeeperGlobalResources(): Map[String, LocalResource] = {
+    config.config.akkeeper.globalResources.map { r =>
+      val resourceType = if (r.archive) LocalResourceType.ARCHIVE else LocalResourceType.FILE
+      val resource = localResourceManager.getExistingResource(
+        new Path(r.uri), resourceType, LocalResourceVisibility.PRIVATE)
+      (r.localPath, resource)
+    }.toMap
   }
 
   private def buildActorLaunchContextResource(containerDefinition: ContainerDefinition,

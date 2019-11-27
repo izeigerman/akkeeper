@@ -37,16 +37,19 @@ private[akkeeper] final class YarnLocalResourceManager(conf: Configuration,
     }
   }
 
-  private def create(fs: FileSystem, status: FileStatus): LocalResource = {
+  private def create(fs: FileSystem,
+                     status: FileStatus,
+                     localResourceType: LocalResourceType,
+                     localResourceVisibility: LocalResourceVisibility): LocalResource = {
     LocalResource.newInstance(
-      ConverterUtils.getYarnUrlFromURI(fs.makeQualified(status.getPath).toUri),
-      LocalResourceType.FILE, LocalResourceVisibility.APPLICATION,
+      ConverterUtils.getYarnUrlFromURI(fs. makeQualified(status.getPath).toUri),
+      localResourceType, localResourceVisibility,
       status.getLen, status.getModificationTime
     )
   }
 
-  private def copyResourceToStagingDir(dstFs: FileSystem, srcStream: InputStream,
-                                       dstPath: String): Path = {
+  private def copyResourceToStagingDir(srcStream: InputStream, dstPath: String): Path = {
+    val dstFs = stagingDirPath.getFileSystem(conf)
     val dst = new Path(stagingDirPath, dstPath)
     withStream(dstFs.create(dst)) { out =>
       IOUtils.copy(srcStream, out)
@@ -55,11 +58,19 @@ private[akkeeper] final class YarnLocalResourceManager(conf: Configuration,
     dst
   }
 
+  def getExistingResource(
+    dstPath: Path,
+    localResourceType: LocalResourceType = LocalResourceType.FILE,
+    localResourceVisibility: LocalResourceVisibility = LocalResourceVisibility.APPLICATION
+  ): LocalResource = {
+    val dstFs = dstPath.getFileSystem(conf)
+    val dstStatus = dstFs.getFileStatus(dstPath)
+    create(dstFs, dstStatus, localResourceType, localResourceVisibility)
+  }
+
   def createLocalResource(srcStream: InputStream, dstPath: String): LocalResource = {
-    val dstFs = stagingDirPath.getFileSystem(conf)
-    val dst = copyResourceToStagingDir(dstFs, srcStream, dstPath)
-    val dstStatus = dstFs.getFileStatus(dst)
-    create(dstFs, dstStatus)
+    val dst = copyResourceToStagingDir(srcStream, dstPath)
+    getExistingResource(dst)
   }
 
   def createLocalResource(srcPath: String, dstPath: String): LocalResource = {
@@ -71,9 +82,7 @@ private[akkeeper] final class YarnLocalResourceManager(conf: Configuration,
   }
 
   def getExistingLocalResource(dstPath: Path): LocalResource = {
-    val fs = dstPath.getFileSystem(conf)
-    val dstStatus = fs.getFileStatus(new Path(stagingDirPath, dstPath))
-    create(fs, dstStatus)
+    getExistingResource(new Path(stagingDirPath, dstPath))
   }
 
   def getExistingLocalResource(dstPath: String): LocalResource = {
