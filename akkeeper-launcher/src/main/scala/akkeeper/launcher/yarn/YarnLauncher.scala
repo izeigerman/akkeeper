@@ -24,7 +24,7 @@ import akkeeper.common.config._
 import akkeeper.launcher._
 import akkeeper.yarn._
 import akkeeper.yarn.client.YarnLauncherClient
-import com.typesafe.config.{Config, ConfigRenderOptions, ConfigValueFactory}
+import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions, ConfigValueFactory}
 import org.apache.commons.io.FilenameUtils
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.conf.YarnConfiguration
@@ -94,40 +94,43 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
 
   private def buildLocalResources(stagingDir: String,
                                   args: LaunchArguments,
-                                  userConfig: Option[Config]): util.HashMap[String, LocalResource] = {
-    val resourceManger = new YarnLocalResourceManager(yarnConf, stagingDir)
+                                  launcherConfig: Config): util.HashMap[String, LocalResource] = {
+    val resourceManager = new YarnLocalResourceManager(yarnConf, stagingDir)
     val localResources = new util.HashMap[String, LocalResource]()
 
-    val akkeeperJar = resourceManger.createLocalResource(args.akkeeperJarPath.toString,
+    def uploadConfig(localResourceName: String, config: Config): Unit = {
+      val userConfigString = config.root().render(ConfigRenderOptions.concise())
+      val configResource = resourceManager.createLocalResource(
+        new ByteArrayInputStream(userConfigString.getBytes("UTF-8")), localResourceName)
+      localResources.put(localResourceName, configResource)
+    }
+
+    val akkeeperJar = resourceManager.createLocalResource(args.akkeeperJarPath.toString,
       LocalResourceNames.AkkeeperJarName)
     localResources.put(LocalResourceNames.AkkeeperJarName, akkeeperJar)
 
     // Add a user jar to the staging directory. No need to include it
     // into master local resources.
-    resourceManger.createLocalResource(args.userJar.toString,
+    resourceManager.createLocalResource(args.userJar.toString,
       LocalResourceNames.UserJarName)
 
     // Just upload the third-party jars. No need to include them
     // into master local resources.
-    uploadGenericFiles(args.otherJars, LocalResourceNames.ExtraJarsDirName, resourceManger)
+    uploadGenericFiles(args.otherJars, LocalResourceNames.ExtraJarsDirName, resourceManager)
 
     // Distribute resources.
-    uploadGenericFiles(args.resources, LocalResourceNames.ResourcesDirName, resourceManger)
+    uploadGenericFiles(args.resources, LocalResourceNames.ResourcesDirName, resourceManager)
 
     args.principal.foreach(_ => {
       // Distribute keytab.
-      val keytabResource = resourceManger.createLocalResource(args.keytab.get.toString,
+      val keytabResource = resourceManager.createLocalResource(args.keytab.get.toString,
         LocalResourceNames.KeytabName)
       localResources.put(LocalResourceNames.KeytabName, keytabResource)
     })
 
-    userConfig.foreach(config => {
-      val userConfigString = config.root().render(ConfigRenderOptions.concise())
-      val configResource = resourceManger.createLocalResource(
-        new ByteArrayInputStream(userConfigString.getBytes("UTF-8")),
-        LocalResourceNames.UserConfigName)
-      localResources.put(LocalResourceNames.UserConfigName, configResource)
-    })
+    args.userConfig.foreach(uploadConfig(LocalResourceNames.UserConfigName, _))
+    uploadConfig(LocalResourceNames.LauncherConfigName, launcherConfig)
+
     localResources
   }
 
@@ -150,15 +153,16 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
     YarnUtils.buildCmd(mainClass, jvmArgs = jvmArgs, appArgs = appArgs)
   }
 
-  private def addStagingDirToUserConfig(config: Config, stagingDir: String): Config = {
-    config.withValue("akkeeper.yarn.staging-directory", ConfigValueFactory.fromAnyRef(stagingDir))
-  }
-
-  private def addGlobalResourcesToUserConfig(config: Config, resources: Seq[AkkeeperResource]): Config = {
-    val configValue = resources.map { r =>
+  private def buildLauncherConfig(stagingDir: String, resources: Seq[AkkeeperResource]): Config = {
+    val globalResourcesConfigValue = resources.map { r =>
       Map("uri" -> r.uri.toString, "localPath" -> r.localPath, "archive" -> r.archive).asJava
     }
-    config.withValue("akkeeper.globalResources", ConfigValueFactory.fromAnyRef(configValue.asJava))
+    ConfigFactory.parseMap(
+      Map(
+        "akkeeper.yarn.staging-directory" -> stagingDir,
+        "akkeeper.globalResources" -> globalResourcesConfigValue.asJava
+      ).asJava
+    )
   }
 
   private def launchWithClient(yarnClient: YarnLauncherClient,
@@ -183,10 +187,8 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
 
     val baseStagingDir = config.yarn.stagingDirectory.getOrElse(YarnUtils.defaultStagingDirectory(yarnConf))
     val stagingDir = YarnUtils.appStagingDirectory(yarnConf, Some(baseStagingDir), appId.toString)
-    val updatedUserConfig = args.userConfig
-      .map(addStagingDirToUserConfig(_, baseStagingDir))
-      .map(addGlobalResourcesToUserConfig(_, args.globalResources))
-    val localResources = buildLocalResources(stagingDir, args, updatedUserConfig)
+    val launcherConfig = buildLauncherConfig(baseStagingDir, args.globalResources)
+    val localResources = buildLocalResources(stagingDir, args, launcherConfig)
     val cmd = buildCmd(appId, config, args)
     logger.debug(s"Akkeeper Master command: ${cmd.mkString(" ")}")
 
