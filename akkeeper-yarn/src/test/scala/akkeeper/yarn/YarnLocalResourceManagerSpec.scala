@@ -101,7 +101,7 @@ class YarnLocalResourceManagerSpec extends FlatSpec with Matchers with BeforeAnd
     val expectedPath = new Path(stagingDir, expectedFileName).toString
 
     manager.createLocalResource(resource, expectedFileName)
-    val actualResult = manager.getExistingLocalResource(expectedFileName)
+    val actualResult = manager.getLocalResourceFromStagingDir(expectedFileName)
     validateLocalResource(actualResult, expectedPath)
     validateResourcePayload("/application-container-test.conf", expectedPath)
   }

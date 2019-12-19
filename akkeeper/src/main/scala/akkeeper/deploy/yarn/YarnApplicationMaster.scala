@@ -76,7 +76,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
 
     // Distribute the user configuration.
     try {
-      val instanceConfigResource = localResourceManager.getExistingLocalResource(
+      val instanceConfigResource = localResourceManager.getLocalResourceFromStagingDir(
         LocalResourceNames.UserConfigName)
       localResources.put(LocalResourceNames.UserConfigName, instanceConfigResource)
     } catch  {
@@ -86,18 +86,18 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
 
     // Retrieve the Akkeeper Assembly jar.
     val akkeeperJarResource = localResourceManager
-      .getExistingLocalResource(LocalResourceNames.AkkeeperJarName)
+      .getLocalResourceFromStagingDir(LocalResourceNames.AkkeeperJarName)
     localResources.put(LocalResourceNames.AkkeeperJarName, akkeeperJarResource)
 
     // Retrieve the user jar.
     val userJarResource = localResourceManager
-      .getExistingLocalResource(LocalResourceNames.UserJarName)
+      .getLocalResourceFromStagingDir(LocalResourceNames.UserJarName)
     localResources.put(LocalResourceNames.UserJarName, userJarResource)
 
     // Retrieve the keytab if present.
     config.principal.foreach(_ => {
       val keytabResource = localResourceManager
-        .getExistingLocalResource(LocalResourceNames.KeytabName)
+        .getLocalResourceFromStagingDir(LocalResourceNames.KeytabName)
       localResources.put(LocalResourceNames.KeytabName, keytabResource)
     })
 
@@ -107,7 +107,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
         val resources = fs.listStatus(new Path(stagingDirectory, directory))
         resources.foreach(status => {
           val fileName = directory + "/" + status.getPath.getName
-          val resource = localResourceManager.getExistingLocalResource(fileName)
+          val resource = localResourceManager.getLocalResourceFromStagingDir(fileName)
           localResources.put(fileName, resource)
         })
       } catch {
@@ -126,7 +126,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
   private def getAkkeeperGlobalResources(): Map[String, LocalResource] = {
     config.config.akkeeper.globalResources.map { r =>
       val resourceType = if (r.archive) LocalResourceType.ARCHIVE else LocalResourceType.FILE
-      val resource = localResourceManager.getExistingResource(
+      val resource = localResourceManager.getLocalResource(
         new Path(r.uri), resourceType, LocalResourceVisibility.PRIVATE)
       (r.localPath, resource)
     }.toMap
