@@ -37,8 +37,8 @@ private[akkeeper] final class AkkeeperConfig(akkeeperConfig: Config) {
   }
 
   lazy val globalResources: Seq[AkkeeperResource] = {
-    if (akkeeperConfig.hasPath("globalResources")) {
-      akkeeperConfig.getConfigList("globalResources").asScala.map(akkeeperResourceFromConfig)
+    if (akkeeperConfig.hasPath("global-resources")) {
+      akkeeperConfig.getConfigList("global-resources").asScala.map(akkeeperResourceFromConfig)
     } else {
       Seq.empty
     }
@@ -133,7 +133,7 @@ object ConfigUtils {
   private[config] def akkeeperResourceFromConfig(config: Config): AkkeeperResource = {
     AkkeeperResource(
       new URI(config.getString("uri")),
-      config.getString("localPath"),
+      config.getString("local-path"),
       config.getBoolean("archive")
     )
   }

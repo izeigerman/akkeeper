@@ -155,12 +155,12 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
 
   private def buildLauncherConfig(stagingDir: String, resources: Seq[AkkeeperResource]): Config = {
     val globalResourcesConfigValue = resources.map { r =>
-      Map("uri" -> r.uri.toString, "localPath" -> r.localPath, "archive" -> r.archive).asJava
+      Map("uri" -> r.uri.toString, "local-path" -> r.localPath, "archive" -> r.archive).asJava
     }
     ConfigFactory.parseMap(
       Map(
         "akkeeper.yarn.staging-directory" -> stagingDir,
-        "akkeeper.globalResources" -> globalResourcesConfigValue.asJava
+        "akkeeper.global-resources" -> globalResourcesConfigValue.asJava
       ).asJava
     )
   }
