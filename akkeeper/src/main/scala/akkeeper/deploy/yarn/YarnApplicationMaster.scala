@@ -137,7 +137,7 @@ private[akkeeper] class YarnApplicationMaster(config: YarnApplicationMasterConfi
     import spray.json._
     import akkeeper.api.ContainerDefinitionJsonProtocol._
     val jsonStr = containerDefinition.actors.toJson.compactPrint
-    localResourceManager.createLocalResource(new ByteArrayInputStream(jsonStr.getBytes("UTF-8")),
+    localResourceManager.uploadLocalResource(new ByteArrayInputStream(jsonStr.getBytes("UTF-8")),
       s"actors_$instanceId.json")
   }
 

@@ -88,7 +88,7 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
     files.foreach(file => {
       val fileName = FilenameUtils.getName(file.getPath)
       val localPath = dstLocalDir + "/" + fileName
-      resourceManger.createLocalResource(file.toString, localPath)
+      resourceManger.uploadLocalResource(file.toString, localPath)
     })
   }
 
@@ -100,18 +100,18 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
 
     def uploadConfig(localResourceName: String, config: Config): Unit = {
       val userConfigString = config.root().render(ConfigRenderOptions.concise())
-      val configResource = resourceManager.createLocalResource(
+      val configResource = resourceManager.uploadLocalResource(
         new ByteArrayInputStream(userConfigString.getBytes("UTF-8")), localResourceName)
       localResources.put(localResourceName, configResource)
     }
 
-    val akkeeperJar = resourceManager.createLocalResource(args.akkeeperJarPath.toString,
+    val akkeeperJar = resourceManager.uploadLocalResource(args.akkeeperJarPath.toString,
       LocalResourceNames.AkkeeperJarName)
     localResources.put(LocalResourceNames.AkkeeperJarName, akkeeperJar)
 
     // Add a user jar to the staging directory. No need to include it
     // into master local resources.
-    resourceManager.createLocalResource(args.userJar.toString,
+    resourceManager.uploadLocalResource(args.userJar.toString,
       LocalResourceNames.UserJarName)
 
     // Just upload the third-party jars. No need to include them
@@ -123,7 +123,7 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
 
     args.principal.foreach(_ => {
       // Distribute keytab.
-      val keytabResource = resourceManager.createLocalResource(args.keytab.get.toString,
+      val keytabResource = resourceManager.uploadLocalResource(args.keytab.get.toString,
         LocalResourceNames.KeytabName)
       localResources.put(LocalResourceNames.KeytabName, keytabResource)
     })

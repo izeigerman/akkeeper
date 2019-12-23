@@ -63,7 +63,7 @@ class YarnLocalResourceManagerSpec extends FlatSpec with Matchers with BeforeAnd
     val expectedFileName = UUID.randomUUID().toString
     val expectedPath = new Path(stagingDir, expectedFileName).toString
 
-    val actualResult = manager.createLocalResource(resource, expectedFileName)
+    val actualResult = manager.uploadLocalResource(resource, expectedFileName)
     validateLocalResource(actualResult, expectedPath)
     validateResourcePayload("/application-container-test.conf", expectedPath)
   }
@@ -74,7 +74,7 @@ class YarnLocalResourceManagerSpec extends FlatSpec with Matchers with BeforeAnd
     val expectedFileName = UUID.randomUUID().toString
     val expectedPath = new Path(stagingDir, expectedFileName).toString
 
-    val actualResult = manager.createLocalResource(resource, expectedFileName)
+    val actualResult = manager.uploadLocalResource(resource, expectedFileName)
     validateLocalResource(actualResult, expectedPath)
     validateResourcePayload("/application-container-test.conf", expectedPath)
     resource.close()
@@ -86,10 +86,10 @@ class YarnLocalResourceManagerSpec extends FlatSpec with Matchers with BeforeAnd
     val expectedFileName = UUID.randomUUID().toString
     val expectedPath = new Path(stagingDir, expectedFileName).toString
 
-    manager.createLocalResource(resource, expectedFileName)
+    manager.uploadLocalResource(resource, expectedFileName)
     val newExpectedFileName = UUID.randomUUID().toString
     val newExpectedPath = new Path(stagingDir, newExpectedFileName).toString
-    val actualResult = manager.createLocalResource(expectedPath, newExpectedFileName)
+    val actualResult = manager.uploadLocalResource(expectedPath, newExpectedFileName)
     validateLocalResource(actualResult, newExpectedPath)
     validateResourcePayload("/application-container-test.conf", newExpectedPath)
   }
@@ -100,7 +100,7 @@ class YarnLocalResourceManagerSpec extends FlatSpec with Matchers with BeforeAnd
     val expectedFileName = UUID.randomUUID().toString
     val expectedPath = new Path(stagingDir, expectedFileName).toString
 
-    manager.createLocalResource(resource, expectedFileName)
+    manager.uploadLocalResource(resource, expectedFileName)
     val actualResult = manager.getLocalResourceFromStagingDir(expectedFileName)
     validateLocalResource(actualResult, expectedPath)
     validateResourcePayload("/application-container-test.conf", expectedPath)

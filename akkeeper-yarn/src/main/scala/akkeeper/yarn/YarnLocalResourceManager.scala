@@ -68,16 +68,16 @@ private[akkeeper] final class YarnLocalResourceManager(conf: Configuration,
     create(dstFs, dstStatus, localResourceType, localResourceVisibility)
   }
 
-  def createLocalResource(srcStream: InputStream, dstPath: String): LocalResource = {
+  def uploadLocalResource(srcStream: InputStream, dstPath: String): LocalResource = {
     val dst = copyResourceToStagingDir(srcStream, dstPath)
     getLocalResource(dst)
   }
 
-  def createLocalResource(srcPath: String, dstPath: String): LocalResource = {
+  def uploadLocalResource(srcPath: String, dstPath: String): LocalResource = {
     val path = new Path(srcPath)
     val srcFs = path.getFileSystem(conf)
     withStream(srcFs.open(path)) { srcStream =>
-      createLocalResource(srcStream, dstPath)
+      uploadLocalResource(srcStream, dstPath)
     }
   }
 
