@@ -129,7 +129,7 @@ final class YarnLauncher(yarnConf: YarnConfiguration,
     })
 
     args.userConfig.foreach(uploadConfig(LocalResourceNames.UserConfigName, _))
-    uploadConfig(LocalResourceNames.LauncherConfigName, launcherConfig)
+    uploadConfig(LocalResourceNames.ApplicationConfigName, launcherConfig)
 
     localResources
   }

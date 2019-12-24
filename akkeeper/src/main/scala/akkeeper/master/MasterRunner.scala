@@ -125,7 +125,7 @@ private[master] class YarnMasterRunner extends MasterRunner {
     val config = masterArgs.config
       .map(c => ConfigFactory.parseFile(c))
       .getOrElse(ConfigFactory.empty())
-      .withFallback(ConfigFactory.parseFile(new File(LocalResourceNames.LauncherConfigName)))
+      .withFallback(ConfigFactory.parseFile(new File(LocalResourceNames.ApplicationConfigName)))
       .withFallback(ConfigFactory.load())
 
     // Create and start the Kerberos ticket renewer if necessary.
