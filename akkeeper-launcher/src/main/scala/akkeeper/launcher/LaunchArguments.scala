@@ -17,13 +17,15 @@ package akkeeper.launcher
 
 import java.net.URI
 
+import akkeeper.common.config.AkkeeperResource
+import akkeeper.launcher.LaunchArguments._
 import com.typesafe.config.Config
-import LaunchArguments._
 
 final case class LaunchArguments(akkeeperJarPath: URI = new URI("."),
                                  userJar: URI = new URI("."),
                                  otherJars: Seq[URI] = Seq.empty,
                                  resources: Seq[URI] = Seq.empty,
+                                 globalResources: Seq[AkkeeperResource] = Seq.empty,
                                  masterJvmArgs: Seq[String] = Seq.empty,
                                  userConfig: Option[Config] = None,
                                  pollInterval: Long = DefaultPollInterval,

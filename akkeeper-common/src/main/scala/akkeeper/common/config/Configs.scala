@@ -15,6 +15,7 @@
  */
 package akkeeper.common.config
 
+import java.net.URI
 import java.time.{Duration => JavaDuration}
 import java.util.concurrent.TimeUnit
 
@@ -30,6 +31,14 @@ private[akkeeper] final class AkkeeperConfig(akkeeperConfig: Config) {
     if (akkeeperConfig.hasPath("containers")) {
       val configContainers = akkeeperConfig.getConfigList("containers").asScala
       configContainers.map(ConfigUtils.containerDefinitionFromConfig)
+    } else {
+      Seq.empty
+    }
+  }
+
+  lazy val globalResources: Seq[AkkeeperResource] = {
+    if (akkeeperConfig.hasPath("global-resources")) {
+      akkeeperConfig.getConfigList("global-resources").asScala.map(akkeeperResourceFromConfig)
     } else {
       Seq.empty
     }
@@ -118,6 +127,14 @@ object ConfigUtils {
       jvmArgs = config.getListOfStrings("jvm-args"),
       jvmProperties = config.getMapOfStrings("properties"),
       environment = config.getMapOfStrings("environment")
+    )
+  }
+
+  private[config] def akkeeperResourceFromConfig(config: Config): AkkeeperResource = {
+    AkkeeperResource(
+      new URI(config.getString("uri")),
+      config.getString("local-path"),
+      config.getBoolean("archive")
     )
   }
 }

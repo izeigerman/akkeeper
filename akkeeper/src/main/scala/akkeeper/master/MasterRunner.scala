@@ -15,6 +15,8 @@
  */
 package akkeeper.master
 
+import java.io.File
+
 import akka.actor._
 import akka.cluster.Cluster
 import akka.http.scaladsl.Http
@@ -121,8 +123,10 @@ private[master] class YarnMasterRunner extends MasterRunner {
 
   def run(masterArgs: MasterArguments): Unit = {
     val config = masterArgs.config
-      .map(c => ConfigFactory.parseFile(c).withFallback(ConfigFactory.load()))
-      .getOrElse(ConfigFactory.load())
+      .map(c => ConfigFactory.parseFile(c))
+      .getOrElse(ConfigFactory.empty())
+      .withFallback(ConfigFactory.parseFile(new File(LocalResourceNames.ApplicationConfigName)))
+      .withFallback(ConfigFactory.load())
 
     // Create and start the Kerberos ticket renewer if necessary.
     val ticketRenewer = masterArgs.principal.map(principal => {
