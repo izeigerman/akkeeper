@@ -83,7 +83,7 @@ object ContainerInstanceMain extends App with ContainerDefinitionJsonProtocol {
     val actorSystem = ActorSystem(instanceConfig.akkeeperAkka.actorSystemName, instanceConfig)
 
     val zkConfig = ZookeeperClientConfig.fromConfig(actorSystem.settings.config.zookeeper)
-    val instanceStorage = InstanceStorageFactory(zkConfig.child(instanceArgs.appId))
+    val instanceStorage = InstanceStorageFactory(zkConfig.child(instanceArgs.appId), actorSystem)
 
     val actorsJsonStr = Source.fromFile(instanceArgs.actors).getLines().mkString("\n")
     val actors = actorsJsonStr.parseJson.convertTo[Seq[ActorLaunchContext]]

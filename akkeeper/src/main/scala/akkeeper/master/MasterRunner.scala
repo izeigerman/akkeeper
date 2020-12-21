@@ -68,7 +68,7 @@ private[master] class YarnMasterRunner extends MasterRunner {
   private def createInstanceStorage(actorSystem: ActorSystem,
                                     appId: String): InstanceStorage = {
     val zkConfig = ZookeeperClientConfig.fromConfig(actorSystem.settings.config.zookeeper)
-    InstanceStorageFactory(zkConfig.child(appId))
+    InstanceStorageFactory((zkConfig.child(appId),actorSystem))
   }
 
   private def createDeployClient(actorSystem: ActorSystem,

@@ -15,18 +15,23 @@
  */
 package akkeeper.storage.zookeeper.async
 
-import akka.actor.Address
+import akka.actor.{ActorSystem, Address}
 import akka.cluster.UniqueAddress
+import akka.testkit.TestKit
 import akkeeper.AwaitMixin
 import akkeeper.address._
 import akkeeper.api._
 import akkeeper.storage._
 import akkeeper.storage.zookeeper.ZookeeperClientConfig
 import org.apache.curator.test.{TestingServer => ZookeeperServer}
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
-class ZookeeperInstanceStorageSpec extends FlatSpec
-  with Matchers with AwaitMixin with ZookeeperBaseSpec {
+class ZookeeperInstanceStorageSpec extends TestKit(ActorSystem("instanceStorageSpec")) with FlatSpecLike
+  with Matchers with AwaitMixin with ZookeeperBaseSpec with BeforeAndAfterAll{
+
+  override def afterAll(): Unit = {
+    TestKit.shutdownActorSystem(system)
+  }
 
   private def withStorage[T](f: InstanceStorage => T): T = {
     val zookeeper = new ZookeeperServer()

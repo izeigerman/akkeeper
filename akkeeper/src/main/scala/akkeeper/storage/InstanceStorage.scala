@@ -15,6 +15,7 @@
  */
 package akkeeper.storage
 
+import akka.actor.ActorSystem
 import akkeeper.api._
 import akkeeper.storage.zookeeper.ZookeeperClientConfig
 import akkeeper.storage.zookeeper.async.ZookeeperInstanceStorage
@@ -62,14 +63,15 @@ private[akkeeper] trait InstanceStorageFactory[T] extends (T => InstanceStorage)
 private[akkeeper] object InstanceStorageFactory {
 
   implicit object ZookeeperInstanceStorageFactory
-    extends InstanceStorageFactory[ZookeeperClientConfig] {
+    extends InstanceStorageFactory[(ZookeeperClientConfig, ActorSystem)] {
 
-    override def apply(config: ZookeeperClientConfig): InstanceStorage = {
-      new ZookeeperInstanceStorage(config.child("instances"))
+    override def apply(ctr:(ZookeeperClientConfig,ActorSystem)): InstanceStorage = {
+      val (config, actorSystem) = ctr
+      new ZookeeperInstanceStorage(config.child("instances"))(actorSystem)
     }
   }
 
-  def apply[T: InstanceStorageFactory](config: T): InstanceStorage = {
-    implicitly[T](config)
+  def apply[T: InstanceStorageFactory](ctr: T): InstanceStorage = {
+    implicitly[T](ctr)
   }
 }

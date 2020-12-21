@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-val AkkaVersion = "2.5.14"
-val AkkaHttpVersion = "10.1.3"
+val AkkaVersion = "2.5.31"
+val AkkaHttpVersion = "10.1.13"
 val CuratorVersion = "2.7.1"
-val SprayJsonVersion = "1.3.4"
+val SprayJsonVersion = "1.3.6"
 val HadoopVersion = "2.8.4"
 val ScalaTestVersion = "3.0.5"
 val ScalamockVersion = "3.4.2"
@@ -40,7 +40,7 @@ val TestDependencies = Seq(
 
 val CommonSettings = Seq(
   organization := "com.github.izeigerman",
-  scalaVersion := "2.12.6",
+  scalaVersion := "2.12.11",
   crossScalaVersions := Seq("2.11.11", scalaVersion.value),
   version := "0.4.12-SNAPSHOT",
 

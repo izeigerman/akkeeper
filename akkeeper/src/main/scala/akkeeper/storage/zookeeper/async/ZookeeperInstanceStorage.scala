@@ -23,9 +23,12 @@ import org.apache.zookeeper.CreateMode
 
 import scala.concurrent.Future
 import ZookeeperInstanceStorage._
+import akka.actor.ActorSystem
 import akkeeper.api.InstanceId
 
-private[akkeeper] class ZookeeperInstanceStorage(config: ZookeeperClientConfig)
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+
+private[akkeeper] class ZookeeperInstanceStorage(config: ZookeeperClientConfig)(implicit system: ActorSystem)
   extends BaseZookeeperStorage with InstanceStorage {
 
   protected override val zookeeperClient =
@@ -50,22 +53,53 @@ private[akkeeper] class ZookeeperInstanceStorage(config: ZookeeperClientConfig)
       .map(fromBytes[InstanceInfo])
   }
 
+  //akka-http default timeout is 20 seconds, so ensure that the call does not exceed it
+  //timeout outer future in 19 seconds
   override def getInstances: Future[Seq[InstanceId]] = {
-    val instancesFuture = for {
+    val instancesFuture: Future[Seq[Future[Seq[String]]]] = for {
+      //timeout
       containers <- zookeeperClient.children("")
     } yield for {
       container <- containers
     } yield zookeeperClient.children(container)
-    instancesFuture
+    val expectedExecution = instancesFuture
       .flatMap(f => Future.sequence(f).map(_.flatten))
       .map(_.map(pathToInstanceId))
       .recover(notFoundToEmptySeq[InstanceId])
+    withTimeout(expectedExecution, 19.seconds)(extractPartialFutureState(expectedExecution, instancesFuture))
   }
 
   override def getInstancesByContainer(containerName: String): Future[Seq[InstanceId]] = {
     zookeeperClient.children(containerName)
       .map(_.map(pathToInstanceId))
       .recover(notFoundToEmptySeq[InstanceId])
+  }
+
+  private def extractPartialFutureState(f: Future[_], instancesFuture: Future[Seq[Future[Seq[String]]]]):
+  Future[Seq[InstanceId]] = {
+    if(!f.isCompleted) {
+      system.log.warning("extract partial future stated started")
+      if (instancesFuture.isCompleted && instancesFuture.value.get.isSuccess) {
+        val successfulInstances = instancesFuture.value.get.get.collect {
+          case f if f.isCompleted && f.value.get.isSuccess => f.value.get.get.map(pathToInstanceId)
+          case f =>
+            val state = s"completed: ${f.isCompleted} successful ${f.value.map(_.isSuccess)}"
+            system.log.warning(s"zk get children failed: ${state}")
+            Seq.empty[InstanceId]
+        }
+        Future.successful(successfulInstances.flatten)
+      } else {
+        system.log.warning("Getting zookeeper children timeout")
+        Future.successful(Seq.empty[InstanceId])
+      }
+    } else {
+      Future.successful(Seq.empty[InstanceId])
+    }
+  }
+
+  private def withTimeout[T](f:Future[T], timeout:FiniteDuration)(value: => Future[T]) = {
+    val timeoutFuture = akka.pattern.after(timeout, system.scheduler)(value)
+    Future.firstCompletedOf(Seq(f, timeoutFuture))(system.dispatcher)
   }
 }
 
