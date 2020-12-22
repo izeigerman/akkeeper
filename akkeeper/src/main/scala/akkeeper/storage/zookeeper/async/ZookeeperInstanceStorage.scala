@@ -27,6 +27,7 @@ import akka.actor.ActorSystem
 import akkeeper.api.InstanceId
 
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.util.Try
 
 private[akkeeper] class ZookeeperInstanceStorage(config: ZookeeperClientConfig)(implicit system: ActorSystem)
   extends BaseZookeeperStorage with InstanceStorage {
@@ -56,6 +57,7 @@ private[akkeeper] class ZookeeperInstanceStorage(config: ZookeeperClientConfig)(
   //akka-http default timeout is 20 seconds, so ensure that the call does not exceed it
   //timeout outer future in 19 seconds
   override def getInstances: Future[Seq[InstanceId]] = {
+    val t0 = System.nanoTime()
     val instancesFuture: Future[Seq[Future[Seq[String]]]] = for {
       //timeout
       containers <- zookeeperClient.children("")
@@ -66,7 +68,18 @@ private[akkeeper] class ZookeeperInstanceStorage(config: ZookeeperClientConfig)(
       .flatMap(f => Future.sequence(f).map(_.flatten))
       .map(_.map(pathToInstanceId))
       .recover(notFoundToEmptySeq[InstanceId])
-    withTimeout(expectedExecution, 19.seconds)(extractPartialFutureState(expectedExecution, instancesFuture))
+    expectedExecution.onComplete { result:Try[Seq[InstanceId]] =>
+      val t1 = System.nanoTime()
+      val nanoDelta = t1 - t0
+      val secondsDelta = nanoDelta.toDouble / 1000000000L
+      val statusMsg = if(result.isSuccess) {"succeeded"} else {s"failed with ${result.failed.get}"}
+      if(secondsDelta >= 20.0) {
+        system.log.warning(s"getInstances TIMEOUTED, took ${secondsDelta} seconds and ${statusMsg}")
+      } else {
+        system.log.info(s"getInstances took ${secondsDelta} seconds and ${statusMsg}")
+      }
+    }(system.dispatcher)
+    expectedExecution
   }
 
   override def getInstancesByContainer(containerName: String): Future[Seq[InstanceId]] = {
@@ -75,32 +88,6 @@ private[akkeeper] class ZookeeperInstanceStorage(config: ZookeeperClientConfig)(
       .recover(notFoundToEmptySeq[InstanceId])
   }
 
-  private def extractPartialFutureState(f: Future[_], instancesFuture: Future[Seq[Future[Seq[String]]]]):
-  Future[Seq[InstanceId]] = {
-    if(!f.isCompleted) {
-      system.log.warning("extract partial future stated started")
-      if (instancesFuture.isCompleted && instancesFuture.value.get.isSuccess) {
-        val successfulInstances = instancesFuture.value.get.get.collect {
-          case f if f.isCompleted && f.value.get.isSuccess => f.value.get.get.map(pathToInstanceId)
-          case f =>
-            val state = s"completed: ${f.isCompleted} successful ${f.value.map(_.isSuccess)}"
-            system.log.warning(s"zk get children failed: ${state}")
-            Seq.empty[InstanceId]
-        }
-        Future.successful(successfulInstances.flatten)
-      } else {
-        system.log.warning("Getting zookeeper children timeout")
-        Future.successful(Seq.empty[InstanceId])
-      }
-    } else {
-      Future.successful(Seq.empty[InstanceId])
-    }
-  }
-
-  private def withTimeout[T](f:Future[T], timeout:FiniteDuration)(value: => Future[T]) = {
-    val timeoutFuture = akka.pattern.after(timeout, system.scheduler)(value)
-    Future.firstCompletedOf(Seq(f, timeoutFuture))(system.dispatcher)
-  }
 }
 
 private[akkeeper] object ZookeeperInstanceStorage {
