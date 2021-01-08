@@ -39,7 +39,7 @@ val TestDependencies = Seq(
 )
 
 val CommonSettings = Seq(
-  organization := "com.github.izeigerman",
+  organization := "com.dotdata", // "com.github.izeigerman",
   scalaVersion := "2.12.6",
   crossScalaVersions := Seq("2.11.11", scalaVersion.value),
   version := "0.4.12-SNAPSHOT",
