@@ -39,19 +39,18 @@ val TestDependencies = Seq(
 )
 
 val CommonSettings = Seq(
-  organization := "com.dotdata", // "com.github.izeigerman",
-  scalaVersion := "2.12.6",
-  crossScalaVersions := Seq("2.11.11", scalaVersion.value),
-  version := "0.4.12-SNAPSHOT",
+  organization := "com.dotdata",
+  scalaVersion := "2.12.13",
+  crossScalaVersions := Seq("2.11.12", scalaVersion.value),
 
-  organizationHomepage := Some(url("https://github.com/izeigerman")),
-  homepage := Some(url("https://github.com/izeigerman/akkeeper")),
-  licenses in ThisBuild += ("MIT License", url("http://opensource.org/licenses/MIT")),
+  organizationHomepage := Some(url("https://github.com/ramencloud")),
+  homepage := Some(url("https://github.com/ramencloud/akkeeper")),
+  licenses := Seq("APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
   developers := Developer("izeigerman", "Iaroslav Zeigerman", "",
     url("https://github.com/izeigerman")) :: Nil,
   scmInfo := Some(ScmInfo(
-    browseUrl = url("https://github.com/izeigerman/akkeeper.git"),
-    connection = "scm:git:git@github.com:izeigerman/akkeeper.git"
+    browseUrl = url("https://github.com/ramencloud/akkeeper.git"),
+    connection = "scm:git:git@github.com:ramencloud/akkeeper.git"
   )),
 
   scalacOptions ++= Seq(
@@ -69,13 +68,13 @@ val PublishSettings = Seq(
   publishMavenStyle := true,
   publishArtifact in Test := false,
   pomIncludeRepository := (_ => false),
-  publishTo := Some(
-    if (version.value.trim.endsWith("SNAPSHOT")) {
-      "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
-    } else {
-      "releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
-    }
-  )
+//  publishTo := Some(
+//    if (version.value.trim.endsWith("SNAPSHOT")) {
+//      "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+//    } else {
+//      "releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+//    }
+//  )
 )
 
 val NoPublishSettings = Seq(
