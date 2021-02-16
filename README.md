@@ -2,8 +2,27 @@
 
 This is a [dotData](https://dotdata.com) fork of [Akkeeper](https://github.com/izeigerman/akkeeper)
 
+[![License](http://img.shields.io/:license-Apache%202-red.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt) ![Build](https://github.com/ramencloud/akkeeper/workflows/CI/badge.svg) [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.dotdata/akkeeper-api_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.dotdata/akkeeper-api_2.12)
 
-[![License](http://img.shields.io/:license-Apache%202-red.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt)
+## Release Steps
+
+    git tag -a v0.4.12 -m "v0.4.12"
+    git push origin v0.4.12
+
+## Usage
+
+Akkeeper is published to Maven Central, so 
+
+    libraryDependencies ++= Seq(
+      "com.dotdata" %% "akkeeper-api" % "0.4.12",
+      "com.dotdata" %% "akkeeper-common" % "0.4.12",
+      "com.dotdata" %% "akkeeper-launcher" % "0.4.12",
+      "com.dotdata" %% "akkeeper-yarn" % "0.4.12",
+    )
+
+# Original
+
+## About
 
 Akkeeper (Akka Keeper or Actor Kernel Keeper) - is an easy way to deploy your Akka application to a distributed environment. [Akka](http://akka.io/) is a widely used Actor framework, but there are still no good practices and approaches of deploying applications that are based on this framework. Akkeeper provides a powerful set of capabilities to maintain your cluster. You can easily deploy, terminate and monitor your services at runtime. Akkeeper was built keeping Hadoop as a primary use case, that's why it currently supports only [YARN](https://hadoop.apache.org/docs/r2.7.1/hadoop-yarn/hadoop-yarn-site/YARN.html) as a resource manager. But this doesn't mean that other environments won't appear in future. Apache Spark and Apache Flink are good examples of Akka applications on Hadoop. Although both of them are data processing frameworks, I realised that YARN is not only MapReduce and can be used to distribute any kind of application. As a result your application acquires elasticity and resilience out of the box.
 
