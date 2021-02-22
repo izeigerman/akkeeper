@@ -88,7 +88,7 @@ val BuildInfoSettings = Seq(
   buildInfoPackage := "akkeeper"
 )
 
-val AkkeeperAppSettings = CommonSettings ++ NoPublishSettings ++ BuildInfoSettings ++ Seq(
+val AkkeeperAppSettings = CommonSettings ++ PublishSettings ++ BuildInfoSettings ++ Seq(
   libraryDependencies ++= HadoopDependencies.map(_.exclude("log4j", "log4j")) ++ TestDependencies ++ Seq(
     "com.typesafe.akka" %% "akka-actor" % AkkaVersion,
     "com.typesafe.akka" %% "akka-cluster" % AkkaVersion,
@@ -137,7 +137,10 @@ val AkkeeperAppSettings = CommonSettings ++ NoPublishSettings ++ BuildInfoSettin
       new File(baseDirectory.value.getAbsolutePath, "../bin/akkeeper-submit") -> "bin/akkeeper-submit",
       fatJar -> ("lib/" + fatJar.getName)
     )
-  }
+  },
+  Compile / packageDoc / publishArtifact := false,
+  Compile / packageSrc / publishArtifact := false,
+  addArtifact(Universal / packageBin / artifact, Universal / packageBin)
 )
 
 val AkkeeperApiSettings = CommonSettings ++ PublishSettings ++ Seq(
