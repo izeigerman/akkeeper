@@ -140,7 +140,7 @@ val AkkeeperAppSettings = CommonSettings ++ PublishSettings ++ BuildInfoSettings
   },
   Compile / packageDoc / publishArtifact := false,
   Compile / packageSrc / publishArtifact := false,
-  addArtifact(Universal / packageBin / artifact, Universal / packageBin)
+  addArtifact(Universal / packageZipTarball / artifact, Universal / packageZipTarball)
 )
 
 val AkkeeperApiSettings = CommonSettings ++ PublishSettings ++ Seq(
