@@ -115,6 +115,7 @@ val AkkeeperAppSettings = CommonSettings ++ PublishSettings ++ BuildInfoSettings
     case "reference.conf" => ReferenceMergeStrategy
     case "application.conf" => MergeStrategy.concat
     case "akkeeper/BuildInfo$.class" => MergeStrategy.first
+    case "META-INF/io.netty.versions.properties" => MergeStrategy.filterDistinctLines
     case x =>
       val oldStrategy = (assemblyMergeStrategy in assembly).value
       oldStrategy(x)
