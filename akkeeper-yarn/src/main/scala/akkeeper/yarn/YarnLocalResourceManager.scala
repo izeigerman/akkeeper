@@ -42,7 +42,7 @@ private[akkeeper] final class YarnLocalResourceManager(conf: Configuration,
                      localResourceType: LocalResourceType,
                      localResourceVisibility: LocalResourceVisibility): LocalResource = {
     LocalResource.newInstance(
-      ConverterUtils.getYarnUrlFromURI(fs.makeQualified(status.getPath).toUri),
+      URL.fromURI(fs.makeQualified(status.getPath).toUri),
       localResourceType, localResourceVisibility,
       status.getLen, status.getModificationTime
     )

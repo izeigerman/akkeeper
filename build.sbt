@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-val AkkaVersion = "2.5.14"
-val AkkaHttpVersion = "10.1.3"
-val CuratorVersion = "2.7.1"
+val AkkaVersion = "2.5.31"
+val AkkaHttpVersion = "10.1.13"
+val CuratorVersion = "5.1.0"
 val SprayJsonVersion = "1.3.4"
-val HadoopVersion = "2.8.4"
+val HadoopVersion = "3.2.2"
 val ScalaTestVersion = "3.0.9"
 val ScalamockVersion = "3.4.2"
-val Slf4jVersion = "1.7.19"
+val Slf4jVersion = "1.7.30"
 val ScoptsVersion = "3.5.0"
-val TypesafeConfigVersion = "1.3.3"
+val TypesafeConfigVersion = "1.3.4"
 
 val HadoopDependencies = Seq(
   "org.apache.hadoop" % "hadoop-common" % HadoopVersion % "provided",
@@ -98,7 +98,7 @@ val AkkeeperAppSettings = CommonSettings ++ PublishSettings ++ BuildInfoSettings
     "com.typesafe.akka" %% "akka-http-spray-json" % AkkaHttpVersion,
     "io.spray" %% "spray-json" % SprayJsonVersion,
     "org.slf4j" % "slf4j-api" % Slf4jVersion,
-    "org.slf4j" % "slf4j-log4j12" % Slf4jVersion,
+    "org.slf4j" % "slf4j-log4j12" % Slf4jVersion % Test,
     "com.github.scopt" %% "scopt" % ScoptsVersion,
     ("org.apache.curator" % "curator-framework" % CuratorVersion).exclude("org.jboss.netty", "netty"),
     "org.apache.curator" % "curator-test" % CuratorVersion % "test->*",
@@ -115,6 +115,7 @@ val AkkeeperAppSettings = CommonSettings ++ PublishSettings ++ BuildInfoSettings
     case "reference.conf" => ReferenceMergeStrategy
     case "application.conf" => MergeStrategy.concat
     case "akkeeper/BuildInfo$.class" => MergeStrategy.first
+    case "META-INF/io.netty.versions.properties" => MergeStrategy.filterDistinctLines
     case x =>
       val oldStrategy = (assemblyMergeStrategy in assembly).value
       oldStrategy(x)
