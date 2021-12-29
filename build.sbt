@@ -109,6 +109,12 @@ val AkkeeperAppSettings = CommonSettings ++ PublishSettings ++ BuildInfoSettings
 
   mainClass in Compile := Some("akkeeper.launcher.LauncherMain"),
 
+  assembly / assemblyShadeRules := Seq(
+    ShadeRule.rename("com.typesafe.config.**" -> "shadeio.config.@1").inAll,
+    ShadeRule.rename("cats.**" -> "shadeio.cats.@1").inAll,
+    ShadeRule.rename("shapeless.**" -> "shadeio.shapeless.@1").inAll
+  ),
+
   assemblyMergeStrategy in assembly := {
     case PathList("org", "apache", xs @ _*) => MergeStrategy.first
     case "log4j.properties" => MergeStrategy.concat
